@@ -3,7 +3,8 @@
 import { whatsappLink, formatPrice, MIN_PURCHASE } from '../config.js';
 import { esc, safeImg } from '../shared/utils.js';
 
-const STORE_KEY = 'unica_pedido_v1';
+// v2: una línea = un color + un talle (se descartan pedidos guardados con selección múltiple).
+const STORE_KEY = 'unica_pedido_v2';
 const MAX_QTY = 999;
 
 const $ = (sel) => document.querySelector(sel);
@@ -93,8 +94,8 @@ function clear() {
 }
 
 const selectionText = (l) => [
-  `Colores: ${l.colors.length ? l.colors.join(', ') : 'surtidos'}`,
-  `Talles: ${l.sizes.length ? l.sizes.join(', ') : 'curva completa'}`,
+  l.colors.length === 1 ? `Color: ${l.colors[0]}` : `Colores: ${l.colors.length ? l.colors.join(', ') : 'surtidos'}`,
+  l.sizes.length === 1 ? `Talle: ${l.sizes[0]}` : `Talles: ${l.sizes.length ? l.sizes.join(', ') : 'curva completa'}`,
 ];
 
 export function buildMessage() {

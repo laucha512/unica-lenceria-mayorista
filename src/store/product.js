@@ -32,7 +32,7 @@ function chip(kind, value, on) {
   const cls = on
     ? 'bg-[#be185d] border-[#be185d] text-white'
     : 'bg-white border-pink-200 text-slate-800 hover:border-[#be185d]';
-  return `<button type="button" data-${kind}="${esc(value)}" aria-pressed="${on}" class="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-full border-2 text-sm font-semibold transition-colors ${cls}">${dot}${esc(value)}${on ? '<span class="material-symbols-outlined text-[18px]" aria-hidden="true">check</span>' : ''}</button>`;
+  return `<button type="button" role="radio" data-${kind}="${esc(value)}" aria-checked="${on}" class="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-full border-2 text-sm font-semibold transition-colors ${cls}">${dot}${esc(value)}${on ? '<span class="material-symbols-outlined text-[18px]" aria-hidden="true">check</span>' : ''}</button>`;
 }
 
 function galleryHtml(a) {
@@ -76,16 +76,18 @@ function infoHtml(a) {
     : '<span class="text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">Sin stock momentáneo</span>';
   const colorsBlock = a.colors.length
     ? `<fieldset class="mt-5">
-      <legend class="text-sm font-bold text-slate-900">Elegí los colores</legend>
-      <p class="text-xs text-slate-600 mb-2">Podés marcar varios. Si no elegís ninguno, van surtidos.</p>
-      <div class="flex flex-wrap gap-2" data-group="color">${a.colors.map((c) => chip('color', c, current.colors.has(c))).join('')}</div>
+      <legend class="text-sm font-bold text-slate-900" id="colorLegend">Elegí un color <span class="text-[#be185d]">*</span></legend>
+      <p class="text-xs text-slate-600 mb-2">Para pedir otro color, agregá este y volvé a elegir.</p>
+      <div class="flex flex-wrap gap-2" data-group="color" role="radiogroup" aria-labelledby="colorLegend" aria-required="true">${a.colors.map((c) => chip('color', c, current.color === c)).join('')}</div>
+      <p class="hidden mt-2 text-sm font-semibold text-red-700" data-error="color" role="alert">Elegí un color para continuar.</p>
     </fieldset>`
     : '';
   const sizesBlock = a.sizes.length
     ? `<fieldset class="mt-5">
-      <legend class="text-sm font-bold text-slate-900">Elegí los talles</legend>
-      <p class="text-xs text-slate-600 mb-2">Podés marcar varios. Si no elegís ninguno, va la curva completa.</p>
-      <div class="flex flex-wrap gap-2" data-group="size">${a.sizes.map((s) => chip('size', s, current.sizes.has(s))).join('')}</div>
+      <legend class="text-sm font-bold text-slate-900" id="sizeLegend">Elegí un talle <span class="text-[#be185d]">*</span></legend>
+      <p class="text-xs text-slate-600 mb-2">Para pedir otro talle, agregá este y volvé a elegir.</p>
+      <div class="flex flex-wrap gap-2" data-group="size" role="radiogroup" aria-labelledby="sizeLegend" aria-required="true">${a.sizes.map((s) => chip('size', s, current.size === s)).join('')}</div>
+      <p class="hidden mt-2 text-sm font-semibold text-red-700" data-error="size" role="alert">Elegí un talle para continuar.</p>
     </fieldset>`
     : '';
   return `
@@ -113,7 +115,7 @@ function infoHtml(a) {
       a.inStock
         ? `<div class="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <span class="block text-xs font-bold uppercase tracking-wider text-slate-600" id="productQtyLabel">Cantidad de packs</span>
+          <span class="block text-xs font-bold uppercase tracking-wider text-slate-600" id="productQtyLabel">Cantidad de packs de esta combinación</span>
           <div class="mt-1 inline-flex items-center rounded-full border-2 border-pink-200 bg-white">
             <button type="button" data-pqty="-1" class="w-11 h-11 inline-flex items-center justify-center rounded-full text-slate-700 hover:text-[#be185d]" aria-label="Un pack menos"><span class="material-symbols-outlined text-[20px]" aria-hidden="true">remove</span></button>
             <input id="productQty" type="number" inputmode="numeric" min="1" max="${MAX_QTY}" value="${current.qty}" aria-labelledby="productQtyLabel" class="w-14 border-0 p-0 text-center text-lg font-bold text-slate-900 focus:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none">
@@ -129,7 +131,8 @@ function infoHtml(a) {
       <button type="button" id="productAdd" class="mt-4 w-full flex items-center justify-center gap-2 min-h-[52px] rounded-full bg-[#be185d] hover:bg-[#970046] text-white font-bold text-base shadow-md transition-colors">
         <span class="material-symbols-outlined text-[22px]" aria-hidden="true">add_shopping_cart</span> <span>Agregar al pedido</span>
       </button>
-      <p id="productInCart" class="mt-3 text-sm text-center ${inCart ? '' : 'hidden'}">
+      <p id="productAdded" class="hidden mt-3 text-sm font-semibold text-emerald-800 text-center" role="status"></p>
+      <p id="productInCart" class="mt-2 text-sm text-center ${inCart ? '' : 'hidden'}">
         <span class="font-semibold text-emerald-800" data-in-cart-text>Ya tenés ${inCart} ${inCart === 1 ? 'pack' : 'packs'} en el pedido.</span>
         <button type="button" data-open-cart class="ml-1 font-bold text-[#be185d] underline">Ver pedido</button>
       </p>`
@@ -150,15 +153,23 @@ function render() {
   track.addEventListener('scroll', onTrackScroll, { passive: true });
 }
 
+function renderGroup(group) {
+  const box = $(`[data-group="${group}"]`);
+  if (!box) return;
+  const list = group === 'color' ? current.article.colors : current.article.sizes;
+  box.innerHTML = list.map((v) => chip(group, v, current[group] === v)).join('');
+}
+
 function updateSummary() {
   const a = current.article;
   const sub = $('#productSubtotal');
   if (sub) sub.textContent = formatPrice(packPrice(a) * current.qty);
   const sel = $('#productSelection');
   if (sel) {
-    const c = [...current.colors];
-    const s = [...current.sizes];
-    sel.textContent = `${current.qty} ${current.qty === 1 ? 'pack' : 'packs'} · Colores: ${c.length ? c.join(', ') : 'surtidos'} · Talles: ${s.length ? s.join(', ') : 'curva completa'}`;
+    const parts = [`${current.qty} ${current.qty === 1 ? 'pack' : 'packs'}`];
+    if (a.colors.length) parts.push(`Color: ${current.color || '— elegí uno —'}`);
+    if (a.sizes.length) parts.push(`Talle: ${current.size || '— elegí uno —'}`);
+    sel.textContent = parts.join(' · ');
   }
   const inCart = qtyOf(a.id);
   const note = $('#productInCart');
@@ -208,7 +219,7 @@ function setActivePhoto(i, scroll = true) {
 
 function show(article) {
   if (!isOpen()) lastFocus = document.activeElement;
-  current = { article, colors: new Set(), sizes: new Set(), qty: 1, photo: 0 };
+  current = { article, color: null, size: null, qty: 1, photo: 0 };
   render();
   dialog().classList.remove('hidden');
   $('#productOverlay').classList.remove('hidden');
@@ -307,13 +318,12 @@ export function initProduct({ onChange } = {}) {
     const color = e.target.closest('[data-color]');
     const size = e.target.closest('[data-size]');
     if (color || size) {
-      const set = color ? current.colors : current.sizes;
-      const value = (color || size).dataset[color ? 'color' : 'size'];
-      set.has(value) ? set.delete(value) : set.add(value);
       const group = color ? 'color' : 'size';
-      const list = color ? current.article.colors : current.article.sizes;
-      $(`[data-group="${group}"]`).innerHTML = list.map((v) => chip(group, v, set.has(v))).join('');
+      const value = (color || size).dataset[group];
+      current[group] = value;
+      renderGroup(group);
       $(`[data-group="${group}"] [data-${group}="${CSS.escape(value)}"]`)?.focus();
+      $(`[data-error="${group}"]`)?.classList.add('hidden');
       return updateSummary();
     }
 
@@ -326,7 +336,29 @@ export function initProduct({ onChange } = {}) {
 
     if (e.target.closest('#productAdd')) {
       const a = current.article;
-      addToCart(a.id, current.qty, { colors: [...current.colors], sizes: [...current.sizes] });
+      const missing = [a.colors.length && !current.color && 'color', a.sizes.length && !current.size && 'size'].filter(Boolean);
+      missing.forEach((g) => $(`[data-error="${g}"]`)?.classList.remove('hidden'));
+      if (missing.length) {
+        $(`[data-group="${missing[0]}"] button`)?.focus();
+        return;
+      }
+      addToCart(a.id, current.qty, {
+        colors: current.color ? [current.color] : [],
+        sizes: current.size ? [current.size] : [],
+      });
+      const added = [current.color, current.size].filter(Boolean).join(' / ');
+      // Selección nueva para la próxima combinación
+      current.color = null;
+      current.size = null;
+      current.qty = 1;
+      renderGroup('color');
+      renderGroup('size');
+      if ($('#productQty')) $('#productQty').value = 1;
+      const note = $('#productAdded');
+      if (note) {
+        note.textContent = `Agregado${added ? `: ${added}` : ''}. Si querés otro color o talle, elegilo y volvé a agregar.`;
+        note.classList.remove('hidden');
+      }
       const btn = $('#productAdd');
       btn.classList.replace('bg-[#be185d]', 'bg-emerald-700');
       btn.querySelector('span:last-child').textContent = '¡Agregado al pedido!';
