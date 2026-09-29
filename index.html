@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=add,add_shopping_cart,chat,check,close,delete,description,download,inventory,inventory_2,local_shipping,location_on,menu,navigation,new_releases,open_in_new,payments,photo_camera,remove,schedule,shopping_bag,storefront,table_view,verified,verified_user&display=block">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=add,add_shopping_cart,chat,check,chevron_left,chevron_right,close,delete,description,download,inventory,inventory_2,local_shipping,location_on,menu,navigation,new_releases,open_in_new,payments,photo_camera,remove,schedule,shopping_bag,storefront,table_view,verified,verified_user&display=block">
 <link rel="preload" as="image" href="/img/hero-coleccion-saten-encaje.webp" fetchpriority="high">
 <link rel="stylesheet" href="/src/store/store.css">
 <script type="application/ld+json">
@@ -570,17 +570,24 @@
   </a>
 </aside>
 
+<!-- Ficha de producto (se abre con #producto/<id>) -->
+<div id="productOverlay" class="hidden fixed inset-0 z-[55] bg-slate-900/60 backdrop-blur-sm"></div>
+<div id="productDialog" class="hidden fixed inset-0 z-[56] overflow-y-auto overscroll-contain" role="dialog" aria-modal="true" aria-labelledby="productTitle">
+  <div id="productWrap" class="min-h-full flex items-start sm:items-center justify-center sm:p-6">
+    <div class="relative w-full sm:max-w-5xl bg-white sm:rounded-3xl shadow-2xl">
+      <button type="button" id="productClose" class="absolute top-3 right-3 z-10 w-11 h-11 rounded-full bg-white/95 border border-pink-200 text-slate-700 hover:text-[#be185d] shadow-md flex items-center justify-center" aria-label="Cerrar ficha del producto">
+        <span class="material-symbols-outlined text-[24px]" aria-hidden="true">close</span>
+      </button>
+      <div id="productContent" class="grid grid-cols-1 md:grid-cols-2"></div>
+    </div>
+  </div>
+</div>
+
 <!-- Acceso flotante al pedido (aparece cuando hay artículos) -->
 <button type="button" id="cartPill" data-open-cart class="hidden fixed bottom-6 left-4 sm:left-6 z-40 items-center gap-2 pl-3 pr-4 py-3 rounded-full bg-slate-900 text-white shadow-2xl hover:bg-slate-800 transition-colors text-sm font-bold" aria-controls="cartDrawer" aria-expanded="false">
   <span class="material-symbols-outlined text-[20px]" aria-hidden="true">shopping_bag</span>
   <span>Ver pedido <span class="text-pink-300" data-cart-summary></span></span>
 </button>
-
-<!-- Aviso breve (agregado al pedido, etc.) -->
-<div id="storeToast" class="fixed top-[calc(var(--header-h,116px)+12px)] left-1/2 -translate-x-1/2 z-[70] w-[calc(100%-2rem)] max-w-sm px-4 py-3 rounded-2xl bg-slate-900 text-white text-sm font-semibold shadow-2xl flex items-center gap-2 transition-all duration-300 opacity-0 -translate-y-2 pointer-events-none" role="status" aria-live="polite">
-  <span class="material-symbols-outlined text-[20px] text-emerald-400" aria-hidden="true">check</span>
-  <span id="storeToastText"></span>
-</div>
 
 <!-- Panel del pedido -->
 <div id="cartOverlay" class="hidden fixed inset-0 z-[60] bg-slate-900/50 backdrop-blur-sm"></div>

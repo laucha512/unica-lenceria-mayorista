@@ -8,9 +8,10 @@ Sitio web del mayorista de lencería **ÚNICA LENCERÍA** (Rosario, Santa Fe): t
 
 ## Pedido por WhatsApp (carrito)
 
-En cada artículo con stock hay un botón **Agregar** que suma un pack al pedido. El pedido se abre desde el botón de la bolsa (header) o la píldora flotante "Ver pedido":
+Cada artículo tiene su **ficha** (`#producto/<id>`, se abre desde la foto, el título o el botón "Elegir y pedir") con todas sus fotos, la descripción, el precio del pack y la elección de **colores y talles** (varios, opcionales) y cantidad de packs. "Agregar al pedido" suma esa combinación. El pedido se abre desde el botón de la bolsa (header) o la píldora flotante "Ver pedido":
 
-- Cantidades editables, subtotal por artículo y total estimado (precio por pack).
+- Una línea por combinación de colores/talles, cantidades editables y total estimado.
+- Precio único: el del pack (es lo que se muestra en la tienda y se cobra en el pedido).
 - Barra de progreso hacia la compra mínima; el envío se habilita al alcanzarla.
 - Datos opcionales: nombre/comercio, localidad, entrega (retiro en sucursal o expreso) y aclaraciones.
 - **Enviar pedido por WhatsApp** abre `wa.me` con el mensaje armado con todo el detalle.

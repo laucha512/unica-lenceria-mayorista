@@ -1,6 +1,7 @@
 import { api, ApiError, esc, safeImg, initials as autoInitials } from '../shared/utils.js';
 import { formatPrice } from '../config.js';
 import { validateFile, resizeImage, uploadBlob } from './images.js';
+import { swatchOf } from '../shared/colors.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -388,14 +389,8 @@ function articleCard(a) {
         ${a.colors.map((c) => `<span class="${colorCls}">${esc(c)}</span>`).join('') || '<span class="text-[11px] text-on-surface-variant">—</span>'}
       </div>
       <div class="mt-4 pt-3 border-t border-outline-variant/20 flex items-center justify-between">
-        <div>
-          <span class="text-[10px] text-on-surface-variant block uppercase font-bold tracking-wider">Unidad</span>
-          <span class="text-sm font-bold text-primary">${esc(formatPrice(a.priceUnit))}</span>
-        </div>
-        <div class="text-right">
-          <span class="text-[10px] text-on-surface-variant block uppercase font-bold tracking-wider">${esc(a.presentation)}</span>
-          <span class="text-sm font-bold text-on-surface">${esc(formatPrice(a.pricePack))}</span>
-        </div>
+        <span class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider">Precio ${esc(a.presentation)}</span>
+        <span class="text-base font-bold text-primary">${esc(formatPrice(a.pricePack || a.priceUnit))}</span>
       </div>
     </div>
   </div>
@@ -478,12 +473,6 @@ $('#articlesContainer').addEventListener('click', async (e) => {
 /* ---------------------------------------------------------------- Modal de artículo */
 
 const PRESET_SIZES = ['85', '90', '95', '100', '105', '110', 'Especiales'];
-const COLOR_SWATCHES = {
-  Blanco: '#ffffff', Negro: '#000000', Nude: '#E8C5A8', 'Rosa Pastel': '#F7C6D0', Borravino: '#5E1224', 'Azul Marino': '#1B264F',
-  Piel: '#E0B89A', 'Visón': '#8A7866', Gris: '#9CA3AF', 'Gris Melange': '#A3A3A3', Champagne: '#F1DDB5', 'Rosa Viejo': '#C08081',
-  Bordo: '#6D071A', Bordeaux: '#6D071A', Marfil: '#F4EFE1', Rosa: '#F9A8D4', Celeste: '#A5D8F3', Hueso: '#EFE6D8', 'Rojo Rubí': '#9B111E',
-  'Petróleo': '#1D4E5F', Grafito: '#41424C', Melange: '#B8B8B8',
-};
 const PRESET_COLORS = ['Blanco', 'Negro', 'Nude', 'Rosa Pastel', 'Borravino', 'Azul Marino'];
 
 /** Valores activos respetando el orden que ya tenía el artículo; los nuevos van al final. */
@@ -514,7 +503,7 @@ function renderSizeChips() {
 function renderColorChips() {
   $('#colorSwatchesContainer').innerHTML = form.colors
     .map((c, i) => {
-      const hex = COLOR_SWATCHES[c.value];
+      const hex = swatchOf(c.value);
       const dot = hex
         ? `<span class="w-3.5 h-3.5 rounded-full border border-gray-300" style="background:${hex}" aria-hidden="true"></span>`
         : '<span class="w-3.5 h-3.5 rounded-full border border-dashed border-gray-400 bg-gradient-to-br from-white to-gray-200" aria-hidden="true"></span>';
@@ -662,8 +651,7 @@ function openArticleModal(article = null) {
   $('#artSaleType').value = article?.saleType || '';
   $('#artDescription').value = article?.description || '';
   $('#artPresentation').value = article?.presentation || 'Pack x 6 Unid.';
-  $('#artPriceUnit').value = article ? article.priceUnit : '';
-  $('#artPricePack').value = article ? article.pricePack : '';
+  $('#artPricePack').value = article ? article.pricePack || article.priceUnit || '' : '';
   $('#artIsNew').checked = article ? article.isNew : true;
   $('#artInStock').checked = article ? article.inStock : true;
 
@@ -700,7 +688,6 @@ $('#articleForm').addEventListener('submit', async (e) => {
   const brandSel = $('#artBrand').value;
   const newBrand = $('#artNewBrand').value.trim();
   const title = $('#artTitle').value.trim();
-  const priceUnit = Number($('#artPriceUnit').value);
   const pricePack = Number($('#artPricePack').value);
   const presentation = $('#artPresentation').value.trim();
 
@@ -708,8 +695,7 @@ $('#articleForm').addEventListener('submit', async (e) => {
   if (brandSel === '__new__' && newBrand.length < 2) problems.push('el nombre de la nueva marca');
   if (title.length < 3) problems.push('el título (mínimo 3 caracteres)');
   if (!presentation) problems.push('la presentación mayorista');
-  if ($('#artPriceUnit').value === '' || !(priceUnit >= 0)) problems.push('el precio por unidad');
-  if ($('#artPricePack').value === '' || !(pricePack >= 0)) problems.push('el precio por pack');
+  if ($('#artPricePack').value === '' || !(pricePack >= 0)) problems.push('el precio del pack');
   if (!form.photos.length) problems.push('al menos una foto');
   if (problems.length) return showFormError(errEl, `Completá: ${problems.join(', ')}.`);
 
@@ -736,7 +722,6 @@ $('#articleForm').addEventListener('submit', async (e) => {
       presentation,
       sizes: keepOrder(form.sizes, form.original.sizes),
       colors: keepOrder(form.colors, form.original.colors),
-      priceUnit,
       pricePack,
       isNew: $('#artIsNew').checked,
       inStock: $('#artInStock').checked,

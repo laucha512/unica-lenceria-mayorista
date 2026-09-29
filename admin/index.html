@@ -417,7 +417,7 @@
           <input type="file" id="photoInput" accept="image/jpeg,image/png,image/webp" multiple class="sr-only" aria-labelledby="photosLabel">
           <span class="material-symbols-outlined text-primary text-[28px] group-hover:scale-110 transition-transform" aria-hidden="true">add_photo_alternate</span>
           <span class="text-xs text-on-surface font-semibold mt-1">Arrastre o haga clic para seleccionar fotografías</span>
-          <span class="text-[11px] text-on-surface-variant">JPG, PNG o WebP · máx. 4 MB c/u · se optimizan a 1200 px</span>
+          <span class="text-[11px] text-on-surface-variant">JPG, PNG o WebP · máx. 4 MB cada una · se optimizan a 1200 px</span>
         </label>
         <div class="flex flex-wrap items-center gap-3 mt-3" id="photosPreviewRow"></div>
       </div>
@@ -441,19 +441,16 @@
           <button type="button" id="addColorBtn" class="px-3 py-1.5 rounded-lg bg-surface-container-high text-xs font-bold text-primary hover:bg-secondary-container">Agregar</button>
         </div>
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-surface-container-low">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-surface-container-low">
         <div>
           <label for="artPresentation" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1">Presentación Mayorista *</label>
           <input class="w-full px-3 py-2 bg-surface-container-lowest rounded-lg text-xs font-semibold border-none focus:ring-2 focus:ring-primary" id="artPresentation" list="presentationOptions" maxlength="40" required placeholder="Pack x 6 Unid." type="text">
           <datalist id="presentationOptions"><option value="Pack x 6 Unid."><option value="Pack x 12 Unid."><option value="Pack x 4 Unid."><option value="Curva completa"><option value="Bulto x 6 Unid."></datalist>
         </div>
         <div>
-          <label for="artPriceUnit" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1">Precio x Unidad ($) *</label>
-          <input class="w-full px-3 py-2 bg-surface-container-lowest rounded-lg text-xs font-semibold border-none focus:ring-2 focus:ring-primary" id="artPriceUnit" placeholder="4200" required type="number" min="0" step="1" inputmode="numeric">
-        </div>
-        <div>
-          <label for="artPricePack" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1">Precio x Pack ($) *</label>
-          <input class="w-full px-3 py-2 bg-surface-container-lowest rounded-lg text-xs font-semibold border-none focus:ring-2 focus:ring-primary" id="artPricePack" placeholder="25200" required type="number" min="0" step="1" inputmode="numeric">
+          <label for="artPricePack" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1">Precio mayorista del pack ($) *</label>
+          <input class="w-full px-3 py-2 bg-surface-container-lowest rounded-lg text-xs font-semibold border-none focus:ring-2 focus:ring-primary" id="artPricePack" placeholder="50700" required type="number" min="0" step="1" inputmode="numeric" aria-describedby="artPriceHelp">
+          <p id="artPriceHelp" class="mt-1 text-[11px] text-on-surface-variant">Es el único precio que ve la clienta y el que se usa en el pedido.</p>
         </div>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">

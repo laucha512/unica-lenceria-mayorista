@@ -1,6 +1,7 @@
-import { whatsappLink, formatPrice } from '../config.js';
+import { formatPrice } from '../config.js';
 import { esc, safeImg, formatSizes, api, initials } from '../shared/utils.js';
-import { initCart, add as addToCart, qtyOf, setArticles } from './cart.js';
+import { initCart, qtyOf, setArticles, packPrice, refresh as refreshCart } from './cart.js';
+import { initProduct, openProduct, setProducts } from './product.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -83,76 +84,86 @@ $('#copyrightYear').textContent = new Date().getFullYear();
 
 /* ---------------------------------------------------------------- Render */
 
-const orderMessage = (a) =>
-  `Hola ÚNICA LENCERÍA, quiero hacer un pedido mayorista de ${a.brand} Art. ${a.code || '-'} – ${a.title} (${a.presentation}).`;
+const BTN =
+  'inline-flex items-center justify-center gap-1.5 px-3.5 py-2 min-h-[44px] rounded-full font-label-sm text-xs font-semibold transition-colors shrink-0';
+const BTN_IDLE = 'bg-[#be185d] text-white hover:bg-[#970046]';
+const BTN_IN_CART = 'bg-emerald-700 text-white hover:bg-emerald-800';
+const BTN_NO_STOCK = 'bg-white border border-pink-300 text-slate-800 hover:bg-pink-50';
 
-const ADD_BTN =
-  'inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-full font-label-sm text-xs font-semibold transition-colors shrink-0';
-const ADD_IDLE = 'bg-[#be185d] text-white hover:bg-[#970046]';
-const ADD_IN_CART = 'bg-emerald-700 text-white hover:bg-emerald-800';
+const productHref = (a) => `#producto/${encodeURIComponent(a.id)}`;
 
-/** Botón "Agregar" al pedido; muestra cuántos packs hay ya en el carrito. */
-function addButton(a, label) {
-  return `<button type="button" data-add="${esc(a.id)}" data-label="${esc(label)}" data-title="${esc(a.title)}" class="${ADD_BTN} ${ADD_IDLE}">
-      <span class="material-symbols-outlined text-[16px]" aria-hidden="true">add_shopping_cart</span> <span data-add-text>${esc(label)}</span>
-    </button>`;
-}
-
-/** Sin stock: consulta de reposición directa por WhatsApp. */
-function consultLink(a) {
-  return `<a class="${ADD_BTN} bg-white border border-pink-300 text-slate-800 hover:bg-pink-50" href="${esc(whatsappLink(orderMessage(a)))}" target="_blank" rel="noopener noreferrer" aria-label="${esc(`Consultar reposición de ${a.title} (${a.brand}) por WhatsApp`)}">
-      <span class="material-symbols-outlined text-[16px]" aria-hidden="true">chat</span> Consultar
+/** Botón que abre la ficha (elegir colores/talles); si ya hay packs en el pedido lo indica. */
+function openButton(a) {
+  return `<a href="${esc(productHref(a))}" data-product="${esc(a.id)}" data-title="${esc(a.title)}" data-stock="${a.inStock}" class="${BTN} ${a.inStock ? BTN_IDLE : BTN_NO_STOCK}">
+      <span class="material-symbols-outlined text-[16px]" aria-hidden="true">${a.inStock ? 'add_shopping_cart' : 'chat'}</span> <span data-product-text>${a.inStock ? 'Elegir y pedir' : 'Ver y consultar'}</span>
     </a>`;
 }
 
-/** Refleja en los botones de las tarjetas la cantidad que ya está en el pedido. */
+/** Refleja en los botones de las tarjetas cuántos packs de cada artículo hay en el pedido. */
 function syncAddButtons() {
-  $$('[data-add]').forEach((btn) => {
-    const qty = qtyOf(btn.dataset.add);
-    btn.className = `${ADD_BTN} ${qty ? ADD_IN_CART : ADD_IDLE}`;
+  $$('a[data-product][data-stock="true"]').forEach((btn) => {
+    const qty = qtyOf(btn.dataset.product);
+    btn.className = `${BTN} ${qty ? BTN_IN_CART : BTN_IDLE}`;
     btn.querySelector('.material-symbols-outlined').textContent = qty ? 'check' : 'add_shopping_cart';
-    btn.querySelector('[data-add-text]').textContent = qty ? `En el pedido (${qty})` : btn.dataset.label;
+    btn.querySelector('[data-product-text]').textContent = qty ? `En el pedido (${qty})` : 'Elegir y pedir';
     btn.setAttribute(
       'aria-label',
-      qty ? `${btn.dataset.title}: ${qty} en el pedido. Agregar otro pack` : `Agregar ${btn.dataset.title} al pedido`
+      qty
+        ? `${btn.dataset.title}: ${qty} ${qty === 1 ? 'pack' : 'packs'} en el pedido. Abrir ficha para elegir colores y talles`
+        : `${btn.dataset.title}: abrir ficha para elegir colores, talles y cantidad`
     );
   });
 }
 
-let toastTimer;
-function toast(msg) {
-  const el = $('#storeToast');
-  $('#storeToastText').textContent = msg;
-  el.classList.remove('opacity-0', '-translate-y-2');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.add('opacity-0', '-translate-y-2'), 2200);
-}
-
+// Foto, título y botón de cada tarjeta abren la ficha del producto.
 document.addEventListener('click', (e) => {
-  const btn = e.target.closest('[data-add]');
-  if (!btn) return;
-  addToCart(btn.dataset.add);
-  toast(`Agregado al pedido: ${btn.dataset.title} (${qtyOf(btn.dataset.add)})`);
+  const link = e.target.closest('a[data-product]');
+  if (!link || e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+  e.preventDefault();
+  openProduct(link.dataset.product);
 });
 
 const cardImage = (a) => safeImg(a.images?.[0]);
-const altFor = (a) => `${a.title} – ${a.brand}`;
+
+/** Precio único: el del pack (lo mismo que se cobra en el pedido). */
+const priceBlock = (a, big) => `
+    <div>
+      <span class="text-[10px] text-slate-600 uppercase font-semibold block">Precio mayorista</span>
+      <span class="${big ? 'font-headline-sm text-lg text-[#be185d]' : 'text-base text-slate-900'} font-bold">${esc(formatPrice(packPrice(a)))}</span>
+      <span class="block text-[11px] text-slate-600">${esc(a.presentation)}</span>
+    </div>`;
+
+const photoCount = (a) =>
+  a.images?.length > 1
+    ? `<span class="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-slate-900/75 text-white font-bold text-[10px]">${a.images.length} fotos</span>`
+    : '';
+
+/** Foto de la tarjeta: abre la ficha (para mouse/touch; el teclado usa el título y el botón). */
+const photoLink = (a, cls, inner) =>
+  `<a href="${esc(productHref(a))}" data-product="${esc(a.id)}" class="block relative ${cls}" tabindex="-1" aria-hidden="true">
+      <img alt="" class="w-full h-full object-cover hover:scale-105 transition-transform duration-500" src="${esc(cardImage(a))}" loading="lazy" decoding="async" width="600" height="450">
+      ${inner}
+    </a>`;
+
+const titleLink = (a) =>
+  `<a href="${esc(productHref(a))}" data-product="${esc(a.id)}" class="hover:text-[#be185d]">${esc(a.title)}</a>`;
 
 function newArrivalCard(a) {
   return `
 <article class="bg-white rounded-3xl p-4 border border-pink-200 shadow-sm hover:shadow-lg transition-all flex flex-col justify-between">
   <div>
-    <div class="relative rounded-2xl overflow-hidden aspect-[4/3] mb-3 bg-pink-50">
-      <img alt="${esc(altFor(a))}" class="w-full h-full object-cover" src="${esc(cardImage(a))}" loading="lazy" decoding="async" width="600" height="450">
-      <span class="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-[#be185d] text-white font-bold text-[10px] uppercase tracking-wider shadow-sm">Novedad</span>
-      ${a.inStock ? '' : '<span class="absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-full bg-slate-800 text-white font-bold text-[10px] uppercase tracking-wider shadow-sm">Sin stock</span>'}
-      <span class="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-full bg-white/95 text-slate-800 font-bold text-[10px] shadow-sm">${esc(a.presentation)}</span>
-    </div>
+    ${photoLink(
+      a,
+      'rounded-2xl overflow-hidden aspect-[4/3] mb-3 bg-pink-50',
+      `<span class="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-[#be185d] text-white font-bold text-[10px] uppercase tracking-wider shadow-sm">Novedad</span>
+      ${a.inStock ? photoCount(a) : '<span class="absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-full bg-slate-800 text-white font-bold text-[10px] uppercase tracking-wider shadow-sm">Sin stock</span>'}
+      <span class="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-full bg-white/95 text-slate-800 font-bold text-[10px] shadow-sm">${esc(a.presentation)}</span>`
+    )}
     <div class="flex items-center justify-between text-xs text-slate-600 mb-1">
       <span class="font-bold text-[#be185d]">${esc(a.brand)}</span>
       ${a.code ? `<span>Art. ${esc(a.code)}</span>` : ''}
     </div>
-    <h3 class="font-headline-sm text-lg font-bold text-slate-900 leading-snug">${esc(a.title)}</h3>
+    <h3 class="font-headline-sm text-lg font-bold text-slate-900 leading-snug">${titleLink(a)}</h3>
     <dl class="mt-3 space-y-1.5 text-xs text-slate-600 bg-[#fdf2f8] p-2.5 rounded-xl border border-pink-100">
       <div class="flex justify-between gap-3"><dt class="font-bold text-slate-800 shrink-0">Curva de Talles:</dt> <dd class="text-right">${esc(formatSizes(a.sizes))}</dd></div>
       <div class="flex justify-between gap-3"><dt class="font-bold text-slate-800 shrink-0">Colores Surtidos:</dt> <dd class="text-right">${esc(a.colors.join(', ') || 'Consultar')}</dd></div>
@@ -160,17 +171,13 @@ function newArrivalCard(a) {
     </dl>
   </div>
   <div class="pt-4 mt-3 border-t border-pink-100 flex items-center justify-between gap-3">
-    <div>
-      <span class="text-[10px] text-slate-600 uppercase font-semibold block">Precio Curva Mayorista</span>
-      <span class="text-base font-bold text-slate-900">${esc(formatPrice(a.priceUnit))} <span class="text-[11px] font-normal text-slate-600">c/u x pack</span></span>
-    </div>
-    ${a.inStock ? addButton(a, 'Agregar') : consultLink(a)}
+    ${priceBlock(a, false)}
+    ${openButton(a)}
   </div>
 </article>`;
 }
 
 function catalogCard(a) {
-  const isCurve = /curva/i.test(a.saleType || a.presentation);
   const tag = a.inStock
     ? a.tag
       ? `<span class="text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">${esc(a.tag)}</span>`
@@ -179,16 +186,18 @@ function catalogCard(a) {
   return `
 <article class="p-space-md rounded-3xl bg-[#fdf8fa] border border-pink-200 hover:border-[#be185d] transition-all flex flex-col justify-between group">
   <div>
-    <div class="relative rounded-2xl overflow-hidden aspect-[4/3] mb-4 bg-white">
-      <img alt="${esc(altFor(a))}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src="${esc(cardImage(a))}" loading="lazy" decoding="async" width="600" height="450">
-      <span class="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white/95 font-label-sm text-[10px] text-[#be185d] font-bold border border-pink-200">Marca: ${esc(a.brand)}</span>
-      <span class="absolute bottom-3 left-3 px-2 py-0.5 rounded-md bg-slate-900/80 text-white font-bold text-[10px]">${esc(a.presentation)}</span>
-    </div>
+    ${photoLink(
+      a,
+      'rounded-2xl overflow-hidden aspect-[4/3] mb-4 bg-white',
+      `<span class="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white/95 font-label-sm text-[10px] text-[#be185d] font-bold border border-pink-200">Marca: ${esc(a.brand)}</span>
+      ${photoCount(a)}
+      <span class="absolute bottom-3 left-3 px-2 py-0.5 rounded-md bg-slate-900/80 text-white font-bold text-[10px]">${esc(a.presentation)}</span>`
+    )}
     <div class="flex items-center justify-between gap-2 mb-1">
       <span class="font-label-sm text-xs text-slate-600 uppercase tracking-wider font-semibold">${a.code ? `Art. ${esc(a.code)}` : ''}</span>
       ${tag}
     </div>
-    <h3 class="font-headline-sm text-lg font-bold text-slate-900 leading-tight">${esc(a.title)}</h3>
+    <h3 class="font-headline-sm text-lg font-bold text-slate-900 leading-tight">${titleLink(a)}</h3>
     <dl class="mt-3 p-3 bg-white rounded-xl border border-pink-100 text-xs text-slate-600 space-y-1">
       <div class="flex justify-between gap-3"><dt class="font-bold text-slate-800 shrink-0">Curva de Talles:</dt> <dd class="text-right">${esc(formatSizes(a.sizes))}</dd></div>
       <div class="flex justify-between gap-3"><dt class="font-bold text-slate-800 shrink-0">Colores Disponibles:</dt> <dd class="text-right">${esc(a.colors.join(', ') || 'Consultar')}</dd></div>
@@ -196,11 +205,8 @@ function catalogCard(a) {
     </dl>
   </div>
   <div class="mt-4 pt-3 border-t border-pink-200 flex items-center justify-between gap-3">
-    <div>
-      <span class="text-[10px] text-slate-600 uppercase font-semibold block">Precio Curva Mayorista</span>
-      <span class="font-headline-sm text-lg font-bold text-[#be185d]">${esc(formatPrice(a.priceUnit))} <span class="text-xs font-normal text-slate-600">c/u</span></span>
-    </div>
-    ${a.inStock ? addButton(a, isCurve ? 'Agregar Curva' : 'Agregar Pack') : consultLink(a)}
+    ${priceBlock(a, true)}
+    ${openButton(a)}
   </div>
 </article>`;
 }
@@ -299,7 +305,7 @@ $('#catalogMore').addEventListener('click', () => {
   state.catalogLimit += CATALOG_PAGE;
   renderCatalog();
   // Lleva el foco al primer artículo nuevo.
-  $$('#catalogGrid article')[before]?.querySelector('a,button')?.focus({ preventScroll: false });
+  $$('#catalogGrid article')[before]?.querySelector('h3 a')?.focus({ preventScroll: false });
 });
 
 function applyHero(banners) {
@@ -332,6 +338,7 @@ async function load() {
   renderCatalog();
   applyHero(banners);
   setArticles(articles);
+  setProducts(articles);
   syncAddButtons();
 }
 
@@ -345,4 +352,5 @@ window.addEventListener('resize', () => {
 });
 
 initCart({ onUpdate: syncAddButtons });
+initProduct({ onChange: refreshCart });
 load();

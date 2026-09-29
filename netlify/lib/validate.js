@@ -38,7 +38,8 @@ function list(obj, key, { label, maxItems, maxLen }) {
   return out;
 }
 
-function price(obj, key, label) {
+function price(obj, key, label, { optional = false } = {}) {
+  if (optional && (obj[key] === undefined || obj[key] === null || obj[key] === '')) return 0;
   const n = Number(obj[key]);
   if (!Number.isFinite(n) || n < 0 || n > 100_000_000) throw new HttpError(`${label} debe ser un número entre 0 y 100.000.000.`);
   return Math.round(n);
@@ -92,8 +93,8 @@ export function validateArticle(body, { partial = false } = {}) {
       presentation: (b) => text(b, 'presentation', { label: 'La presentación', max: 40, required: true }),
       saleType: (b) => text(b, 'saleType', { label: 'El tipo de venta', max: 80 }),
       tag: (b) => text(b, 'tag', { label: 'La etiqueta', max: 30 }),
-      priceUnit: (b) => price(b, 'priceUnit', 'El precio por unidad'),
-      pricePack: (b) => price(b, 'pricePack', 'El precio por pack'),
+      priceUnit: (b) => price(b, 'priceUnit', 'El precio por unidad', { optional: true }),
+      pricePack: (b) => price(b, 'pricePack', 'El precio del pack'),
       isNew: (b) => bool(b, 'isNew', 'Novedad'),
       inStock: (b) => bool(b, 'inStock', 'Stock'),
       images: (b) => images(b, 'images', 5),

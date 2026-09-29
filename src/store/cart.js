@@ -1,4 +1,5 @@
 // Carrito de pedido mayorista: se guarda en el navegador y se envía como mensaje de WhatsApp.
+// Cada línea es un artículo + la selección de colores y talles elegida en su ficha.
 import { whatsappLink, formatPrice, MIN_PURCHASE } from '../config.js';
 import { esc, safeImg } from '../shared/utils.js';
 
@@ -8,10 +9,14 @@ const MAX_QTY = 999;
 const $ = (sel) => document.querySelector(sel);
 
 const state = {
-  items: [], // [{ id, qty }]
+  items: [], // [{ key, id, qty, colors: [], sizes: [] }]
   info: { name: '', city: '', delivery: '', notes: '' },
   articles: new Map(), // id -> artículo (datos actuales de la API)
 };
+
+const cleanList = (v) =>
+  Array.isArray(v) ? v.filter((x) => typeof x === 'string').map((x) => x.slice(0, 40)).slice(0, 30) : [];
+const keyOf = (id, colors, sizes) => `${id}::${colors.join('|')}::${sizes.join('|')}`;
 
 function load() {
   try {
@@ -19,7 +24,11 @@ function load() {
     if (data && Array.isArray(data.items)) {
       state.items = data.items
         .filter((i) => i && typeof i.id === 'string' && Number.isInteger(i.qty) && i.qty > 0)
-        .map((i) => ({ id: i.id, qty: Math.min(i.qty, MAX_QTY) }));
+        .map((i) => {
+          const colors = cleanList(i.colors);
+          const sizes = cleanList(i.sizes);
+          return { key: keyOf(i.id, colors, sizes), id: i.id, qty: Math.min(i.qty, MAX_QTY), colors, sizes };
+        });
     }
     if (data?.info && typeof data.info === 'object') {
       for (const k of Object.keys(state.info)) state.info[k] = String(data.info[k] || '').slice(0, 400);
@@ -37,13 +46,11 @@ function save() {
   }
 }
 
-const packPrice = (a) => a.pricePack || a.priceUnit || 0;
+export const packPrice = (a) => a.pricePack || a.priceUnit || 0;
 
 /** Líneas del pedido con los datos actuales de cada artículo (ignora los que ya no existen). */
 function lines() {
-  return state.items
-    .map((i) => ({ ...i, article: state.articles.get(i.id) }))
-    .filter((l) => l.article);
+  return state.items.map((i) => ({ ...i, article: state.articles.get(i.id) })).filter((l) => l.article);
 }
 
 export const totals = () => {
@@ -55,19 +62,26 @@ export const totals = () => {
   };
 };
 
-export const qtyOf = (id) => state.items.find((i) => i.id === id)?.qty || 0;
+/** Packs de un artículo en el pedido, sumando todas sus combinaciones de colores/talles. */
+export const qtyOf = (id) => state.items.filter((i) => i.id === id).reduce((n, i) => n + i.qty, 0);
 
-export function add(id, qty = 1) {
-  const item = state.items.find((i) => i.id === id);
+/** Agrega packs de un artículo con la selección dada (se ordena según el artículo). */
+export function add(id, qty = 1, { colors = [], sizes = [] } = {}) {
+  const a = state.articles.get(id);
+  const order = (sel, all = []) => [...sel].sort((x, y) => all.indexOf(x) - all.indexOf(y));
+  const c = order(colors, a?.colors);
+  const s = order(sizes, a?.sizes);
+  const key = keyOf(id, c, s);
+  const item = state.items.find((i) => i.key === key);
   if (item) item.qty = Math.min(item.qty + qty, MAX_QTY);
-  else state.items.push({ id, qty });
+  else state.items.push({ key, id, qty: Math.min(qty, MAX_QTY), colors: c, sizes: s });
   save();
   render();
 }
 
-function setQty(id, qty) {
+function setQty(key, qty) {
   const q = Math.max(0, Math.min(MAX_QTY, Math.floor(Number(qty) || 0)));
-  state.items = q ? state.items.map((i) => (i.id === id ? { ...i, qty: q } : i)) : state.items.filter((i) => i.id !== id);
+  state.items = q ? state.items.map((i) => (i.key === key ? { ...i, qty: q } : i)) : state.items.filter((i) => i.key !== key);
   save();
   render();
 }
@@ -78,6 +92,11 @@ function clear() {
   render();
 }
 
+const selectionText = (l) => [
+  `Colores: ${l.colors.length ? l.colors.join(', ') : 'surtidos'}`,
+  `Talles: ${l.sizes.length ? l.sizes.join(', ') : 'curva completa'}`,
+];
+
 export function buildMessage() {
   const { lines: ls, total, count } = totals();
   const out = ['¡Hola ÚNICA LENCERÍA! Quiero hacer este pedido mayorista:', ''];
@@ -85,7 +104,8 @@ export function buildMessage() {
     const a = l.article;
     const price = packPrice(a);
     out.push(`${n + 1}. ${a.brand}${a.code ? ` – Art. ${a.code}` : ''} – ${a.title}`);
-    out.push(`   ${a.presentation} · ${l.qty} x ${formatPrice(price)} = ${formatPrice(l.qty * price)}`);
+    out.push(`   ${selectionText(l).join(' · ')}`);
+    out.push(`   ${l.qty} x ${a.presentation} a ${formatPrice(price)} = ${formatPrice(l.qty * price)}`);
   });
   out.push('', `Total estimado: ${formatPrice(total)} (${count} ${count === 1 ? 'pack' : 'packs'})`);
   const { name, city, delivery, notes } = state.info;
@@ -106,13 +126,18 @@ let onChange = () => {};
 function lineItem(l) {
   const a = l.article;
   const price = packPrice(a);
+  const [colorsTxt, sizesTxt] = selectionText(l);
   return `
-<li class="flex gap-3 p-3 rounded-2xl border border-pink-100 bg-[#fdf8fa]" data-id="${esc(a.id)}">
-  <img src="${esc(safeImg(a.images?.[0]))}" alt="" class="w-20 h-20 rounded-xl object-cover bg-pink-50 shrink-0" width="80" height="80" loading="lazy">
+<li class="flex gap-3 p-3 rounded-2xl border border-pink-100 bg-[#fdf8fa]" data-key="${esc(l.key)}">
+  <a href="#producto/${esc(a.id)}" data-close-cart class="shrink-0" aria-label="Ver ficha de ${esc(a.title)}">
+    <img src="${esc(safeImg(a.images?.[0]))}" alt="" class="w-20 h-20 rounded-xl object-cover bg-pink-50" width="80" height="80" loading="lazy">
+  </a>
   <div class="flex-1 min-w-0">
     <p class="text-[11px] font-bold uppercase tracking-wider text-[#be185d]">${esc(a.brand)}${a.code ? ` · Art. ${esc(a.code)}` : ''}</p>
     <p class="text-sm font-bold text-slate-900 leading-snug">${esc(a.title)}</p>
-    <p class="text-xs text-slate-600">${esc(a.presentation)} · ${esc(formatPrice(price))} el pack</p>
+    <p class="text-xs text-slate-600">${esc(colorsTxt)}</p>
+    <p class="text-xs text-slate-600">${esc(sizesTxt)}</p>
+    <p class="text-xs text-slate-600">${esc(a.presentation)} · ${esc(formatPrice(price))}</p>
     ${a.inStock ? '' : '<p class="text-xs font-semibold text-amber-800">Sin stock momentáneo: se consulta reposición.</p>'}
     <div class="mt-2 flex items-center justify-between gap-2">
       <div class="inline-flex items-center rounded-full border border-pink-200 bg-white">
@@ -141,8 +166,9 @@ function render() {
   });
   document.querySelectorAll('[data-cart-summary]').forEach((el) => (el.textContent = `· ${count} · ${formatPrice(total)}`));
   const pill = $('#cartPill');
-  pill.classList.toggle('hidden', empty || isOpen());
-  pill.classList.toggle('inline-flex', !empty && !isOpen());
+  const hidePill = empty || isOpen() || document.body.dataset.productOpen === 'true';
+  pill.classList.toggle('hidden', hidePill);
+  pill.classList.toggle('inline-flex', !hidePill);
 
   // Panel
   $('#cartItems').innerHTML = ls.map(lineItem).join('');
@@ -151,7 +177,7 @@ function render() {
   $('#cartFooter').classList.toggle('hidden', empty);
   $('#cartSubtitle').textContent = empty
     ? 'Sumá artículos y enviá el pedido por WhatsApp.'
-    : `${ls.length} ${ls.length === 1 ? 'artículo' : 'artículos'} · ${count} ${count === 1 ? 'pack' : 'packs'}`;
+    : `${ls.length} ${ls.length === 1 ? 'línea' : 'líneas'} · ${count} ${count === 1 ? 'pack' : 'packs'}`;
   $('#cartTotal').textContent = formatPrice(total);
   $('#cartProgress').style.width = `${Math.min(100, (total / MIN_PURCHASE) * 100)}%`;
   const missing = MIN_PURCHASE - total;
@@ -165,6 +191,8 @@ function render() {
 
   onChange();
 }
+
+export const refresh = () => render();
 
 function showCartHint() {
   const msg = $('#cartMinMsg');
@@ -189,14 +217,15 @@ export function open() {
   $('#cartClose').focus();
 }
 
-function close() {
+function close({ restoreFocus = true } = {}) {
+  if (!isOpen()) return;
   $('#cartDrawer').classList.add('hidden');
   $('#cartDrawer').classList.remove('flex');
   $('#cartOverlay').classList.add('hidden');
-  document.body.style.overflow = '';
+  if (document.body.dataset.productOpen !== 'true') document.body.style.overflow = '';
   document.querySelectorAll('[data-open-cart]').forEach((b) => b.setAttribute('aria-expanded', 'false'));
   render();
-  lastFocus?.focus?.();
+  if (restoreFocus) lastFocus?.focus?.();
 }
 
 /* ---------------------------------------------------------------- Inicialización */
@@ -207,13 +236,16 @@ export function initCart({ onUpdate } = {}) {
 
   document.addEventListener('click', (e) => {
     if (e.target.closest('[data-open-cart]')) open();
-    if (e.target.closest('[data-close-cart]')) close();
+    if (e.target.closest('[data-close-cart]')) close({ restoreFocus: false });
   });
-  $('#cartClose').addEventListener('click', close);
-  $('#cartOverlay').addEventListener('click', close);
+  $('#cartClose').addEventListener('click', () => close());
+  $('#cartOverlay').addEventListener('click', () => close());
   document.addEventListener('keydown', (e) => {
     if (!isOpen()) return;
-    if (e.key === 'Escape') close();
+    if (e.key === 'Escape') {
+      e.stopImmediatePropagation();
+      close();
+    }
     if (e.key === 'Tab') {
       const items = [...$('#cartDrawer').querySelectorAll(FOCUSABLE)].filter((n) => n.offsetParent !== null);
       const first = items[0];
@@ -228,23 +260,24 @@ export function initCart({ onUpdate } = {}) {
     }
   });
 
+  const qtyByKey = (key) => state.items.find((i) => i.key === key)?.qty || 0;
   $('#cartItems').addEventListener('click', (e) => {
-    const li = e.target.closest('li[data-id]');
+    const li = e.target.closest('li[data-key]');
     if (!li) return;
-    const id = li.dataset.id;
+    const key = li.dataset.key;
     const step = e.target.closest('[data-qty]');
     if (step) {
-      setQty(id, qtyOf(id) + Number(step.dataset.qty));
-      $(`#cartItems li[data-id="${CSS.escape(id)}"] [data-qty="${step.dataset.qty}"]`)?.focus();
+      setQty(key, qtyByKey(key) + Number(step.dataset.qty));
+      $(`#cartItems li[data-key="${CSS.escape(key)}"] [data-qty="${step.dataset.qty}"]`)?.focus();
     }
     if (e.target.closest('[data-remove]')) {
-      setQty(id, 0);
+      setQty(key, 0);
       ($('#cartItems [data-qty-input]') || $('#cartClose')).focus();
     }
   });
   $('#cartItems').addEventListener('change', (e) => {
     const input = e.target.closest('[data-qty-input]');
-    if (input) setQty(input.closest('li').dataset.id, input.value);
+    if (input) setQty(input.closest('li').dataset.key, input.value);
   });
 
   const form = $('#cartForm');
@@ -261,11 +294,11 @@ export function initCart({ onUpdate } = {}) {
   form.addEventListener('submit', (e) => e.preventDefault());
 
   $('#cartSend').addEventListener('click', (e) => {
+    // Bajo el mínimo el enlace no abre WhatsApp; si no, abre el chat con el mensaje ya armado.
     if ($('#cartSend').getAttribute('aria-disabled') === 'true') {
       e.preventDefault();
       showCartHint();
     }
-    // Si no, el enlace abre WhatsApp con el mensaje ya armado; el pedido queda guardado por si hay que reenviarlo.
   });
   $('#cartClear').addEventListener('click', () => {
     if (window.confirm('¿Vaciar todo el pedido?')) {
