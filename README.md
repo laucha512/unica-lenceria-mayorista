@@ -1,0 +1,98 @@
+# ÚNICA LENCERÍA · Portal Mayorista
+
+Sitio web del mayorista de lencería **ÚNICA LENCERÍA** (Rosario, Santa Fe): tienda pública one-page con catálogo por marca, novedades, carrusel de marcas y pedidos por WhatsApp, más un **panel de administración** para gestionar artículos, portadas y marcas.
+
+- **Frontend:** Vite (multi-página, JS vanilla con módulos ES) + Tailwind CSS v3.
+- **Backend:** Netlify Functions + Netlify Blobs (datos e imágenes).
+- **Diseño:** basado en el export de Google Stitch (`DESIGN.md`): Playfair Display + Plus Jakarta Sans, paleta frambuesa.
+
+## Estructura
+
+```
+index.html                 Tienda pública
+admin/index.html           Panel de administración (/admin)
+src/config.js              WhatsApp, Instagram y compra mínima (única fuente de verdad)
+src/store/                 JS y CSS de la tienda
+src/admin/                 JS y CSS del panel (subida y redimensionado de imágenes)
+src/shared/utils.js        Escape de HTML, cliente de la API, helpers
+src/data/seed.js           Datos iniciales (se siembran en Blobs la primera vez)
+netlify/functions/         auth, articles, brands, banners, upload, images
+netlify/lib/               Token HMAC, validación, acceso a Blobs
+public/img/                Imágenes del diseño en WebP
+tailwind.config.js         Tema de la tienda
+tailwind.admin.config.js   Tema del panel (paleta distinta)
+```
+
+## Correr en local
+
+Requisitos: Node 20+.
+
+```bash
+npm install
+cp .env.example .env        # completar ADMIN_PASSWORD y ADMIN_SECRET
+npm run dev                 # = npx netlify-cli dev → http://localhost:8888
+```
+
+`netlify dev` levanta Vite y las Functions juntos, con un store de Blobs local (en `.netlify/`). Con `npm run dev:vite` solo se levanta el frontend: la tienda funciona con los datos iniciales, pero el admin no.
+
+Para generar un `ADMIN_SECRET`:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+```
+
+## Variables de entorno
+
+| Variable         | Uso                                                              |
+| ---------------- | ---------------------------------------------------------------- |
+| `ADMIN_PASSWORD` | Contraseña para entrar al panel `/admin`.                        |
+| `ADMIN_SECRET`   | Secreto (≥ 32 caracteres) para firmar los tokens de sesión HMAC. |
+
+Nunca se commitea un `.env` real (está en `.gitignore`).
+
+## Panel de administración
+
+Entrar a **`/admin`** e ingresar la contraseña (`ADMIN_PASSWORD`). La sesión dura 12 horas (token firmado guardado en `sessionStorage`); tras 8 intentos fallidos el login se bloquea 15 minutos.
+
+- **Publicaciones & Artículos:** crear, editar, eliminar, buscar, filtrar por marca, marcar como Novedad y pausar stock. Hasta 5 fotos por artículo (JPG/PNG/WebP ≤ 4 MB, se redimensionan a 1200 px en el navegador).
+- **Portadas & Banners:** subir/reemplazar imagen, editar textos, activar/desactivar. La **Portada Inicio** activa reemplaza la imagen principal de la tienda.
+- **Carrusel de Marcas:** agregar marcas con logo. Eliminar pide doble confirmación.
+- **Pedidos:** próximamente (hoy muestra datos de ejemplo).
+
+Los cambios se ven en la tienda al recargarla.
+
+## API
+
+Las rutas `/api/*` se reescriben a `/.netlify/functions/*`.
+
+| Método | Ruta                    | Auth | Descripción                         |
+| ------ | ----------------------- | ---- | ----------------------------------- |
+| POST   | `/api/auth`             | –    | Login → `{ token, expiresAt }`      |
+| GET    | `/api/articles`         | –    | Lista de artículos                  |
+| POST/PUT/DELETE | `/api/articles[?id=]` | ✔ | Alta / edición parcial / baja     |
+| GET    | `/api/brands`           | –    | Marcas del carrusel                 |
+| POST/DELETE | `/api/brands[?id=]` | ✔   | Alta / baja                         |
+| GET    | `/api/banners`          | –    | Portadas activas (todas con token)  |
+| POST/PUT/DELETE | `/api/banners[?id=]` | ✔ | Alta / edición / baja             |
+| POST   | `/api/upload`           | ✔    | Sube una imagen → `{ url }`         |
+| GET    | `/api/images?key=`      | –    | Sirve imágenes subidas (cache 1 año)|
+
+## Despliegue (Netlify)
+
+El sitio está conectado al repo de GitHub: **cada push a `main` despliega automáticamente**.
+
+Para un sitio nuevo:
+
+```bash
+npx netlify-cli login
+npx netlify-cli init                          # vincula el repo y configura el build
+npx netlify-cli env:set ADMIN_PASSWORD "..."
+npx netlify-cli env:set ADMIN_SECRET "..."
+npx netlify-cli deploy --build --prod         # deploy manual opcional
+```
+
+La configuración de build, redirects y headers de seguridad (CSP, X-Frame-Options, Referrer-Policy) está en `netlify.toml`.
+
+## Cambiar datos de contacto
+
+WhatsApp, Instagram y la compra mínima están en `src/config.js`. En el build se reemplazan en el HTML los marcadores `{{WA_NUMBER}}`, `{{MIN_PURCHASE}}`, etc. (ver `vite.config.js`).
