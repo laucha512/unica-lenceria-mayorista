@@ -127,10 +127,10 @@
   </div>
 
   <!-- KPIs (calculados desde los datos reales) -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-    <div class="p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm flex flex-col justify-between">
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
+    <div class="p-4 sm:p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm flex flex-col justify-between min-w-0">
       <div class="flex items-center justify-between">
-        <span class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Artículos Activos</span>
+        <span class="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-on-surface-variant">Artículos Activos</span>
         <div class="w-9 h-9 rounded-xl bg-secondary-container text-primary flex items-center justify-center"><span class="material-symbols-outlined text-[20px]" aria-hidden="true">checkroom</span></div>
       </div>
       <div class="mt-4 flex items-baseline gap-2">
@@ -141,9 +141,9 @@
         <span class="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true"></span> <span id="kpiStockPct">–</span>
       </span>
     </div>
-    <div class="p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm flex flex-col justify-between">
+    <div class="p-4 sm:p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm flex flex-col justify-between min-w-0">
       <div class="flex items-center justify-between">
-        <span class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Novedades Publicadas</span>
+        <span class="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-on-surface-variant">Novedades Publicadas</span>
         <div class="w-9 h-9 rounded-xl bg-primary-fixed text-primary flex items-center justify-center"><span class="material-symbols-outlined text-[20px]" aria-hidden="true">auto_awesome</span></div>
       </div>
       <div class="mt-4 flex items-baseline gap-2">
@@ -152,9 +152,9 @@
       </div>
       <span class="mt-2 text-xs text-on-surface-variant">Visibles en "Novedades" de la tienda</span>
     </div>
-    <div class="p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm flex flex-col justify-between">
+    <div class="p-4 sm:p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm flex flex-col justify-between min-w-0">
       <div class="flex items-center justify-between">
-        <span class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Marcas Asociadas</span>
+        <span class="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-on-surface-variant">Marcas Asociadas</span>
         <div class="w-9 h-9 rounded-xl bg-surface-container-high text-primary flex items-center justify-center"><span class="material-symbols-outlined text-[20px]" aria-hidden="true">verified</span></div>
       </div>
       <div class="mt-4 flex items-baseline gap-2">
@@ -163,9 +163,9 @@
       </div>
       <span class="mt-2 text-xs text-on-surface-variant truncate" id="kpiBrandNames">–</span>
     </div>
-    <div class="p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm flex flex-col justify-between">
+    <div class="p-4 sm:p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm flex flex-col justify-between min-w-0">
       <div class="flex items-center justify-between">
-        <span class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Portadas Activas</span>
+        <span class="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-on-surface-variant">Portadas Activas</span>
         <div class="w-9 h-9 rounded-xl bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center"><span class="material-symbols-outlined text-[20px]" aria-hidden="true">wallpaper</span></div>
       </div>
       <div class="mt-4 flex items-baseline gap-2">
@@ -194,12 +194,12 @@
       </button>
     </div>
     <div class="p-3.5 mb-6 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm flex flex-wrap items-center justify-between gap-3">
-      <div class="flex flex-wrap items-center gap-3 flex-1 min-w-0 sm:min-w-[280px]">
-        <div class="relative w-full max-w-sm">
+      <div class="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto sm:flex-1 min-w-0">
+        <div class="relative w-full sm:max-w-sm">
           <span class="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-[18px]" aria-hidden="true">search</span>
           <input class="w-full pl-9 pr-3 py-2 bg-surface-container-low rounded-xl text-xs sm:text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary border-none" id="articleSearchInput" placeholder="Buscar por código, modelo o línea..." type="search" aria-label="Buscar artículos">
         </div>
-        <select class="bg-surface-container-low px-3 py-2 pr-8 rounded-xl text-xs sm:text-sm text-on-surface border-none focus:ring-2 focus:ring-primary font-medium" id="articleBrandFilter" aria-label="Filtrar por marca">
+        <select class="w-full sm:w-auto bg-surface-container-low px-3 py-2 pr-8 rounded-xl text-xs sm:text-sm text-on-surface border-none focus:ring-2 focus:ring-primary font-medium" id="articleBrandFilter" aria-label="Filtrar por marca">
           <option value="all">Todas las Marcas</option>
         </select>
       </div>

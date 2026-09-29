@@ -405,9 +405,9 @@ function articleCard(a) {
       <span>${a.isNew ? 'Destacado' : 'Destacar'}</span>
     </button>
     <div class="flex items-center gap-1">
-      <button type="button" data-action="edit" class="p-1 text-on-surface-variant hover:text-primary rounded" title="Editar" aria-label="Editar ${esc(a.title)}"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">edit</span></button>
-      <button type="button" data-action="toggle-stock" class="p-1 text-on-surface-variant hover:text-primary rounded" title="${a.inStock ? 'Pausar stock' : 'Reactivar stock'}" aria-label="${a.inStock ? 'Pausar stock de' : 'Reactivar stock de'} ${esc(a.title)}"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">${a.inStock ? 'pause_circle' : 'play_circle'}</span></button>
-      <button type="button" data-action="delete" class="p-1 text-on-surface-variant hover:text-error rounded" title="Eliminar" aria-label="Eliminar ${esc(a.title)}"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">delete</span></button>
+      <button type="button" data-action="edit" class="p-2 sm:p-1 text-on-surface-variant hover:text-primary rounded" title="Editar" aria-label="Editar ${esc(a.title)}"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">edit</span></button>
+      <button type="button" data-action="toggle-stock" class="p-2 sm:p-1 text-on-surface-variant hover:text-primary rounded" title="${a.inStock ? 'Pausar stock' : 'Reactivar stock'}" aria-label="${a.inStock ? 'Pausar stock de' : 'Reactivar stock de'} ${esc(a.title)}"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">${a.inStock ? 'pause_circle' : 'play_circle'}</span></button>
+      <button type="button" data-action="delete" class="p-2 sm:p-1 text-on-surface-variant hover:text-error rounded" title="Eliminar" aria-label="Eliminar ${esc(a.title)}"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">delete</span></button>
     </div>
   </div>
 </article>`;

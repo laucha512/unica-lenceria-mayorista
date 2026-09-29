@@ -65,3 +65,12 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* iOS hace zoom al enfocar campos con texto < 16px: en móvil se fuerza 16px. */
+@media (max-width: 639px) {
+  input:not([type='checkbox']):not([type='file']),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
