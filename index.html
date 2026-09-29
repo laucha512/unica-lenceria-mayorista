@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=add,add_shopping_cart,chat,check,chevron_left,chevron_right,close,delete,description,download,inventory,inventory_2,local_shipping,location_on,menu,navigation,new_releases,open_in_new,payments,photo_camera,remove,schedule,shopping_bag,storefront,table_view,verified,verified_user&display=block">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=add,add_shopping_cart,category,chat,check,chevron_left,chevron_right,close,delete,description,download,expand_more,filter_alt,inventory,inventory_2,local_shipping,location_on,menu,navigation,new_releases,open_in_new,payments,photo_camera,remove,schedule,shopping_bag,storefront,table_view,verified,verified_user&display=block">
 <link rel="preload" as="image" href="/img/hero-coleccion-saten-encaje.webp" fetchpriority="high">
 <link rel="stylesheet" href="/src/store/store.css">
 <script type="application/ld+json">
@@ -121,15 +121,15 @@
         </div>
       </a>
     </div>
-    <nav class="hidden lg:flex items-center gap-1.5 bg-[#fce7f3]/60 p-1.5 rounded-full border border-pink-100" aria-label="Secciones">
-      <a data-nav="inicio" class="nav-link font-label-lg text-xs px-4 py-1.5 rounded-full transition-all font-semibold" href="#inicio">Inicio Mayorista</a>
-      <a data-nav="marcas-lideres" class="nav-link font-label-lg text-xs px-4 py-1.5 rounded-full transition-all font-semibold" href="#marcas-lideres">Marcas Líderes</a>
-      <a data-nav="novedades-mayoristas" class="nav-link font-label-lg text-xs px-4 py-1.5 rounded-full transition-all font-semibold" href="#novedades-mayoristas">Novedades</a>
-      <a data-nav="articulos-marcas" class="nav-link font-label-lg text-xs px-4 py-1.5 rounded-full transition-all font-semibold" href="#articulos-marcas">Catálogo por Marca</a>
-      <a data-nav="sucursales-section" class="nav-link font-label-lg text-xs px-4 py-1.5 rounded-full transition-all font-semibold" href="#sucursales-section">Showrooms Rosario</a>
+    <nav class="hidden xl:flex items-center gap-1.5 bg-[#fce7f3]/60 p-1.5 rounded-full border border-pink-100" aria-label="Secciones">
+      <a data-nav="inicio" class="nav-link font-label-lg text-xs px-4 py-1.5 rounded-full transition-all font-semibold whitespace-nowrap" href="#inicio">Inicio Mayorista</a>
+      <a data-nav="marcas-lideres" class="nav-link font-label-lg text-xs px-4 py-1.5 rounded-full transition-all font-semibold whitespace-nowrap" href="#marcas-lideres">Marcas Líderes</a>
+      <a data-nav="novedades-mayoristas" class="nav-link font-label-lg text-xs px-4 py-1.5 rounded-full transition-all font-semibold whitespace-nowrap" href="#novedades-mayoristas">Novedades</a>
+      <a data-nav="articulos-marcas" class="nav-link font-label-lg text-xs px-4 py-1.5 rounded-full transition-all font-semibold whitespace-nowrap" href="#articulos-marcas">Catálogo por Marca</a>
+      <a data-nav="sucursales-section" class="nav-link font-label-lg text-xs px-4 py-1.5 rounded-full transition-all font-semibold whitespace-nowrap" href="#sucursales-section">Showrooms Rosario</a>
     </nav>
     <div class="flex items-center gap-3">
-      <div class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 bg-pink-100/80 border border-pink-200 rounded-full text-[#be185d] font-label-sm text-[11px] font-bold">
+      <div class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 bg-pink-100/80 border border-pink-200 rounded-full text-[#be185d] font-label-sm text-[11px] font-bold whitespace-nowrap">
         <span class="w-2 h-2 rounded-full bg-[#be185d] animate-pulse" aria-hidden="true"></span>
         <span>Mín. {{MIN_PURCHASE}}</span>
       </div>
@@ -137,27 +137,56 @@
         <span class="material-symbols-outlined text-[22px]" aria-hidden="true">shopping_bag</span>
         <span data-cart-count class="hidden absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-white text-[#be185d] border-2 border-[#be185d] text-[11px] font-bold leading-4 text-center"></span>
       </button>
-      <button id="menuToggle" type="button" class="lg:hidden inline-flex items-center justify-center w-11 h-11 rounded-full bg-[#fce7f3] text-[#be185d] border border-pink-200 hover:bg-pink-100 transition-colors" aria-label="Abrir menú" aria-expanded="false" aria-controls="mobileMenu">
+      <button id="menuToggle" type="button" class="inline-flex items-center justify-center w-11 h-11 rounded-full bg-[#fce7f3] text-[#be185d] border border-pink-200 hover:bg-pink-100 transition-colors" aria-label="Abrir menú de categorías" aria-expanded="false" aria-controls="menuDrawer">
         <span class="material-symbols-outlined text-[24px]" aria-hidden="true">menu</span>
       </button>
     </div>
   </div>
-  <!-- Menú móvil / tablet -->
-  <nav id="mobileMenu" class="lg:hidden hidden border-t border-pink-100 bg-white/98 max-h-[calc(100dvh-var(--header-h,116px))] overflow-y-auto" aria-label="Secciones">
-    <ul class="max-w-7xl mx-auto px-margin-mobile md:px-margin py-3 flex flex-col gap-1">
-      <li><a data-nav="inicio" class="nav-link block font-label-lg text-sm px-4 py-3 rounded-2xl transition-all font-semibold" href="#inicio">Inicio Mayorista</a></li>
-      <li><a data-nav="marcas-lideres" class="nav-link block font-label-lg text-sm px-4 py-3 rounded-2xl transition-all font-semibold" href="#marcas-lideres">Marcas Líderes</a></li>
-      <li><a data-nav="novedades-mayoristas" class="nav-link block font-label-lg text-sm px-4 py-3 rounded-2xl transition-all font-semibold" href="#novedades-mayoristas">Novedades</a></li>
-      <li><a data-nav="articulos-marcas" class="nav-link block font-label-lg text-sm px-4 py-3 rounded-2xl transition-all font-semibold" href="#articulos-marcas">Catálogo por Marca</a></li>
-      <li><a data-nav="sucursales-section" class="nav-link block font-label-lg text-sm px-4 py-3 rounded-2xl transition-all font-semibold" href="#sucursales-section">Showrooms Rosario</a></li>
-      <li class="pt-2 mt-1 border-t border-pink-100">
-        <a class="flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-whatsapp hover:bg-whatsapp-hover text-white font-bold text-sm" href="https://wa.me/{{WA_NUMBER}}?text=Hola%20%C3%9Anica%20Mayorista%2C%20solicito%20acceso%20y%20lista%20de%20precios%20B2B" target="_blank" rel="noopener noreferrer">
-          <span class="material-symbols-outlined text-[18px]" aria-hidden="true">chat</span> WhatsApp Mayorista: {{WA_DISPLAY}}
-        </a>
-      </li>
-    </ul>
-  </nav>
 </header>
+
+<!-- Menú lateral: categorías → subcategorías → marcas (se arma desde /api/categories/tree) -->
+<div id="menuOverlay" class="hidden fixed inset-0 z-[58] bg-slate-900/50 backdrop-blur-sm"></div>
+<aside id="menuDrawer" class="hidden fixed inset-y-0 right-0 z-[59] w-full sm:max-w-sm bg-white shadow-2xl flex-col" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
+  <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-pink-100 bg-[#fdf2f8]">
+    <div class="flex items-center gap-3">
+      <img alt="" class="h-10 w-10 rounded-full object-cover border-2 border-pink-200" src="/img/logo-unica.webp" width="40" height="40">
+      <h2 id="menuTitle" class="font-headline-sm text-xl font-bold text-slate-900">Menú</h2>
+    </div>
+    <button type="button" id="menuClose" class="inline-flex items-center justify-center w-11 h-11 rounded-full bg-white border border-pink-200 text-slate-700 hover:text-[#be185d]" aria-label="Cerrar menú">
+      <span class="material-symbols-outlined text-[22px]" aria-hidden="true">close</span>
+    </button>
+  </div>
+  <div class="flex-1 overflow-y-auto overscroll-contain px-3 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+    <nav aria-label="Categorías">
+      <p class="px-2 mb-2 text-xs font-bold uppercase tracking-wider text-slate-600">Comprar por categoría</p>
+      <ul id="menuCategories" class="flex flex-col gap-1">
+        <li class="px-2 py-3 text-sm text-slate-600">Cargando categorías…</li>
+      </ul>
+    </nav>
+
+    <section class="mt-4 pt-4 border-t border-pink-100" aria-labelledby="menuBrandsToggle">
+      <button type="button" id="menuBrandsToggle" class="w-full flex items-center justify-between gap-2 px-3 py-3 rounded-2xl bg-[#fdf2f8] hover:bg-pink-100 text-left font-bold text-slate-900" aria-expanded="false" aria-controls="menuBrands">
+        <span class="flex items-center gap-2"><span class="material-symbols-outlined text-[20px] text-[#be185d]" aria-hidden="true">verified</span> Ver todas las marcas</span>
+        <span data-chevron class="material-symbols-outlined text-[22px] text-slate-600 transition-transform" aria-hidden="true">expand_more</span>
+      </button>
+      <ul id="menuBrands" class="hidden mt-2 grid grid-cols-2 gap-2 px-1"></ul>
+    </section>
+
+    <nav class="mt-4 pt-4 border-t border-pink-100" aria-label="Secciones de la página">
+      <p class="px-2 mb-2 text-xs font-bold uppercase tracking-wider text-slate-600">Secciones</p>
+      <ul class="flex flex-col gap-1">
+        <li><a data-nav="inicio" data-menu-link class="nav-link block font-label-lg text-sm px-4 py-3 rounded-2xl transition-all font-semibold" href="#inicio">Inicio Mayorista</a></li>
+        <li><a data-nav="marcas-lideres" data-menu-link class="nav-link block font-label-lg text-sm px-4 py-3 rounded-2xl transition-all font-semibold" href="#marcas-lideres">Marcas Líderes</a></li>
+        <li><a data-nav="novedades-mayoristas" data-menu-link class="nav-link block font-label-lg text-sm px-4 py-3 rounded-2xl transition-all font-semibold" href="#novedades-mayoristas">Novedades</a></li>
+        <li><a data-nav="articulos-marcas" data-menu-link class="nav-link block font-label-lg text-sm px-4 py-3 rounded-2xl transition-all font-semibold" href="#articulos-marcas">Catálogo por Marca</a></li>
+        <li><a data-nav="sucursales-section" data-menu-link class="nav-link block font-label-lg text-sm px-4 py-3 rounded-2xl transition-all font-semibold" href="#sucursales-section">Showrooms Rosario</a></li>
+      </ul>
+    </nav>
+    <a class="mt-4 flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-whatsapp hover:bg-whatsapp-hover text-white font-bold text-sm" href="https://wa.me/{{WA_NUMBER}}?text=Hola%20%C3%9Anica%20Mayorista%2C%20solicito%20acceso%20y%20lista%20de%20precios%20B2B" target="_blank" rel="noopener noreferrer">
+      <span class="material-symbols-outlined text-[18px]" aria-hidden="true">chat</span> WhatsApp Mayorista: {{WA_DISPLAY}}
+    </a>
+  </div>
+</aside>
 
 <main id="contenido" class="w-full pt-28 bg-[#fcf8fa]" tabindex="-1">
 <div class="flex flex-col w-full">
@@ -307,6 +336,7 @@
       </p>
     </div>
     <!-- Filtros por marca -->
+    <div id="catalogFilterBar" class="hidden mb-space-md flex flex-wrap items-center justify-center gap-2" aria-live="polite"></div>
     <div id="brandFilters" class="flex flex-wrap items-center justify-center gap-2 mb-space-lg" role="group" aria-label="Filtrar catálogo por marca"></div>
     <!-- Grilla del catálogo -->
     <div id="catalogGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-lg" aria-live="polite" aria-busy="true">

@@ -2,45 +2,30 @@ import { formatPrice } from '../config.js';
 import { esc, safeImg, formatSizes, api, initials } from '../shared/utils.js';
 import { initCart, qtyOf, setArticles, packPrice, refresh as refreshCart } from './cart.js';
 import { initProduct, openProduct, setProducts } from './product.js';
+import { initMenu, setTree } from './menu.js';
+import { buildTreeFrom, slugify } from '../shared/tree.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
 const CATALOG_PAGE = 6;
-const state = { articles: [], brands: [], brandFilter: 'all', catalogLimit: CATALOG_PAGE };
+const state = {
+  articles: [],
+  brands: [],
+  tree: { categories: [], brands: [] },
+  filter: { cat: null, sub: null, brand: null },
+  catalogLimit: CATALOG_PAGE,
+};
 
 /* ---------------------------------------------------------------- Header */
 
 const header = $('#siteHeader');
-// Alto del header sin contar el menú móvil desplegado (que se superpone al contenido).
-const headerHeight = () =>
-  [...header.children].filter((el) => el.id !== 'mobileMenu').reduce((h, el) => h + el.offsetHeight, 0) + 1;
+const headerHeight = () => header.offsetHeight;
 function syncHeaderHeight() {
   document.documentElement.style.setProperty('--header-h', `${headerHeight()}px`);
 }
 new ResizeObserver(syncHeaderHeight).observe(header);
 syncHeaderHeight();
-
-// Menú hamburguesa (móvil / tablet)
-const menuBtn = $('#menuToggle');
-const mobileMenu = $('#mobileMenu');
-function setMenu(open) {
-  mobileMenu.classList.toggle('hidden', !open);
-  menuBtn.setAttribute('aria-expanded', String(open));
-  menuBtn.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');
-  menuBtn.querySelector('.material-symbols-outlined').textContent = open ? 'close' : 'menu';
-}
-menuBtn.addEventListener('click', () => setMenu(mobileMenu.classList.contains('hidden')));
-mobileMenu.addEventListener('click', (e) => {
-  if (e.target.closest('a')) setMenu(false);
-});
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !mobileMenu.classList.contains('hidden')) {
-    setMenu(false);
-    menuBtn.focus();
-  }
-});
-matchMedia('(min-width: 1024px)').addEventListener('change', (e) => e.matches && setMenu(false));
 
 // Sección activa en el nav según el scroll
 const ACTIVE = ['bg-[#be185d]', 'text-white', 'shadow-sm'];
@@ -253,33 +238,152 @@ function renderNewArrivals() {
   grid.setAttribute('aria-busy', 'false');
 }
 
+/* ---------------------------------------------------------------- Filtros del catálogo */
+// Filtro activo: categoría / subcategoría / marca (slugs). Se refleja en la URL:
+// ?categoria=mujeres&subcategoria=conjuntos&marca=kaury
+
+const brandSlug = (name) => slugify(name);
+
+/** Categoría y subcategoría (del árbol) que corresponden al filtro actual. */
+function scopeNodes() {
+  const { cat, sub } = state.filter;
+  const category = cat ? state.tree.categories.find((c) => c.slug === cat) : null;
+  const subcategory = category && sub ? category.subcategories.find((s) => s.slug === sub) : null;
+  return { category, subcategory };
+}
+
+/** Artículos dentro de la categoría/subcategoría elegida (sin aplicar la marca). */
+function articlesInScope() {
+  const { category, subcategory } = scopeNodes();
+  if (subcategory) return state.articles.filter((a) => a.subcategoryId === subcategory.id);
+  if (category) {
+    const ids = new Set(category.subcategories.map((s) => s.id));
+    return state.articles.filter((a) => ids.has(a.subcategoryId));
+  }
+  return state.articles;
+}
+
+function filteredArticles() {
+  const brand = state.filter.brand;
+  return articlesInScope().filter((a) => !brand || brandSlug(a.brand) === brand);
+}
+
+/** Normaliza el filtro contra el árbol: descarta slugs que ya no existen. */
+function sanitizeFilter() {
+  const { category, subcategory } = scopeNodes();
+  if (state.filter.cat && !category) state.filter.cat = null;
+  if (state.filter.sub && !subcategory) state.filter.sub = null;
+  if (!state.filter.cat) state.filter.sub = null;
+}
+
+function readFilterFromUrl() {
+  const p = new URLSearchParams(location.search);
+  state.filter = { cat: p.get('categoria'), sub: p.get('subcategoria'), brand: p.get('marca') };
+}
+
+function writeFilterToUrl(push = true) {
+  const p = new URLSearchParams(location.search);
+  const set = (k, v) => (v ? p.set(k, v) : p.delete(k));
+  set('categoria', state.filter.cat);
+  set('subcategoria', state.filter.sub);
+  set('marca', state.filter.brand);
+  const qs = p.toString();
+  // Al reemplazar (carga inicial) se conserva el #producto/… de un enlace directo.
+  const url = `${location.pathname}${qs ? `?${qs}` : ''}${push ? '' : location.hash}`;
+  if (push) history.pushState({ filter: { ...state.filter } }, '', url);
+  else history.replaceState(history.state, '', url);
+}
+
+/** Aplica un filtro nuevo (desde el menú, los chips o los botones de marca). */
+function applyFilter(next, { scroll = true, push = true } = {}) {
+  state.filter = { cat: next.cat || null, sub: next.sub || null, brand: next.brand || null };
+  sanitizeFilter();
+  state.catalogLimit = CATALOG_PAGE;
+  writeFilterToUrl(push);
+  renderFilterBar();
+  renderFilters();
+  renderCatalog();
+  if (scroll) {
+    const section = $('#articulos-marcas');
+    section.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    $('#catalogFilterBar button, #brandFilters button[aria-pressed="true"]')?.focus({ preventScroll: true });
+  }
+}
+
+function renderFilterBar() {
+  const bar = $('#catalogFilterBar');
+  const { category, subcategory } = scopeNodes();
+  const brandName = state.filter.brand
+    ? state.tree.brands.find((b) => b.slug === state.filter.brand)?.name ||
+      state.articles.find((a) => brandSlug(a.brand) === state.filter.brand)?.brand ||
+      state.filter.brand
+    : null;
+  if (!category && !brandName) {
+    bar.classList.add('hidden');
+    bar.innerHTML = '';
+    return;
+  }
+  const crumb = (label, filter, current) =>
+    current
+      ? `<span class="px-3 py-1.5 rounded-full bg-[#be185d] text-white text-xs font-bold" aria-current="true">${esc(label)}</span>`
+      : `<button type="button" data-filter='${esc(JSON.stringify(filter))}' class="px-3 py-1.5 rounded-full bg-pink-50 border border-pink-200 text-slate-800 text-xs font-semibold hover:bg-pink-100">${esc(label)}</button>`;
+  const parts = [];
+  if (category) parts.push(crumb(category.name, { cat: category.slug }, !subcategory && !brandName));
+  if (subcategory) parts.push(crumb(subcategory.name, { cat: category.slug, sub: subcategory.slug }, !brandName));
+  if (brandName) parts.push(crumb(brandName, state.filter, true));
+  bar.innerHTML = `
+    <span class="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-slate-600"><span class="material-symbols-outlined text-[16px]" aria-hidden="true">filter_alt</span> Filtrando:</span>
+    ${parts.join('<span class="material-symbols-outlined text-[16px] text-slate-400" aria-hidden="true">chevron_right</span>')}
+    <button type="button" data-filter='{}' class="ml-1 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold text-[#be185d] hover:bg-pink-50 underline">
+      <span class="material-symbols-outlined text-[16px]" aria-hidden="true">close</span> Quitar filtros
+    </button>`;
+  bar.classList.remove('hidden');
+}
+
+$('#catalogFilterBar').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-filter]');
+  if (b) applyFilter(JSON.parse(b.dataset.filter), { scroll: false });
+});
+
+/** Botones de marca: las marcas con artículos dentro de la categoría/subcategoría elegida. */
 function renderFilters() {
   const box = $('#brandFilters');
-  const withArticles = new Set(state.articles.map((a) => a.brand));
-  // Orden del carrusel; se agregan marcas de artículos que no estén en el carrusel.
-  const names = state.brands.map((b) => b.name).filter((n) => withArticles.has(n));
-  withArticles.forEach((n) => !names.includes(n) && names.push(n));
-  if (state.brandFilter !== 'all' && !names.includes(state.brandFilter)) state.brandFilter = 'all';
+  const scope = articlesInScope();
+  const names = [];
+  const seen = new Set();
+  // Orden del carrusel primero; después las marcas que no estén en el carrusel.
+  const inScope = new Set(scope.map((a) => brandSlug(a.brand)));
+  for (const b of state.brands) {
+    const s = brandSlug(b.name);
+    if (inScope.has(s) && !seen.has(s)) (seen.add(s), names.push({ slug: s, name: b.name }));
+  }
+  for (const a of scope) {
+    const s = brandSlug(a.brand);
+    if (!seen.has(s)) (seen.add(s), names.push({ slug: s, name: a.brand }));
+  }
+  if (state.filter.brand && !seen.has(state.filter.brand)) names.push({ slug: state.filter.brand, name: state.filter.brand });
   const btn = (value, label) => {
-    const on = state.brandFilter === value;
+    const on = (state.filter.brand || 'all') === value;
     const cls = on
       ? 'bg-[#be185d] text-white font-bold shadow-sm border border-[#be185d]'
       : 'bg-pink-50 hover:bg-pink-100 text-slate-700 font-semibold border border-pink-200';
     return `<button type="button" data-brand="${esc(value)}" aria-pressed="${on}" class="px-4 py-2 rounded-full font-label-sm text-xs transition-all ${cls}">${esc(label)}</button>`;
   };
-  box.innerHTML = btn('all', 'Todas las Marcas') + names.map((n) => btn(n, n)).join('');
+  box.innerHTML = btn('all', 'Todas las Marcas') + names.map((n) => btn(n.slug, n.name)).join('');
 }
 
 function renderCatalog() {
   const grid = $('#catalogGrid');
   // Las novedades ya se ven arriba: en el catálogo van después del resto (orden estable).
-  const list = state.articles
-    .filter((a) => state.brandFilter === 'all' || a.brand === state.brandFilter)
-    .sort((a, b) => Number(a.isNew) - Number(b.isNew));
+  const list = filteredArticles().sort((a, b) => Number(a.isNew) - Number(b.isNew));
   const shown = list.slice(0, state.catalogLimit);
+  const filtering = state.filter.cat || state.filter.brand;
   grid.innerHTML = shown.length
     ? shown.map(catalogCard).join('')
-    : '<p class="col-span-full text-center text-sm text-slate-600 py-10">No hay artículos cargados para esta marca por el momento.</p>';
+    : `<div class="col-span-full text-center py-10">
+        <p class="text-sm text-slate-600">${filtering ? 'Todavía no hay artículos cargados con este filtro.' : 'No hay artículos cargados por el momento.'}</p>
+        ${filtering ? '<button type="button" data-clear-filter class="mt-3 px-5 py-2.5 rounded-full bg-[#be185d] text-white text-sm font-semibold hover:bg-[#970046]">Ver todo el catálogo</button>' : ''}
+      </div>`;
   grid.setAttribute('aria-busy', 'false');
   syncAddButtons();
   const more = $('#catalogMore');
@@ -287,17 +391,29 @@ function renderCatalog() {
   more.classList.toggle('hidden', rest <= 0);
   more.classList.toggle('inline-flex', rest > 0);
   more.querySelector('span:last-child').textContent = `Ver más artículos (${rest})`;
-  $('#catalogStatus').textContent = `Mostrando ${shown.length} de ${list.length} artículos${state.brandFilter === 'all' ? '' : ` de ${state.brandFilter}`}.`;
+  $('#catalogStatus').textContent = `Mostrando ${shown.length} de ${list.length} artículos.`;
 }
+
+$('#catalogGrid').addEventListener('click', (e) => {
+  if (e.target.closest('[data-clear-filter]')) applyFilter({}, { scroll: false });
+});
 
 $('#brandFilters').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-brand]');
   if (!b) return;
-  state.brandFilter = b.dataset.brand;
+  const brand = b.dataset.brand === 'all' ? null : b.dataset.brand;
+  applyFilter({ ...state.filter, brand }, { scroll: false });
+  $(`#brandFilters button[data-brand="${CSS.escape(b.dataset.brand)}"]`)?.focus();
+});
+
+// Atrás / adelante del navegador entre filtros
+window.addEventListener('popstate', () => {
+  readFilterFromUrl();
+  sanitizeFilter();
   state.catalogLimit = CATALOG_PAGE;
+  renderFilterBar();
   renderFilters();
   renderCatalog();
-  $(`#brandFilters button[data-brand="${CSS.escape(state.brandFilter)}"]`)?.focus();
 });
 
 $('#catalogMore').addEventListener('click', () => {
@@ -320,26 +436,37 @@ function applyHero(banners) {
 /* ---------------------------------------------------------------- Datos */
 
 async function load() {
-  let articles, brands, banners;
+  let articles, brands, banners, tree;
   try {
-    [articles, brands, banners] = await Promise.all([api('articles'), api('brands'), api('banners')]);
+    [articles, brands, banners, tree] = await Promise.all([api('articles'), api('brands'), api('banners'), api('categories/tree')]);
   } catch (err) {
     console.warn('API no disponible, se muestran los datos iniciales.', err.message);
     const seed = await import('../data/seed.js');
     articles = seed.seedArticles();
     brands = seed.seedBrands();
     banners = seed.seedBanners();
+    tree = buildTreeFrom({ categories: seed.seedCategories(), subcategories: seed.seedSubcategories(), articles, brands });
   }
   state.articles = articles;
   state.brands = brands;
+  state.tree = tree;
+  setTree(tree);
+  readFilterFromUrl();
+  sanitizeFilter();
+  writeFilterToUrl(false);
   renderBrands();
   renderNewArrivals();
+  renderFilterBar();
   renderFilters();
   renderCatalog();
   applyHero(banners);
   setArticles(articles);
   setProducts(articles);
   syncAddButtons();
+  // Si se entró con un filtro en la URL, se muestra el catálogo filtrado.
+  if ((state.filter.cat || state.filter.brand) && !location.hash) {
+    setTimeout(() => $('#articulos-marcas').scrollIntoView({ behavior: 'instant' }), 0);
+  }
 }
 
 let resizeTimer;
@@ -353,4 +480,5 @@ window.addEventListener('resize', () => {
 
 initCart({ onUpdate: syncAddButtons });
 initProduct({ onChange: refreshCart });
+initMenu({ onSelect: (f) => applyFilter(f) });
 load();
