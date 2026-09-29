@@ -43,13 +43,16 @@ function galleryHtml(a) {
   const imgs = (a.images?.length ? a.images : ['/img/logo-unica.webp']).map((u) => safeImg(u));
   const many = imgs.length > 1;
   return `
-<div class="relative bg-pink-50 md:rounded-l-3xl overflow-hidden min-w-0 md:self-start md:sticky md:top-0">
+<div class="group/gallery relative bg-pink-50 md:rounded-l-3xl overflow-hidden min-w-0 md:self-start md:sticky md:top-0">
+  <span class="pointer-events-none absolute top-3 right-16 md:right-3 z-10 hidden [@media(hover:hover)]:flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-white/95 text-slate-800 text-xs font-bold shadow opacity-80 group-hover/gallery:opacity-100 transition-opacity" aria-hidden="true">
+    <span class="material-symbols-outlined text-[18px]">zoom_in</span> Pasá el mouse para ampliar
+  </span>
   <ul id="productTrack" class="flex overflow-x-auto snap-x snap-mandatory h-[min(70vh,520px)] md:h-[min(85vh,680px)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Fotos de ${esc(a.title)}" tabindex="0">
     ${imgs
       .map(
-        (src, i) => `<li class="relative w-full h-full shrink-0 snap-center overflow-hidden" aria-label="Foto ${i + 1} de ${imgs.length}">
+        (src, i) => `<li data-zoom class="relative w-full h-full shrink-0 snap-center overflow-hidden [@media(hover:hover)]:cursor-zoom-in" aria-label="Foto ${i + 1} de ${imgs.length}">
       <img src="${esc(src)}" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-50" ${i ? 'loading="lazy"' : ''} decoding="async">
-      <img src="${esc(src)}" alt="${esc(`${a.title} – ${a.brand}, foto ${i + 1}`)}" class="relative w-full h-full object-contain" ${i ? 'loading="lazy"' : ''} decoding="async" width="900" height="1125">
+      <img data-zoom-img src="${esc(src)}" alt="${esc(`${a.title} – ${a.brand}, foto ${i + 1}`)}" class="relative w-full h-full object-contain transition-transform duration-200 ease-out will-change-transform" ${i ? 'loading="lazy"' : ''} decoding="async" width="900" height="1125">
     </li>`
       )
       .join('')}
@@ -156,6 +159,33 @@ function render() {
   updateSummary();
   const track = $('#productTrack');
   track.addEventListener('scroll', onTrackScroll, { passive: true });
+  wireZoom(track);
+}
+
+/* ---------------------------------------------------------------- Zoom con el mouse */
+// En dispositivos con mouse: al pasar sobre la foto se amplía 2x siguiendo el cursor.
+const ZOOM = 2;
+const canHover = () => matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+function wireZoom(track) {
+  track.querySelectorAll('[data-zoom]').forEach((slide) => {
+    const img = slide.querySelector('[data-zoom-img]');
+    const move = (e) => {
+      if (!canHover()) return;
+      const r = slide.getBoundingClientRect();
+      const x = Math.min(100, Math.max(0, ((e.clientX - r.left) / r.width) * 100));
+      const y = Math.min(100, Math.max(0, ((e.clientY - r.top) / r.height) * 100));
+      img.style.transformOrigin = `${x}% ${y}%`;
+      img.style.transform = `scale(${ZOOM})`;
+    };
+    const reset = () => {
+      img.style.transform = '';
+      img.style.transformOrigin = '';
+    };
+    slide.addEventListener('mouseenter', move);
+    slide.addEventListener('mousemove', move);
+    slide.addEventListener('mouseleave', reset);
+  });
 }
 
 function renderGroup(group) {
