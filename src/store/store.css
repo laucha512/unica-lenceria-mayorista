@@ -1,0 +1,97 @@
+@config "../../tailwind.config.js";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
+  html {
+    /* Offset para anclas bajo el header fijo; --header-h lo actualiza el JS. */
+    scroll-padding-top: calc(var(--header-h, 116px) + 8px);
+    scroll-behavior: smooth;
+  }
+  body {
+    overscroll-behavior: none;
+  }
+  main > :first-child {
+    margin-top: 0 !important;
+  }
+  main > :last-child {
+    margin-bottom: 0 !important;
+  }
+
+  /* Foco visible y consistente (teclado). */
+  :focus-visible {
+    outline: 3px solid #be185d;
+    outline-offset: 2px;
+  }
+  .focus-light:focus-visible,
+  .bg-\[\#27313f\] :focus-visible {
+    outline-color: #fff;
+  }
+}
+
+@layer components {
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    /* Evita que se vea el nombre del ícono mientras carga la fuente. */
+    overflow: hidden;
+    display: inline-block;
+    max-width: 1.2em;
+    line-height: 1;
+    user-select: none;
+  }
+
+  /* Carrusel infinito de marcas: el JS duplica el set para que -50% encaje exacto. */
+  .marquee-track {
+    display: flex;
+    width: max-content;
+    animation: marquee var(--marquee-duration, 25s) linear infinite;
+  }
+  .marquee-track:hover,
+  .marquee-track:focus-within {
+    animation-play-state: paused;
+  }
+
+  .skeleton {
+    @apply animate-pulse rounded-3xl bg-pink-100/70;
+  }
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* Movimiento reducido: sin marquee (se puede desplazar a mano), sin pulsos ni transiciones. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .marquee-track {
+    animation: none;
+    transform: none;
+  }
+  .marquee-viewport {
+    overflow-x: auto;
+  }
+  .marquee-track [data-clone] {
+    display: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

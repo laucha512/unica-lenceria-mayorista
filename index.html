@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ÚNICA LENCERÍA | Portal Exclusivo Mayorista • Rosario</title>
+<meta name="description" content="Única Lencería: distribuidora mayorista oficial de lencería en Rosario. Brillite, Kaury, Lody, G3, Acróbata, Belén, XY y Natubel por curva y pack cerrado. Compra mínima {{MIN_PURCHASE}} y envíos a todo el país.">
+<link rel="canonical" href="{{SITE_URL}}/">
+<meta name="theme-color" content="#be185d">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="es_AR">
+<meta property="og:site_name" content="ÚNICA LENCERÍA Mayorista">
+<meta property="og:title" content="ÚNICA LENCERÍA | Portal Exclusivo Mayorista • Rosario">
+<meta property="og:description" content="Abastecimiento directo de fábrica para revendedoras y comercios. Curvas de talles y packs cerrados. Compra mínima {{MIN_PURCHASE}}.">
+<meta property="og:url" content="{{SITE_URL}}/">
+<meta property="og:image" content="{{SITE_URL}}/og-image.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=add,add_shopping_cart,chat,close,description,download,inventory,inventory_2,local_shipping,location_on,menu,navigation,new_releases,open_in_new,payments,photo_camera,schedule,storefront,table_view,verified,verified_user&display=block">
+<link rel="preload" as="image" href="/img/hero-coleccion-saten-encaje.webp" fetchpriority="high">
+<link rel="stylesheet" href="/src/store/store.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "{{SITE_URL}}/#org",
+      "name": "ÚNICA LENCERÍA Mayorista",
+      "url": "{{SITE_URL}}/",
+      "logo": "{{SITE_URL}}/icon-192.png",
+      "telephone": "+{{WA_NUMBER}}",
+      "sameAs": ["{{IG_URL}}"],
+      "department": [
+        { "@id": "{{SITE_URL}}/#san-luis" },
+        { "@id": "{{SITE_URL}}/#mendoza" },
+        { "@id": "{{SITE_URL}}/#roca" }
+      ]
+    },
+    {
+      "@type": ["LocalBusiness", "ClothingStore"],
+      "@id": "{{SITE_URL}}/#san-luis",
+      "name": "ÚNICA LENCERÍA – Casa Central San Luis 1830",
+      "description": "Casa Central y showroom mayorista de lencería.",
+      "url": "{{SITE_URL}}/",
+      "image": "{{SITE_URL}}/og-image.jpg",
+      "telephone": "+{{WA_NUMBER}}",
+      "priceRange": "$$",
+      "parentOrganization": { "@id": "{{SITE_URL}}/#org" },
+      "address": { "@type": "PostalAddress", "streetAddress": "San Luis 1830", "addressLocality": "Rosario", "addressRegion": "Santa Fe", "postalCode": "S2000", "addressCountry": "AR" },
+      "openingHoursSpecification": [
+        { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], "opens": "09:00", "closes": "19:30" },
+        { "@type": "OpeningHoursSpecification", "dayOfWeek": "Saturday", "opens": "09:30", "closes": "13:30" }
+      ]
+    },
+    {
+      "@type": ["LocalBusiness", "ClothingStore"],
+      "@id": "{{SITE_URL}}/#mendoza",
+      "name": "ÚNICA LENCERÍA – Mendoza 4134 (Echesortu)",
+      "description": "Punto de retiro de pedidos mayoristas y muestrarios.",
+      "url": "{{SITE_URL}}/",
+      "image": "{{SITE_URL}}/og-image.jpg",
+      "telephone": "+{{WA_NUMBER}}",
+      "priceRange": "$$",
+      "parentOrganization": { "@id": "{{SITE_URL}}/#org" },
+      "address": { "@type": "PostalAddress", "streetAddress": "Mendoza 4134", "addressLocality": "Rosario", "addressRegion": "Santa Fe", "addressCountry": "AR" },
+      "openingHoursSpecification": [
+        { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], "opens": "09:00", "closes": "13:00" },
+        { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], "opens": "16:00", "closes": "20:00" },
+        { "@type": "OpeningHoursSpecification", "dayOfWeek": "Saturday", "opens": "09:30", "closes": "13:30" }
+      ]
+    },
+    {
+      "@type": ["LocalBusiness", "ClothingStore"],
+      "@id": "{{SITE_URL}}/#roca",
+      "name": "ÚNICA LENCERÍA – Presidente Roca 1434",
+      "description": "Showroom con muestrario de temporada y retiro express, horario corrido.",
+      "url": "{{SITE_URL}}/",
+      "image": "{{SITE_URL}}/og-image.jpg",
+      "telephone": "+{{WA_NUMBER}}",
+      "priceRange": "$$",
+      "parentOrganization": { "@id": "{{SITE_URL}}/#org" },
+      "address": { "@type": "PostalAddress", "streetAddress": "Presidente Roca 1434", "addressLocality": "Rosario", "addressRegion": "Santa Fe", "addressCountry": "AR" },
+      "openingHoursSpecification": [
+        { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"], "opens": "09:30", "closes": "19:30" }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body class="bg-surface font-body-md text-body-md text-on-surface antialiased">
+<a href="#contenido" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:px-4 focus:py-2 focus:rounded-full focus:bg-white focus:text-[#be185d] focus:font-bold focus:shadow-lg">Saltar al contenido</a>
+
+<!-- TOP BAR B2B EXCLUSIVA MAYORISTA -->
+<header id="siteHeader" class="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-b border-pink-100 shadow-[0_2px_12px_rgba(190,24,93,0.05)]">
+  <div class="w-full bg-[#be185d] text-white py-2 px-margin-mobile md:px-margin text-center flex items-center justify-between text-body-sm font-body-sm">
+    <div class="flex-1 text-center font-label-sm text-label-sm tracking-wider uppercase flex items-center justify-center gap-2 flex-wrap text-white">
+      <span class="inline-block px-2.5 py-0.5 bg-white text-[#be185d] font-bold rounded-full text-[10px] tracking-widest shadow-sm">VENTA EXCLUSIVA MAYORISTA</span>
+      <span class="font-semibold">COMPRA MÍNIMA {{MIN_PURCHASE}}<span class="hidden sm:inline"> • CURVA DE TALLES Y PACKS CERRADOS • ENVÍOS A TODO EL PAÍS</span></span>
+    </div>
+    <div class="hidden lg:flex items-center gap-space-sm">
+      <a class="focus-light font-medium text-pink-100 hover:text-white transition-colors flex items-center gap-1 text-xs" href="https://wa.me/{{WA_NUMBER}}?text=Hola%20%C3%9Anica%20Mayorista%2C%20solicito%20acceso%20y%20lista%20de%20precios%20B2B" target="_blank" rel="noopener noreferrer">
+        <span class="material-symbols-outlined text-[16px]" aria-hidden="true">chat</span> WhatsApp Mayorista: {{WA_DISPLAY}}</a>
+    </div>
+  </div>
+  <div class="h-20 max-w-7xl mx-auto px-margin-mobile md:px-margin flex items-center justify-between gap-space-md">
+    <div class="flex items-center gap-space-md">
+      <a class="flex items-center gap-3 group" href="#inicio" aria-label="ÚNICA LENCERÍA – Ir al inicio">
+        <img alt="" class="h-12 w-12 rounded-full object-cover shadow-sm transition-transform group-hover:scale-105 border-2 border-pink-200" src="/img/logo-unica.webp" width="48" height="48">
+        <div class="flex flex-col">
+          <span class="font-headline-sm text-headline-sm tracking-tight text-slate-900 leading-none group-hover:text-[#be185d] transition-colors">ÚNICA</span>
+          <span class="font-label-sm text-[10px] tracking-widest uppercase text-[#be185d] font-bold">Mayorista Lencería • Rosario</span>
+        </div>
+      </a>
+    </div>
+    <nav class="hidden lg:flex items-center gap-1.5 bg-[#fce7f3]/60 p-1.5 rounded-full border border-pink-100" aria-label="Secciones">
+      <a data-nav="inicio" class="nav-link font-label-lg text-xs px-4 py-1.5 rounded-full transition-all font-semibold" href="#inicio">Inicio Mayorista</a>
+      <a data-nav="marcas-lideres" class="nav-link font-label-lg text-xs px-4 py-1.5 rounded-full transition-all font-semibold" href="#marcas-lideres">Marcas Líderes</a>
+      <a data-nav="novedades-mayoristas" class="nav-link font-label-lg text-xs px-4 py-1.5 rounded-full transition-all font-semibold" href="#novedades-mayoristas">Novedades</a>
+      <a data-nav="articulos-marcas" class="nav-link font-label-lg text-xs px-4 py-1.5 rounded-full transition-all font-semibold" href="#articulos-marcas">Catálogo por Marca</a>
+      <a data-nav="sucursales-section" class="nav-link font-label-lg text-xs px-4 py-1.5 rounded-full transition-all font-semibold" href="#sucursales-section">Showrooms Rosario</a>
+    </nav>
+    <div class="flex items-center gap-3">
+      <div class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 bg-pink-100/80 border border-pink-200 rounded-full text-[#be185d] font-label-sm text-[11px] font-bold">
+        <span class="w-2 h-2 rounded-full bg-[#be185d] animate-pulse" aria-hidden="true"></span>
+        <span>Mín. {{MIN_PURCHASE}}</span>
+      </div>
+      <button id="menuToggle" type="button" class="lg:hidden inline-flex items-center justify-center w-11 h-11 rounded-full bg-[#fce7f3] text-[#be185d] border border-pink-200 hover:bg-pink-100 transition-colors" aria-label="Abrir menú" aria-expanded="false" aria-controls="mobileMenu">
+        <span class="material-symbols-outlined text-[24px]" aria-hidden="true">menu</span>
+      </button>
+    </div>
+  </div>
+  <!-- Menú móvil / tablet -->
+  <nav id="mobileMenu" class="lg:hidden hidden border-t border-pink-100 bg-white/98 max-h-[calc(100vh-var(--header-h,116px))] overflow-y-auto" aria-label="Secciones">
+    <ul class="max-w-7xl mx-auto px-margin-mobile md:px-margin py-3 flex flex-col gap-1">
+      <li><a data-nav="inicio" class="nav-link block font-label-lg text-sm px-4 py-3 rounded-2xl transition-all font-semibold" href="#inicio">Inicio Mayorista</a></li>
+      <li><a data-nav="marcas-lideres" class="nav-link block font-label-lg text-sm px-4 py-3 rounded-2xl transition-all font-semibold" href="#marcas-lideres">Marcas Líderes</a></li>
+      <li><a data-nav="novedades-mayoristas" class="nav-link block font-label-lg text-sm px-4 py-3 rounded-2xl transition-all font-semibold" href="#novedades-mayoristas">Novedades</a></li>
+      <li><a data-nav="articulos-marcas" class="nav-link block font-label-lg text-sm px-4 py-3 rounded-2xl transition-all font-semibold" href="#articulos-marcas">Catálogo por Marca</a></li>
+      <li><a data-nav="sucursales-section" class="nav-link block font-label-lg text-sm px-4 py-3 rounded-2xl transition-all font-semibold" href="#sucursales-section">Showrooms Rosario</a></li>
+      <li class="pt-2 mt-1 border-t border-pink-100">
+        <a class="flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-whatsapp hover:bg-whatsapp-hover text-white font-bold text-sm" href="https://wa.me/{{WA_NUMBER}}?text=Hola%20%C3%9Anica%20Mayorista%2C%20solicito%20acceso%20y%20lista%20de%20precios%20B2B" target="_blank" rel="noopener noreferrer">
+          <span class="material-symbols-outlined text-[18px]" aria-hidden="true">chat</span> WhatsApp Mayorista: {{WA_DISPLAY}}
+        </a>
+      </li>
+    </ul>
+  </nav>
+</header>
+
+<main id="contenido" class="w-full pt-28 bg-[#fcf8fa]" tabindex="-1">
+<div class="flex flex-col w-full">
+<!-- HERO SECTION B2B WHOLESALE ONLY -->
+<section id="inicio" data-spy class="relative w-full -mt-28 pt-[calc(var(--header-h,116px)+12px)] pb-space-xl overflow-hidden bg-gradient-to-b from-[#fdf2f8] via-[#fff5f8] to-[#fcf8fa] border-b border-pink-100">
+  <div class="max-w-7xl mx-auto px-margin-mobile md:px-margin">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-center">
+      <!-- Left Wholesale Pitch -->
+      <div class="lg:col-span-6 flex flex-col gap-space-md z-10">
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white text-[#be185d] w-fit shadow-sm border border-pink-200">
+          <span class="material-symbols-outlined text-[16px] text-[#be185d]" aria-hidden="true">verified</span>
+          <span class="font-label-sm text-label-sm tracking-wider uppercase font-bold">Portal Oficial Mayorista ÚNICA LENCERÍA</span>
+        </div>
+        <h1 class="font-display-lg text-display-lg-mobile md:text-display-lg text-slate-900 leading-[1.1] tracking-tight">
+          Abastecimiento Directo de Fábrica para <span class="font-editorial-italic italic text-[#be185d]">Revendedoras</span> y Comercios.
+        </h1>
+        <p class="font-body-lg text-body-lg text-slate-700 max-w-xl leading-relaxed">
+          Distribuidora mayorista oficial en Rosario con envíos a toda la Argentina. Accedé a precios de curva, reposición inmediata y catálogo de las marcas más demandadas del mercado íntimo.
+        </p>
+        <div class="p-space-md rounded-2xl bg-white/90 border border-pink-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-pink-100 text-[#be185d] flex items-center justify-center flex-shrink-0">
+              <span class="material-symbols-outlined text-[22px]" aria-hidden="true">payments</span>
+            </div>
+            <div>
+              <p class="font-label-sm text-[11px] uppercase tracking-wider text-slate-600 font-bold">Condición Exclusiva Mayorista</p>
+              <p class="font-headline-sm text-lg text-slate-900 font-bold">Compra Mínima {{MIN_PURCHASE}} <span class="block sm:inline text-xs font-normal text-slate-600"><span class="hidden sm:inline">• </span>Curva de talles y packs</span></p>
+            </div>
+          </div>
+          <span class="px-2.5 py-1 rounded-md bg-[#be185d]/10 text-[#be185d] font-label-sm text-[11px] font-bold">100% Mayorista</span>
+        </div>
+        <!-- CTAs -->
+        <div class="flex flex-wrap items-center gap-3 pt-space-xs">
+          <a class="inline-flex items-center gap-2 bg-[#be185d] hover:bg-[#970046] text-white font-label-lg text-label-lg px-7 py-3.5 rounded-full shadow-md font-semibold transition-all duration-300 transform hover:-translate-y-0.5" href="#articulos-marcas">
+            <span>Ver Catálogo Mayorista</span>
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">inventory</span>
+          </a>
+          <a class="inline-flex items-center gap-2 bg-white border border-pink-300 text-slate-800 hover:text-[#be185d] hover:bg-pink-50 font-label-lg text-label-lg px-6 py-3.5 rounded-full shadow-sm transition-all duration-300 font-semibold" href="https://wa.me/{{WA_NUMBER}}?text=Hola%20%C3%9Anica%20Lencer%C3%ADa%2C%20solicito%20lista%20de%20precios%20mayorista%20en%20Excel%2FPDF%20(M%C3%ADnimo%20{{MIN_PURCHASE}})" target="_blank" rel="noopener noreferrer">
+            <span class="material-symbols-outlined text-[20px] text-[#be185d]" aria-hidden="true">description</span>
+            <span>Pedir Lista de Precios en Excel/PDF vía WhatsApp</span>
+          </a>
+        </div>
+        <!-- Highlights stats -->
+        <div class="grid grid-cols-3 gap-3 pt-space-xs">
+          <div class="flex flex-col p-3 rounded-xl bg-white border border-pink-100 text-center">
+            <span class="font-headline-sm text-lg text-[#be185d] font-bold">8+</span>
+            <span class="text-[11px] font-semibold text-slate-600 uppercase tracking-wider">Marcas Oficiales</span>
+          </div>
+          <div class="flex flex-col p-3 rounded-xl bg-white border border-pink-100 text-center">
+            <span class="font-headline-sm text-lg text-[#be185d] font-bold">24 / 48 hs</span>
+            <span class="text-[11px] font-semibold text-slate-600 uppercase tracking-wider">Despacho Expreso</span>
+          </div>
+          <div class="flex flex-col p-3 rounded-xl bg-white border border-pink-100 text-center">
+            <span class="font-headline-sm text-lg text-[#be185d] font-bold">3 Locales</span>
+            <span class="text-[11px] font-semibold text-slate-600 uppercase tracking-wider">Showrooms Rosario</span>
+          </div>
+        </div>
+      </div>
+      <!-- Right Hero Showcase Banner -->
+      <div class="lg:col-span-6 relative mt-space-md lg:mt-0">
+        <div class="relative w-full aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl border-4 border-white bg-pink-50">
+          <img id="heroImage" alt="Colección lencería satén y encaje por bulto y curva mayorista Única Lencería" class="w-full h-full object-cover transform hover:scale-105 transition-transform duration-700" src="/img/hero-coleccion-saten-encaje.webp" width="1376" height="768" fetchpriority="high" decoding="async">
+          <!-- Floating Wholesale Guarantee Card -->
+          <div class="absolute top-6 left-6 p-3.5 rounded-2xl bg-white/95 backdrop-blur-md shadow-lg border border-pink-200 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-[#be185d] text-white flex items-center justify-center">
+              <span class="material-symbols-outlined text-[20px]" aria-hidden="true">local_shipping</span>
+            </div>
+            <div>
+              <p class="font-label-sm text-[10px] uppercase tracking-wider text-slate-600 font-bold">Distribución Nacional</p>
+              <p class="font-title-md text-xs text-slate-900 font-bold">Envíos por Expreso a todo el país</p>
+            </div>
+          </div>
+          <!-- Bottom B2B Floating Badge -->
+          <div class="absolute bottom-6 left-6 right-6 p-space-md rounded-2xl bg-white/95 backdrop-blur-md shadow-xl border border-pink-200 flex items-center justify-between">
+            <div>
+              <div class="inline-flex items-center gap-1 text-[#be185d] text-[11px] font-bold uppercase tracking-wider">
+                <span class="w-2 h-2 rounded-full bg-[#be185d]" aria-hidden="true"></span> Stock Mayorista en Rosario
+              </div>
+              <p class="font-title-md text-slate-900 font-bold mt-0.5">Casa Central: San Luis 1830</p>
+              <p class="text-xs text-slate-600">Showroom Mayorista &amp; Retiro de pedidos B2B</p>
+            </div>
+            <a class="inline-flex items-center justify-center w-11 h-11 rounded-full bg-[#fce7f3] text-[#be185d] hover:bg-[#be185d] hover:text-white transition-all shadow-sm flex-shrink-0" href="#sucursales-section" aria-label="Ver sucursales y showrooms">
+              <span class="material-symbols-outlined text-[20px]" aria-hidden="true">storefront</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CARRUSEL DE MARCAS LÍDERES (se renderiza desde /api/brands) -->
+<section id="marcas-lideres" data-spy class="w-full py-space-lg bg-white border-b border-pink-100 overflow-hidden">
+  <div class="max-w-7xl mx-auto px-margin-mobile md:px-margin mb-6">
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+      <div>
+        <div class="inline-flex items-center gap-1.5 text-[#be185d] font-label-sm text-label-sm tracking-widest uppercase font-bold">
+          <span class="material-symbols-outlined text-[16px]" aria-hidden="true">verified_user</span>
+          <span>Distribución Directa Mayorista</span>
+        </div>
+        <h2 class="font-headline-lg text-2xl md:text-3xl text-slate-900 tracking-tight font-bold">Marcas Líderes Oficiales en Rosario</h2>
+      </div>
+      <p class="text-xs text-slate-600 font-medium max-w-sm sm:text-right">
+        Precios directos de fábrica por bulto cerrado y curvas completas. Garantía oficial de cada fabricante.
+      </p>
+    </div>
+  </div>
+  <!-- Marquee infinito -->
+  <div class="marquee-viewport relative w-full overflow-hidden py-2 bg-[#fdf2f8]/60 border-y border-pink-100">
+    <div id="brandsMarquee" class="marquee-track items-center min-h-[74px]"></div>
+  </div>
+</section>
+
+<!-- NOVEDADES MAYORISTAS (artículos con isNew=true) -->
+<section id="novedades-mayoristas" data-spy class="w-full py-space-xl bg-[#fff5f8]">
+  <div class="max-w-7xl mx-auto px-margin-mobile md:px-margin">
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-space-lg">
+      <div>
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-100 text-[#be185d] font-label-sm text-xs font-bold uppercase tracking-wider mb-2">
+          <span class="material-symbols-outlined text-[16px]" aria-hidden="true">new_releases</span>
+          <span>Ingresos Recientes en Showroom</span>
+        </div>
+        <h2 class="font-headline-xl text-3xl md:text-4xl text-slate-900 tracking-tight font-bold">Novedades Mayoristas de Temporada</h2>
+        <p class="font-body-md text-slate-600 mt-1 max-w-xl">
+          Nuevos artículos con stock para entrega inmediata. Pedidos por curva completa o pack cerrado para maximizar tu margen de ganancia.
+        </p>
+      </div>
+      <a class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#be185d] text-white hover:bg-[#970046] font-label-sm text-xs font-semibold shadow-sm transition-colors w-fit" href="https://wa.me/{{WA_NUMBER}}?text=Hola%20%C3%9Anica%20Mayorista%2C%20quiero%20reservar%20novedades%20de%20temporada" target="_blank" rel="noopener noreferrer">
+        <span class="material-symbols-outlined text-[18px]" aria-hidden="true">chat</span>
+        <span>Consultar Stock de Novedades</span>
+      </a>
+    </div>
+    <div id="newArrivalsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-space-md" aria-live="polite" aria-busy="true">
+      <div class="skeleton h-[470px]"></div><div class="skeleton h-[470px] hidden md:block"></div><div class="skeleton h-[470px] hidden lg:block"></div><div class="skeleton h-[470px] hidden lg:block"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ARTÍCULOS POR MARCA (CATÁLOGO MAYORISTA CON FILTROS) -->
+<section id="articulos-marcas" data-spy class="w-full py-space-xl bg-white border-b border-pink-100">
+  <div class="max-w-7xl mx-auto px-margin-mobile md:px-margin">
+    <div class="text-center max-w-2xl mx-auto mb-space-lg">
+      <span class="font-label-sm text-label-sm text-[#be185d] font-bold tracking-widest uppercase">Catálogo Mayorista Rosario</span>
+      <h2 class="font-headline-xl text-3xl md:text-4xl text-slate-900 tracking-tight font-bold mt-1">Artículos por Marca &amp; Curvas Cerradas</h2>
+      <p class="font-body-md text-slate-600 mt-2">
+        Disponibilidad en tiempo real para armar tu pedido de {{MIN_PURCHASE}} o más. Combiná marcas y líneas en una sola orden de compra.
+      </p>
+    </div>
+    <!-- Filtros por marca -->
+    <div id="brandFilters" class="flex flex-wrap items-center justify-center gap-2 mb-space-lg" role="group" aria-label="Filtrar catálogo por marca"></div>
+    <!-- Grilla del catálogo -->
+    <div id="catalogGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-lg" aria-live="polite" aria-busy="true">
+      <div class="skeleton h-[520px]"></div><div class="skeleton h-[520px] hidden md:block"></div><div class="skeleton h-[520px] hidden lg:block"></div>
+    </div>
+    <p id="catalogStatus" class="sr-only" aria-live="polite"></p>
+    <div class="mt-space-lg flex justify-center">
+      <button id="catalogMore" type="button" class="hidden px-6 py-3 rounded-full bg-white border border-pink-300 text-slate-800 hover:text-[#be185d] hover:bg-pink-50 font-label-lg text-xs font-semibold shadow-sm transition-all items-center gap-2">
+        <span class="material-symbols-outlined text-[18px]" aria-hidden="true">add</span>
+        <span>Ver más artículos</span>
+      </button>
+    </div>
+    <!-- Banner Descargar Catálogo Completo -->
+    <div class="mt-space-xl p-space-lg rounded-3xl bg-gradient-to-r from-pink-100 via-[#fdf2f8] to-pink-100 border border-pink-200 flex flex-col md:flex-row items-center justify-between gap-space-md">
+      <div class="flex items-center gap-4">
+        <div class="w-14 h-14 rounded-2xl bg-[#be185d] text-white flex items-center justify-center flex-shrink-0 shadow-md">
+          <span class="material-symbols-outlined text-[32px]" aria-hidden="true">table_view</span>
+        </div>
+        <div>
+          <h3 class="font-headline-sm text-xl font-bold text-slate-900">¿Buscás el Catálogo y Lista de Precios Completa?</h3>
+          <p class="text-sm text-slate-600">Descargá el archivo actualizado en Excel y PDF con más de 450 artículos, curvas de talles y stock vigente.</p>
+        </div>
+      </div>
+      <a class="px-6 py-3 rounded-full bg-[#be185d] hover:bg-[#970046] text-white font-label-lg font-semibold text-xs whitespace-nowrap shadow-md transition-all flex items-center gap-2" href="https://wa.me/{{WA_NUMBER}}?text=Hola%20%C3%9Anica%20Mayorista%2C%20quiero%20descargar%20la%20lista%20de%20precios%20completa%20en%20Excel%20y%20PDF" target="_blank" rel="noopener noreferrer">
+        <span class="material-symbols-outlined text-[18px]" aria-hidden="true">download</span>
+        <span>Solicitar Lista Completa vía WhatsApp</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- SHOWROOMS & SUCURSALES EN ROSARIO (3 Ubicaciones) -->
+<section id="sucursales-section" data-spy class="w-full py-space-xl bg-[#fff5f8] border-b border-pink-100">
+  <div class="max-w-7xl mx-auto px-margin-mobile md:px-margin">
+    <div class="text-center max-w-2xl mx-auto mb-space-lg">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white text-[#be185d] font-label-sm text-xs uppercase tracking-wider mb-2 font-bold border border-pink-200">
+        <span class="material-symbols-outlined text-[18px]" aria-hidden="true">storefront</span>
+        <span>Puntos de Atención Mayorista Rosario</span>
+      </div>
+      <h2 class="font-headline-xl text-3xl md:text-4xl text-slate-900 tracking-tight font-bold">Nuestras 3 Sucursales &amp; Showrooms</h2>
+      <p class="font-body-md text-slate-600 mt-2">
+        Casa Central con showroom exclusivo para revendedores y comerciantes, además de nuestros puntos de retiro en zonas estratégicas de Rosario.
+      </p>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-space-md mb-space-xl">
+      <!-- Sucursal 1: San Luis 1830 (Casa Central) -->
+      <article class="flex flex-col justify-between p-space-lg rounded-3xl bg-white border-2 border-[#be185d] shadow-md hover:shadow-xl transition-all relative overflow-hidden">
+        <div class="absolute top-0 right-0 bg-[#be185d] text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl tracking-wider uppercase">
+          Casa Central &amp; B2B
+        </div>
+        <div class="flex flex-col">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="px-2.5 py-0.5 rounded-full bg-pink-100 text-[#be185d] font-label-sm text-[11px] uppercase tracking-wider font-bold">Showroom Mayorista</span>
+          </div>
+          <h3 class="font-headline-sm text-xl font-bold text-slate-900">San Luis 1830</h3>
+          <p class="text-xs text-[#be185d] font-bold mt-0.5">Casa Central &amp; Distribución Mayorista</p>
+          <p class="text-xs text-slate-600 mt-1">Atención personalizada a revendedoras, armado de bultos y despacho expreso a todo el país.</p>
+          <div class="mt-space-md space-y-2 text-xs text-slate-600 bg-[#fdf2f8] p-3 rounded-2xl border border-pink-100">
+            <div class="flex items-start gap-2">
+              <span class="material-symbols-outlined text-[18px] text-[#be185d] mt-0.5" aria-hidden="true">schedule</span>
+              <span><strong>Lun a Vie:</strong> 9:00 a 19:30 hs<br><strong>Sábados:</strong> 9:30 a 13:30 hs</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-[18px] text-[#be185d]" aria-hidden="true">inventory_2</span>
+              <span>Stock permanente de curvas y bultos cerrados</span>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 pt-space-md mt-space-md border-t border-pink-100">
+          <a class="flex-1 py-2.5 px-3 rounded-full bg-white border border-pink-300 hover:bg-pink-50 text-slate-800 font-label-sm text-xs text-center transition-colors flex items-center justify-center gap-1 font-semibold" href="https://www.google.com/maps/search/?api=1&amp;query=San+Luis+1830,+Rosario,+Santa+Fe" target="_blank" rel="noopener noreferrer" aria-label="Cómo llegar a San Luis 1830 (abre Google Maps)">
+            <span class="material-symbols-outlined text-[16px]" aria-hidden="true">navigation</span> Cómo llegar
+          </a>
+          <a class="flex-1 py-2.5 px-3 rounded-full bg-whatsapp hover:bg-whatsapp-hover text-white font-label-sm text-xs text-center transition-colors flex items-center justify-center gap-1.5 font-bold shadow-sm" href="https://wa.me/{{WA_NUMBER}}?text=Hola%2C%20consulta%20para%20Showroom%20Mayorista%20San%20Luis%201830" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp: consulta para San Luis 1830"><svg class="w-4 h-4 fill-current" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-whatsapp"></use></svg> WhatsApp</a>
+        </div>
+      </article>
+      <!-- Sucursal 2: Mendoza 4134 -->
+      <article class="flex flex-col justify-between p-space-lg rounded-3xl bg-white border border-pink-200 shadow-sm hover:shadow-md transition-all">
+        <div class="flex flex-col">
+          <h3 class="font-headline-sm text-xl font-bold text-slate-900">Mendoza 4134</h3>
+          <p class="text-xs text-[#be185d] font-bold mt-0.5">Barrio Echesortu • Rosario</p>
+          <p class="text-xs text-slate-600 mt-1">Punto de retiro de pedidos mayoristas confirmados y asesoramiento técnico de curvas.</p>
+          <div class="mt-space-md space-y-2 text-xs text-slate-600 bg-[#fdf2f8] p-3 rounded-2xl border border-pink-100">
+            <div class="flex items-start gap-2">
+              <span class="material-symbols-outlined text-[18px] text-[#be185d] mt-0.5" aria-hidden="true">schedule</span>
+              <span><strong>Lun a Vie:</strong> 9:00 a 13:00 y 16:00 a 20:00 hs<br><strong>Sábados:</strong> 9:30 a 13:30 hs</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-[18px] text-[#be185d]" aria-hidden="true">local_shipping</span>
+              <span>Retiro coordinado sin cargo para comerciantes</span>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 pt-space-md mt-space-md border-t border-pink-100">
+          <a class="flex-1 py-2.5 px-3 rounded-full bg-white border border-pink-300 hover:bg-pink-50 text-slate-800 font-label-sm text-xs text-center transition-colors flex items-center justify-center gap-1 font-semibold" href="https://www.google.com/maps/search/?api=1&amp;query=Mendoza+4134,+Rosario,+Santa+Fe" target="_blank" rel="noopener noreferrer" aria-label="Cómo llegar a Mendoza 4134 (abre Google Maps)">
+            <span class="material-symbols-outlined text-[16px]" aria-hidden="true">navigation</span> Cómo llegar
+          </a>
+          <a class="flex-1 py-2.5 px-3 rounded-full bg-whatsapp hover:bg-whatsapp-hover text-white font-label-sm text-xs text-center transition-colors flex items-center justify-center gap-1.5 font-bold shadow-sm" href="https://wa.me/{{WA_NUMBER}}?text=Hola%2C%20consulta%20para%20retiro%20en%20Mendoza%204134" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp: consulta para Mendoza 4134"><svg class="w-4 h-4 fill-current" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-whatsapp"></use></svg> WhatsApp</a>
+        </div>
+      </article>
+      <!-- Sucursal 3: Presidente Roca 1434 -->
+      <article class="flex flex-col justify-between p-space-lg rounded-3xl bg-white border border-pink-200 shadow-sm hover:shadow-md transition-all">
+        <div class="flex flex-col">
+          <h3 class="font-headline-sm text-xl font-bold text-slate-900">Presidente Roca 1434</h3>
+          <p class="text-xs text-[#be185d] font-bold mt-0.5">Paseo del Siglo • Horario Corrido</p>
+          <p class="text-xs text-slate-600 mt-1">Ubicación estratégica en el centro de Rosario con muestrarios de temporada y retiro express.</p>
+          <div class="mt-space-md space-y-2 text-xs text-slate-600 bg-[#fdf2f8] p-3 rounded-2xl border border-pink-100">
+            <div class="flex items-start gap-2">
+              <span class="material-symbols-outlined text-[18px] text-[#be185d] mt-0.5" aria-hidden="true">schedule</span>
+              <span><strong>Lunes a Sábados:</strong> 9:30 a 19:30 hs<br><em>(Horario continuado de corrido)</em></span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-[18px] text-[#be185d]" aria-hidden="true">verified</span>
+              <span>Muestrario de catálogo disponible</span>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 pt-space-md mt-space-md border-t border-pink-100">
+          <a class="flex-1 py-2.5 px-3 rounded-full bg-white border border-pink-300 hover:bg-pink-50 text-slate-800 font-label-sm text-xs text-center transition-colors flex items-center justify-center gap-1 font-semibold" href="https://www.google.com/maps/search/?api=1&amp;query=Presidente+Roca+1434,+Rosario,+Santa+Fe" target="_blank" rel="noopener noreferrer" aria-label="Cómo llegar a Presidente Roca 1434 (abre Google Maps)">
+            <span class="material-symbols-outlined text-[16px]" aria-hidden="true">navigation</span> Cómo llegar
+          </a>
+          <a class="flex-1 py-2.5 px-3 rounded-full bg-whatsapp hover:bg-whatsapp-hover text-white font-label-sm text-xs text-center transition-colors flex items-center justify-center gap-1.5 font-bold shadow-sm" href="https://wa.me/{{WA_NUMBER}}?text=Hola%2C%20consulta%20para%20Presidente%20Roca%201434" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp: consulta para Presidente Roca 1434"><svg class="w-4 h-4 fill-current" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-whatsapp"></use></svg> WhatsApp</a>
+        </div>
+      </article>
+    </div>
+    <!-- Google Maps -->
+    <div class="w-full rounded-3xl overflow-hidden shadow-lg border border-pink-200 bg-white">
+      <div class="p-4 bg-white border-b border-pink-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center justify-center sm:justify-start gap-x-2 gap-y-1 text-center sm:text-left">
+          <span class="material-symbols-outlined text-[#be185d]" aria-hidden="true">location_on</span>
+          <span class="font-label-lg text-slate-900 font-bold text-sm">Ubicaciones Mayoristas en Rosario:</span>
+          <span class="text-xs text-slate-600">San Luis 1830 (Casa Central) • Mendoza 4134 • Pte. Roca 1434</span>
+        </div>
+        <a class="text-xs font-bold text-[#be185d] hover:text-[#970046] underline flex items-center gap-1" href="https://www.google.com/maps/search/?api=1&amp;query=San+Luis+1830,+Rosario,+Santa+Fe" target="_blank" rel="noopener noreferrer">
+          <span class="material-symbols-outlined text-[15px]" aria-hidden="true">open_in_new</span> Abrir en Google Maps
+        </a>
+      </div>
+      <div class="relative w-full h-80 bg-pink-50">
+        <iframe class="w-full h-full border-0" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen src="https://www.google.com/maps?q=San+Luis+1830,+Rosario,+Santa+Fe&amp;output=embed" title="Mapa: Casa Central Única Lencería, San Luis 1830, Rosario"></iframe>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BANNER: CÓMO COMPRAR -->
+<section class="w-full py-space-xl bg-white" aria-labelledby="comoComprarTitulo">
+  <div class="max-w-7xl mx-auto px-margin-mobile md:px-margin">
+    <div class="rounded-3xl bg-[#27313f] text-white p-space-lg md:p-space-xl overflow-hidden shadow-xl relative">
+      <div class="absolute -right-20 -bottom-20 w-80 h-80 bg-[#be185d]/30 rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
+      <div class="relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-space-lg items-center">
+        <div class="lg:col-span-2">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pink-900/60 text-pink-200 border border-pink-700 font-label-sm text-xs uppercase tracking-wider mb-space-sm font-semibold">
+            <span class="material-symbols-outlined text-[16px]" aria-hidden="true">verified</span>
+            <span>Proceso Mayorista Simple y Transparente</span>
+          </div>
+          <h2 id="comoComprarTitulo" class="font-headline-lg text-2xl md:text-3xl text-white tracking-tight leading-tight font-bold">
+            ¿Cómo realizar tu compra mayorista inicial de {{MIN_PURCHASE}}?
+          </h2>
+          <ol class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 text-slate-300 text-xs">
+            <li class="bg-white/5 p-3 rounded-2xl border border-white/10">
+              <span class="text-pink-300 font-bold text-sm block mb-1">1. Solicitud</span>
+              Pedí la lista de precios en Excel/PDF con fotos por WhatsApp oficial.
+            </li>
+            <li class="bg-white/5 p-3 rounded-2xl border border-white/10">
+              <span class="text-pink-300 font-bold text-sm block mb-1">2. Armado</span>
+              Elegí marcas y curvas surtidas alcanzando el mínimo de {{MIN_PURCHASE}}.
+            </li>
+            <li class="bg-white/5 p-3 rounded-2xl border border-white/10">
+              <span class="text-pink-300 font-bold text-sm block mb-1">3. Despacho</span>
+              Abonás por transferencia/depósito y despachamos en 24/48 hs a tu localidad.
+            </li>
+          </ol>
+        </div>
+        <div class="flex flex-col gap-3">
+          <a class="w-full py-3.5 px-6 rounded-full bg-[#be185d] text-white hover:bg-[#970046] font-label-lg text-xs font-semibold text-center transition-all shadow-md flex items-center justify-center gap-2" href="https://wa.me/{{WA_NUMBER}}?text=%C2%A1Hola!%20Quiero%20solicitar%20la%20lista%20de%20precios%20mayorista%20y%20comenzar%20mi%20pedido%20de%20{{MIN_PURCHASE}}" target="_blank" rel="noopener noreferrer">
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">chat</span> Iniciar Pedido Mayorista
+          </a>
+          <a class="w-full py-3.5 px-6 rounded-full bg-white/10 text-white hover:bg-white/20 font-label-lg text-xs font-semibold text-center transition-all border border-white/20 flex items-center justify-center gap-2" href="{{IG_URL}}" target="_blank" rel="noopener noreferrer" aria-label="Instagram @{{IG_USER}}">
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">photo_camera</span> @{{IG_USER}}
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</div>
+</main>
+
+<!-- FOOTER 100% MAYORISTA -->
+<footer class="w-full bg-[#fdf2f8] text-slate-800 pt-space-xl pb-28 border-t border-pink-200">
+  <div class="max-w-7xl mx-auto px-margin-mobile md:px-margin">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-space-lg pb-space-xl">
+      <!-- Col 1: Marca -->
+      <div class="flex flex-col gap-space-md">
+        <div class="flex items-center gap-3">
+          <img alt="Logo Única Lencería" class="h-12 w-12 rounded-full object-cover shadow-sm border-2 border-pink-300" src="/img/logo-unica.webp" width="48" height="48" loading="lazy">
+          <span class="font-headline-sm text-headline-sm tracking-tight text-slate-900 font-bold">ÚNICA LENCERÍA</span>
+        </div>
+        <p class="font-body-md text-xs text-slate-600 leading-relaxed">
+          Más de 15 años de trayectoria como referentes de distribución de lencería, corsetería fina y líneas íntimas en Rosario con envíos a toda la Argentina. Plataforma 100% Mayorista con compra mínima inicial de {{MIN_PURCHASE}}.
+        </p>
+      </div>
+      <!-- Col 2: Sucursales -->
+      <div class="flex flex-col gap-space-sm">
+        <h3 class="font-title-md text-slate-900 font-bold text-sm">3 Showrooms en Rosario</h3>
+        <ul class="flex flex-col gap-space-sm text-xs text-slate-600">
+          <li>
+            <strong class="text-slate-900 font-bold">San Luis 1830</strong> • Centro<br>
+            <span class="text-[#be185d] font-semibold">Casa Central &amp; Showroom Mayorista B2B</span>
+          </li>
+          <li>
+            <strong class="text-slate-900 font-bold">Mendoza 4134</strong> • Echesortu<br>
+            <span>Punto de Retiro Mayorista y Muestrarios</span>
+          </li>
+          <li>
+            <strong class="text-slate-900 font-bold">Pte. Roca 1434</strong> • Centro<br>
+            <span>Horario Corrido</span>
+          </li>
+        </ul>
+      </div>
+      <!-- Col 3: Condiciones -->
+      <div class="flex flex-col gap-space-sm">
+        <h3 class="font-title-md text-slate-900 font-bold text-sm">Condiciones</h3>
+        <div class="text-xs text-slate-600 flex flex-col gap-2">
+          <p><strong class="text-slate-900">Mínimo de Compra:</strong> {{MIN_PURCHASE}} en surtido libre de marcas.</p>
+          <p><strong class="text-slate-900">Envíos:</strong> Despacho por expresos y transporte a toda la República Argentina en 24/48 hs.</p>
+        </div>
+      </div>
+      <!-- Col 4: Contacto -->
+      <div class="flex flex-col gap-space-sm">
+        <h3 class="font-title-md text-slate-900 font-bold text-sm">Canal Mayorista Oficial</h3>
+        <p class="text-xs text-slate-600">Solicitá el alta de cliente mayorista para recibir listas actualizadas de precios y curvas.</p>
+        <a class="w-full py-2.5 px-4 rounded-full bg-whatsapp text-white hover:bg-whatsapp-hover font-label-sm text-xs font-bold text-center transition-all flex items-center justify-center gap-2 shadow-md" href="https://wa.me/{{WA_NUMBER}}?text=Hola%20%C3%9Anica%20Mayorista%2C%20quiero%20darme%20de%20alta%20como%20cliente%20B2B" target="_blank" rel="noopener noreferrer"><svg class="w-4 h-4 fill-current" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-whatsapp"></use></svg> WhatsApp: {{WA_DISPLAY}}</a>
+        <div class="pt-1">
+          <a class="text-xs font-bold text-[#be185d] hover:underline flex items-center gap-1 w-fit" href="{{IG_URL}}" target="_blank" rel="noopener noreferrer" aria-label="Instagram @{{IG_USER}}">
+            <span class="material-symbols-outlined text-[16px]" aria-hidden="true">photo_camera</span> @{{IG_USER}}
+          </a>
+        </div>
+      </div>
+    </div>
+    <!-- Copyright -->
+    <div class="border-t border-pink-200 pt-space-lg flex flex-col md:flex-row items-center justify-between gap-space-md text-xs text-slate-600 text-center md:text-left">
+      <p>© <span id="copyrightYear">{{YEAR}}</span> Única Mayorista Lencería. Portal Exclusivo B2B para Revendedoras y Comercios. Rosario, Santa Fe, Argentina.</p>
+      <div class="flex items-center gap-space-md">
+        <span class="text-[#be185d] font-bold">Compra Mínima {{MIN_PURCHASE}}</span>
+        <span aria-hidden="true">•</span>
+        <a class="hover:text-[#be185d] transition-colors" href="#sucursales-section">3 Sucursales Rosario</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- WhatsApp flotante -->
+<aside class="fixed bottom-6 right-6 z-40 flex items-center gap-2 group" aria-label="Contacto rápido">
+  <div class="hidden sm:flex items-center bg-white/95 text-slate-800 text-xs font-semibold py-2 px-3.5 rounded-full shadow-xl border border-pink-200 backdrop-blur-md transition-all group-hover:shadow-2xl">
+    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse mr-2" aria-hidden="true"></span>
+    <span>¡Consultanos por WhatsApp! <strong>{{WA_DISPLAY}}</strong></span>
+  </div>
+  <a aria-label="Contactar por WhatsApp Mayorista" class="w-14 h-14 bg-whatsapp hover:bg-whatsapp-hover text-white rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 transform hover:scale-110 relative" href="https://wa.me/{{WA_NUMBER}}?text=Hola%20%C3%9Anica%20Lencer%C3%ADa%20Mayorista%2C%20quiero%20hacer%20una%20consulta%20por%20compras%20mayoristas" target="_blank" rel="noopener noreferrer">
+    <svg class="w-8 h-8 fill-current" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-whatsapp"></use></svg>
+    <span class="absolute -top-1 -right-1 flex h-4 w-4" aria-hidden="true"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border-2 border-white"></span></span>
+  </a>
+</aside>
+
+<!-- Ícono de WhatsApp reutilizable -->
+<svg xmlns="http://www.w3.org/2000/svg" class="hidden" aria-hidden="true">
+  <symbol id="icon-whatsapp" viewBox="0 0 24 24"><path d="M12.031 2C6.496 2 2 6.496 2 12.031c0 1.77.463 3.498 1.343 5.023L2 22l5.105-1.336a10.01 10.01 0 0 0 4.926 1.367h.005c5.535 0 10.031-4.496 10.031-10.031C22.067 6.496 17.566 2 12.031 2zm0 18.344h-.004a8.318 8.318 0 0 1-4.241-1.157l-.304-.18-3.033.795.809-2.956-.197-.314a8.32 8.32 0 0 1-1.274-4.496c0-4.606 3.748-8.354 8.358-8.354 2.232 0 4.331.87 5.91 2.449a8.317 8.317 0 0 1 2.445 5.909c0 4.607-3.748 8.353-8.464 8.353zm4.582-6.255c-.251-.126-1.487-.734-1.718-.817-.23-.084-.398-.126-.565.126-.168.251-.649.817-.796.985-.147.168-.293.189-.544.063-.251-.126-1.061-.391-2.02-1.246-.747-.666-1.251-1.49-1.398-1.741-.147-.251-.016-.387.11-.512.113-.112.251-.293.377-.44.126-.147.168-.251.251-.419.084-.168.042-.314-.021-.44-.063-.126-.565-1.362-.775-1.866-.204-.492-.412-.425-.565-.433-.146-.008-.314-.01-.482-.01-.168 0-.44.063-.67.314-.23.251-.88.86-.88 2.096s.901 2.431 1.027 2.599c.126.168 1.772 2.705 4.294 3.794.6.259 1.069.414 1.434.53.603.192 1.152.165 1.586.101.484-.072 1.487-.608 1.696-1.194.21-.587.21-1.09.147-1.194-.063-.105-.231-.168-.482-.294z"/></symbol>
+</svg>
+
+<script type="module" src="/src/store/main.js"></script>
+</body>
+</html>
