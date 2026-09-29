@@ -182,7 +182,7 @@ function catalogCard(a) {
       <span class="font-label-sm text-xs text-slate-600 uppercase tracking-wider font-semibold">${a.code ? `Art. ${esc(a.code)}` : ''}</span>
       ${tag}
     </div>
-    <h3 class="font-headline-sm text-lg font-bold text-slate-900 leading-tight">${titleLink(a)}</h3>
+    <h4 class="font-headline-sm text-lg font-bold text-slate-900 leading-tight">${titleLink(a)}</h4>
     <dl class="mt-3 p-3 bg-white rounded-xl border border-pink-100 text-xs text-slate-600 space-y-1">
       <div class="flex justify-between gap-3"><dt class="font-bold text-slate-800 shrink-0">Curva de Talles:</dt> <dd class="text-right">${esc(formatSizes(a.sizes))}</dd></div>
       <div class="flex justify-between gap-3"><dt class="font-bold text-slate-800 shrink-0">Colores Disponibles:</dt> <dd class="text-right">${esc(a.colors.join(', ') || 'Consultar')}</dd></div>
@@ -372,14 +372,68 @@ function renderFilters() {
   box.innerHTML = btn('all', 'Todas las Marcas') + names.map((n) => btn(n.slug, n.name)).join('');
 }
 
+/* ---------------------------------------------------------------- Orden automático por grupos */
+// El catálogo se ordena solo según el menú: categoría → subcategoría (orden del admin).
+// Dentro de cada grupo: primero con stock, después por marca y los más nuevos primero.
+
+const NO_GROUP = { rank: Number.MAX_SAFE_INTEGER, cat: null, sub: null };
+
+function subcategoryIndex() {
+  const map = new Map();
+  let rank = 0;
+  for (const cat of state.tree.categories) for (const sub of cat.subcategories) map.set(sub.id, { rank: rank++, cat, sub });
+  return map;
+}
+
+function sortByGroup(list) {
+  const idx = subcategoryIndex();
+  const groupOf = (a) => idx.get(a.subcategoryId) || NO_GROUP;
+  return list
+    .map((a) => ({ article: a, group: groupOf(a) }))
+    .sort(
+      (x, y) =>
+        x.group.rank - y.group.rank ||
+        Number(y.article.inStock) - Number(x.article.inStock) ||
+        String(x.article.brand).localeCompare(String(y.article.brand), 'es') ||
+        String(y.article.createdAt || '').localeCompare(String(x.article.createdAt || ''))
+    );
+}
+
+function groupHeading(group, count, first) {
+  const { cat, sub } = group;
+  const inSameCategory = state.filter.cat && cat && state.filter.cat === cat.slug;
+  const title = sub ? (inSameCategory ? sub.name : `${cat.name} · ${sub.name}`) : 'Otros artículos';
+  const canNarrow = sub && state.filter.sub !== sub.slug;
+  return `
+<div class="col-span-full flex flex-wrap items-end justify-between gap-2 pb-2 border-b-2 border-pink-200 ${first ? '' : 'mt-space-md'}">
+  <h3 class="font-headline-sm text-xl md:text-2xl font-bold text-slate-900">${esc(title)} <span class="font-body-md text-sm font-semibold text-slate-600">(${count})</span></h3>
+  ${
+    canNarrow
+      ? `<button type="button" data-filter='${esc(JSON.stringify({ cat: cat.slug, sub: sub.slug, brand: state.filter.brand }))}' class="text-xs font-bold text-[#be185d] hover:underline">Ver solo ${esc(sub.name)}</button>`
+      : ''
+  }
+</div>`;
+}
+
 function renderCatalog() {
   const grid = $('#catalogGrid');
-  // Las novedades ya se ven arriba: en el catálogo van después del resto (orden estable).
-  const list = filteredArticles().sort((a, b) => Number(a.isNew) - Number(b.isNew));
-  const shown = list.slice(0, state.catalogLimit);
+  const sorted = sortByGroup(filteredArticles());
+  const list = sorted.map((x) => x.article);
+  const shown = sorted.slice(0, state.catalogLimit);
+  const counts = new Map();
+  sorted.forEach((x) => counts.set(x.group, (counts.get(x.group) || 0) + 1));
+  let html = '';
+  let current = null;
+  shown.forEach((x, i) => {
+    if (x.group !== current) {
+      current = x.group;
+      html += groupHeading(x.group, counts.get(x.group), i === 0);
+    }
+    html += catalogCard(x.article);
+  });
   const filtering = state.filter.cat || state.filter.brand;
   grid.innerHTML = shown.length
-    ? shown.map(catalogCard).join('')
+    ? html
     : `<div class="col-span-full text-center py-10">
         <p class="text-sm text-slate-600">${filtering ? 'Todavía no hay artículos cargados con este filtro.' : 'No hay artículos cargados por el momento.'}</p>
         ${filtering ? '<button type="button" data-clear-filter class="mt-3 px-5 py-2.5 rounded-full bg-[#be185d] text-white text-sm font-semibold hover:bg-[#970046]">Ver todo el catálogo</button>' : ''}
@@ -395,7 +449,9 @@ function renderCatalog() {
 }
 
 $('#catalogGrid').addEventListener('click', (e) => {
-  if (e.target.closest('[data-clear-filter]')) applyFilter({}, { scroll: false });
+  if (e.target.closest('[data-clear-filter]')) return applyFilter({}, { scroll: false });
+  const narrow = e.target.closest('button[data-filter]');
+  if (narrow) applyFilter(JSON.parse(narrow.dataset.filter), { scroll: true });
 });
 
 $('#brandFilters').addEventListener('click', (e) => {
@@ -421,7 +477,7 @@ $('#catalogMore').addEventListener('click', () => {
   state.catalogLimit += CATALOG_PAGE;
   renderCatalog();
   // Lleva el foco al primer artículo nuevo.
-  $$('#catalogGrid article')[before]?.querySelector('h3 a')?.focus({ preventScroll: false });
+  $$('#catalogGrid article')[before]?.querySelector('h4 a')?.focus({ preventScroll: false });
 });
 
 function applyHero(banners) {
