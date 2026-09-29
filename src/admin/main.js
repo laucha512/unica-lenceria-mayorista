@@ -2,6 +2,7 @@ import { api, ApiError, esc, safeImg, initials as autoInitials } from '../shared
 import { formatPrice } from '../config.js';
 import { validateFile, resizeImage, uploadBlob } from './images.js';
 import { swatchOf } from '../shared/colors.js';
+import { initCategories, renderCategories, subcategoryOptions, subcategoryPath } from './categories.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -15,6 +16,8 @@ const state = {
   articles: [],
   brands: [],
   banners: [],
+  categories: [],
+  subcategories: [],
   tab: 'publicaciones',
 };
 
@@ -127,7 +130,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 $$('[data-close-modal]').forEach((b) => b.addEventListener('click', () => closeModal(b.closest('[role="dialog"]'))));
-['#articleModal', '#bannerModal'].forEach((id) =>
+['#articleModal', '#bannerModal', '#taxonomyModal'].forEach((id) =>
   $(id).addEventListener('mousedown', (e) => {
     if (e.target === e.currentTarget) closeModal(e.currentTarget);
   })
@@ -258,8 +261,14 @@ async function startApp() {
 
 async function loadAll() {
   try {
-    const [articles, brands, banners] = await Promise.all([call('articles'), call('brands'), call('banners')]);
-    Object.assign(state, { articles, brands, banners });
+    const [articles, brands, banners, categories, subcategories] = await Promise.all([
+      call('articles'),
+      call('brands'),
+      call('banners'),
+      call('categories'),
+      call('subcategories'),
+    ]);
+    Object.assign(state, { articles, brands, banners, categories, subcategories });
     renderAll();
   } catch (err) {
     if (err.status !== 401) showToast(`No se pudieron cargar los datos: ${err.message}`, 'error');
@@ -272,11 +281,12 @@ function renderAll() {
   renderArticles();
   renderBanners();
   renderBrands();
+  renderCategories();
 }
 
 /* ================================================================ Navegación */
 
-const TABS = ['publicaciones', 'portadas', 'marcas', 'pedidos'];
+const TABS = ['publicaciones', 'categorias', 'portadas', 'marcas', 'pedidos'];
 
 function switchTab(tab, focus = true) {
   if (!TABS.includes(tab)) tab = 'publicaciones';
@@ -379,6 +389,7 @@ function articleCard(a) {
     </div>
     <div class="p-4">
       <h3 class="font-headline-sm text-base font-bold text-on-surface line-clamp-1" title="${esc(a.title)}">${esc(a.title)}${a.code ? ` <span class="font-body-md text-xs text-on-surface-variant font-semibold">Art. ${esc(a.code)}</span>` : ''}</h3>
+      <p class="text-[11px] font-semibold mt-1 ${a.subcategoryId ? 'text-primary' : 'text-error'}">${esc(subcategoryPath(a.subcategoryId) || 'Sin categoría asignada')}</p>
       <p class="text-xs text-on-surface-variant mt-1 line-clamp-2">${esc(a.description || a.saleType || '')}</p>
       <div class="mt-3 flex items-center gap-1.5 flex-wrap">
         <span class="text-[11px] text-on-surface-variant font-medium">Talles:</span>
@@ -645,6 +656,7 @@ function openArticleModal(article = null) {
   $('#articleForm').reset();
   $('#artNewBrand').value = '';
   fillBrandSelect(article?.brand);
+  $('#artSubcategory').innerHTML = subcategoryOptions(article?.subcategoryId || '');
   $('#artTitle').value = article?.title || '';
   $('#artCode').value = article?.code || '';
   $('#artTag').value = article?.tag || '';
@@ -696,6 +708,7 @@ $('#articleForm').addEventListener('submit', async (e) => {
   if (title.length < 3) problems.push('el título (mínimo 3 caracteres)');
   if (!presentation) problems.push('la presentación mayorista');
   if ($('#artPricePack').value === '' || !(pricePack >= 0)) problems.push('el precio del pack');
+  if (!$('#artSubcategory').value) problems.push('la categoría / subcategoría');
   if (!form.photos.length) problems.push('al menos una foto');
   if (problems.length) return showFormError(errEl, `Completá: ${problems.join(', ')}.`);
 
@@ -726,6 +739,7 @@ $('#articleForm').addEventListener('submit', async (e) => {
       isNew: $('#artIsNew').checked,
       inStock: $('#artInStock').checked,
       images: form.photos.map((p) => p.url),
+      subcategoryId: $('#artSubcategory').value,
     };
     const saved = form.editingId
       ? await call(`articles?id=${encodeURIComponent(form.editingId)}`, { method: 'PUT', body })
@@ -1044,6 +1058,20 @@ $('#brandListContainer').addEventListener('click', async (e) => {
 });
 
 /* ================================================================ Inicio */
+
+initCategories({
+  state,
+  call,
+  confirmDialog,
+  openModal,
+  closeModal,
+  showToast,
+  showFormError,
+  setBusy,
+  onChange: () => {
+    renderArticles();
+  },
+});
 
 window.addEventListener('hashchange', () => {
   if (state.token) switchTab(location.hash.slice(1), false);
