@@ -1,6 +1,7 @@
 // Datos iniciales extraídos del diseño de Stitch.
 // Los usan las Netlify Functions para sembrar Blobs la primera vez
 // y la tienda como respaldo si la API no responde.
+import { slugify } from '../shared/tree.js';
 
 const daysAgo = (now, d) => new Date(now - d * 86400000).toISOString();
 
@@ -100,7 +101,13 @@ export function seedArticles(now = Date.now()) {
     },
   ];
   // Fechas escalonadas para que el orden por "más reciente" respete el diseño.
-  return base.map((a, i) => ({ ...a, createdAt: daysAgo(now, i + 1), updatedAt: daysAgo(now, i + 1) }));
+  return base.map((a, i) => ({
+    ...a,
+    subcategoryId: SEED_ARTICLE_SUBCATEGORY[a.id] || '',
+    brandId: SEED_BRAND_IDS[a.brand] || '',
+    createdAt: daysAgo(now, i + 1),
+    updatedAt: daysAgo(now, i + 1),
+  }));
 }
 
 export function seedBrands(now = Date.now()) {
@@ -121,6 +128,59 @@ export function seedBrands(now = Date.now()) {
     createdAt: daysAgo(now, 30 - i),
   }));
 }
+
+/* ---------------------------------------------------------------- Categorías */
+
+const CATEGORY_TREE = [
+  ['Mujeres', ['Pack x3 bombis', 'Conjuntos', 'Bikinis', 'Medias mujer', 'Pijamas Mujer', 'Pantuflas Mujer', 'Siliconas']],
+  ['Hombre', ['Medias hombres', 'Boxer / Slip', 'Pijamas Hombres', 'Pantuflas Hombre', 'Traje de baño']],
+  ['Niño/a', ['Pack x3 bombis', 'Conjuntos', 'Bikinis', 'Medias', 'Pijamas', 'Pantuflas', 'Traje de baño']],
+];
+
+const catId = (name) => `cat-${slugify(name)}`;
+const subId = (cat, name) => `sub-${slugify(cat)}-${slugify(name)}`;
+
+export function seedCategories() {
+  return CATEGORY_TREE.map(([name], i) => ({ id: catId(name), name, slug: slugify(name), order: i + 1, isActive: true }));
+}
+
+export function seedSubcategories() {
+  return CATEGORY_TREE.flatMap(([cat, subs]) =>
+    subs.map((name, i) => ({
+      id: subId(cat, name),
+      categoryId: catId(cat),
+      name,
+      slug: slugify(name),
+      order: i + 1,
+      isActive: true,
+    }))
+  );
+}
+
+/** Subcategoría de cada artículo del diseño (también sirve para migrar los ya publicados). */
+export const SEED_ARTICLE_SUBCATEGORY = {
+  'art-kaury-8240': subId('Mujeres', 'Conjuntos'),
+  'art-brillite-5110': subId('Mujeres', 'Conjuntos'),
+  'art-natubel-3020': subId('Mujeres', 'Pijamas Mujer'),
+  'art-xy-1205': subId('Hombre', 'Boxer / Slip'),
+  'art-lody-ld4420': subId('Mujeres', 'Conjuntos'),
+  'art-g3-108': subId('Mujeres', 'Pack x3 bombis'),
+  'art-belen-bl705': subId('Mujeres', 'Conjuntos'),
+  'art-acrobata-ac912': subId('Niño/a', 'Conjuntos'),
+  'art-xy-1510': subId('Hombre', 'Boxer / Slip'),
+  'art-brillite-br204': subId('Mujeres', 'Pijamas Mujer'),
+};
+
+const SEED_BRAND_IDS = {
+  Brillite: 'brand-br',
+  Kaury: 'brand-ky',
+  Lody: 'brand-ld',
+  G3: 'brand-g3',
+  'Acróbata': 'brand-ac',
+  'Belén': 'brand-bl',
+  'XY Underwear': 'brand-xy',
+  Natubel: 'brand-nt',
+};
 
 export function seedBanners(now = Date.now()) {
   return [

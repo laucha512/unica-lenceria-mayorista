@@ -13,6 +13,13 @@
   framework = "#custom"
   autoLaunch = false
 
+# Árbol del menú de categorías (va antes de la regla general)
+[[redirects]]
+  from = "/api/categories/tree"
+  to = "/.netlify/functions/categories-tree"
+  status = 200
+  force = true
+
 # API: /api/articles -> /.netlify/functions/articles (los parámetros ?id= y ?key= se conservan)
 [[redirects]]
   from = "/api/*"

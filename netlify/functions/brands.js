@@ -3,7 +3,7 @@
 // DELETE /api/brands?id=ID    -> elimina marca (admin; el panel pide doble confirmación)
 import { randomUUID } from 'node:crypto';
 import { error, handle, HttpError, idParam, json, readJson, requireAuth } from '../lib/http.js';
-import { deleteUploadedImages, readCollection, updateCollection } from '../lib/store.js';
+import { deleteUploadedImages, normalizeName, readCollection, updateCollection } from '../lib/store.js';
 import { validateBrand } from '../lib/validate.js';
 import { initials as autoInitials } from '../../src/shared/utils.js';
 
@@ -28,6 +28,11 @@ export default handle(async (req) => {
         if (list.length >= 60) throw new HttpError('Se alcanzó el máximo de 60 marcas.', 409);
         return { list: [...list, brand], result: brand };
       });
+      // Los artículos que ya usaban ese nombre de marca quedan vinculados a la marca nueva.
+      await updateCollection('articles', (arts) => ({
+        list: arts.map((a) => (!a.brandId && normalizeName(a.brand) === normalizeName(brand.name) ? { ...a, brandId: brand.id } : a)),
+        result: null,
+      }));
       return json(brand, 201);
     }
 
@@ -40,6 +45,10 @@ export default handle(async (req) => {
         return { list: list.filter((b) => b.id !== id), result: found };
       });
       await deleteUploadedImages([removed.logo]);
+      await updateCollection('articles', (arts) => ({
+        list: arts.map((a) => (a.brandId === id ? { ...a, brandId: '' } : a)),
+        result: null,
+      }));
       return json({ ok: true });
     }
 

@@ -98,9 +98,76 @@ export function validateArticle(body, { partial = false } = {}) {
       isNew: (b) => bool(b, 'isNew', 'Novedad'),
       inStock: (b) => bool(b, 'inStock', 'Stock'),
       images: (b) => images(b, 'images', 5),
+      subcategoryId: (b) => optionalId(b, 'subcategoryId', 'La subcategoría'),
     },
     { partial }
   );
+}
+
+/** Id opcional ('' = sin asignar). La existencia real la verifica la función que lo usa. */
+function optionalId(obj, key, label) {
+  const v = obj[key];
+  if (v === undefined || v === null || v === '') return '';
+  if (typeof v !== 'string' || !/^[\w-]{1,80}$/.test(v)) throw new HttpError(`${label} no es válida.`);
+  return v;
+}
+
+function requiredId(obj, key, label) {
+  const v = optionalId(obj, key, label);
+  if (!v) throw new HttpError(`${label} es obligatoria.`);
+  return v;
+}
+
+function order(obj, key) {
+  const n = Number(obj[key]);
+  if (!Number.isInteger(n) || n < 0 || n > 10000) throw new HttpError('El orden debe ser un número entero entre 0 y 10000.');
+  return n;
+}
+
+function slugField(obj, key) {
+  const v = obj[key];
+  if (v === undefined || v === null || v === '') return '';
+  if (typeof v !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(v) || v.length > 60) {
+    throw new HttpError('El slug solo admite minúsculas, números y guiones (máx. 60).');
+  }
+  return v;
+}
+
+export function validateCategory(body, { partial = false } = {}) {
+  return pick(
+    body,
+    {
+      name: (b) => text(b, 'name', { label: 'El nombre de la categoría', min: 2, max: 40, required: true }),
+      slug: (b) => slugField(b, 'slug'),
+      order: (b) => order(b, 'order'),
+      isActive: (b) => bool(b, 'isActive', 'Activa'),
+    },
+    { partial }
+  );
+}
+
+export function validateSubcategory(body, { partial = false } = {}) {
+  return pick(
+    body,
+    {
+      categoryId: (b) => requiredId(b, 'categoryId', 'La categoría principal'),
+      name: (b) => text(b, 'name', { label: 'El nombre de la subcategoría', min: 2, max: 40, required: true }),
+      slug: (b) => slugField(b, 'slug'),
+      order: (b) => order(b, 'order'),
+      isActive: (b) => bool(b, 'isActive', 'Activa'),
+    },
+    { partial }
+  );
+}
+
+/** Lista de ids para reordenar (se valida que coincidan con los existentes en la función). */
+export function validateIdList(body, key = 'ids') {
+  const v = body[key];
+  if (!Array.isArray(v) || !v.length || v.length > 200 || v.some((x) => typeof x !== 'string' || !/^[\w-]{1,80}$/.test(x))) {
+    throw new HttpError('Lista de orden inválida.');
+  }
+  if (new Set(v).size !== v.length) throw new HttpError('La lista de orden tiene elementos repetidos.');
+  return v;
 }
 
 export function validateBrand(body) {
