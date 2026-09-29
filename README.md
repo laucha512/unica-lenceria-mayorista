@@ -89,7 +89,7 @@ Las rutas `/api/*` se reescriben a `/.netlify/functions/*`.
 
 ## Despliegue (Netlify)
 
-El sitio está conectado al repo de GitHub: **cada push a `main` despliega automáticamente**.
+El sitio está conectado al repo de GitHub: **cada push a `main` despliega automáticamente**. La conexión usa una *deploy key* de solo lectura en el repo y un webhook de GitHub (evento `push`) hacia Netlify; se ven en *Settings → Deploy keys / Webhooks* del repo.
 
 Para un sitio nuevo:
 
