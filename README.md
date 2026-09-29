@@ -6,13 +6,23 @@ Sitio web del mayorista de lencería **ÚNICA LENCERÍA** (Rosario, Santa Fe): t
 - **Backend:** Netlify Functions + Netlify Blobs (datos e imágenes).
 - **Diseño:** basado en el export de Google Stitch (`DESIGN.md`): Playfair Display + Plus Jakarta Sans, paleta frambuesa.
 
+## Pedido por WhatsApp (carrito)
+
+En cada artículo con stock hay un botón **Agregar** que suma un pack al pedido. El pedido se abre desde el botón de la bolsa (header) o la píldora flotante "Ver pedido":
+
+- Cantidades editables, subtotal por artículo y total estimado (precio por pack).
+- Barra de progreso hacia la compra mínima; el envío se habilita al alcanzarla.
+- Datos opcionales: nombre/comercio, localidad, entrega (retiro en sucursal o expreso) y aclaraciones.
+- **Enviar pedido por WhatsApp** abre `wa.me` con el mensaje armado con todo el detalle.
+- El pedido se guarda en el navegador (`localStorage`) hasta que se vacía.
+
 ## Estructura
 
 ```
 index.html                 Tienda pública
 admin/index.html           Panel de administración (/admin)
 src/config.js              WhatsApp, Instagram y compra mínima (única fuente de verdad)
-src/store/                 JS y CSS de la tienda
+src/store/                 JS y CSS de la tienda (cart.js: pedido por WhatsApp)
 src/admin/                 JS y CSS del panel (subida y redimensionado de imágenes)
 src/shared/utils.js        Escape de HTML, cliente de la API, helpers
 src/data/seed.js           Datos iniciales (se siembran en Blobs la primera vez)

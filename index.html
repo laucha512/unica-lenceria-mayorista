@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=add,add_shopping_cart,chat,close,description,download,inventory,inventory_2,local_shipping,location_on,menu,navigation,new_releases,open_in_new,payments,photo_camera,schedule,storefront,table_view,verified,verified_user&display=block">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=add,add_shopping_cart,chat,check,close,delete,description,download,inventory,inventory_2,local_shipping,location_on,menu,navigation,new_releases,open_in_new,payments,photo_camera,remove,schedule,shopping_bag,storefront,table_view,verified,verified_user&display=block">
 <link rel="preload" as="image" href="/img/hero-coleccion-saten-encaje.webp" fetchpriority="high">
 <link rel="stylesheet" href="/src/store/store.css">
 <script type="application/ld+json">
@@ -117,7 +117,7 @@
         <img alt="" class="h-12 w-12 rounded-full object-cover shadow-sm transition-transform group-hover:scale-105 border-2 border-pink-200" src="/img/logo-unica.webp" width="48" height="48">
         <div class="flex flex-col">
           <span class="font-headline-sm text-headline-sm tracking-tight text-slate-900 leading-none group-hover:text-[#be185d] transition-colors">ÚNICA</span>
-          <span class="font-label-sm text-[10px] tracking-widest uppercase text-[#be185d] font-bold">Mayorista Lencería • Rosario</span>
+          <span class="font-label-sm text-[10px] tracking-widest uppercase text-[#be185d] font-bold whitespace-nowrap">Mayorista Lencería<span class="hidden min-[400px]:inline"> • Rosario</span></span>
         </div>
       </a>
     </div>
@@ -133,13 +133,17 @@
         <span class="w-2 h-2 rounded-full bg-[#be185d] animate-pulse" aria-hidden="true"></span>
         <span>Mín. {{MIN_PURCHASE}}</span>
       </div>
+      <button type="button" data-open-cart class="relative inline-flex items-center justify-center w-11 h-11 rounded-full bg-[#be185d] text-white hover:bg-[#970046] shadow-sm transition-colors" aria-label="Ver mi pedido (0 artículos)" aria-controls="cartDrawer" aria-expanded="false">
+        <span class="material-symbols-outlined text-[22px]" aria-hidden="true">shopping_bag</span>
+        <span data-cart-count class="hidden absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-white text-[#be185d] border-2 border-[#be185d] text-[11px] font-bold leading-4 text-center"></span>
+      </button>
       <button id="menuToggle" type="button" class="lg:hidden inline-flex items-center justify-center w-11 h-11 rounded-full bg-[#fce7f3] text-[#be185d] border border-pink-200 hover:bg-pink-100 transition-colors" aria-label="Abrir menú" aria-expanded="false" aria-controls="mobileMenu">
         <span class="material-symbols-outlined text-[24px]" aria-hidden="true">menu</span>
       </button>
     </div>
   </div>
   <!-- Menú móvil / tablet -->
-  <nav id="mobileMenu" class="lg:hidden hidden border-t border-pink-100 bg-white/98 max-h-[calc(100vh-var(--header-h,116px))] overflow-y-auto" aria-label="Secciones">
+  <nav id="mobileMenu" class="lg:hidden hidden border-t border-pink-100 bg-white/98 max-h-[calc(100dvh-var(--header-h,116px))] overflow-y-auto" aria-label="Secciones">
     <ul class="max-w-7xl mx-auto px-margin-mobile md:px-margin py-3 flex flex-col gap-1">
       <li><a data-nav="inicio" class="nav-link block font-label-lg text-sm px-4 py-3 rounded-2xl transition-all font-semibold" href="#inicio">Inicio Mayorista</a></li>
       <li><a data-nav="marcas-lideres" class="nav-link block font-label-lg text-sm px-4 py-3 rounded-2xl transition-all font-semibold" href="#marcas-lideres">Marcas Líderes</a></li>
@@ -564,6 +568,81 @@
     <svg class="w-8 h-8 fill-current" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-whatsapp"></use></svg>
     <span class="absolute -top-1 -right-1 flex h-4 w-4" aria-hidden="true"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border-2 border-white"></span></span>
   </a>
+</aside>
+
+<!-- Acceso flotante al pedido (aparece cuando hay artículos) -->
+<button type="button" id="cartPill" data-open-cart class="hidden fixed bottom-6 left-4 sm:left-6 z-40 items-center gap-2 pl-3 pr-4 py-3 rounded-full bg-slate-900 text-white shadow-2xl hover:bg-slate-800 transition-colors text-sm font-bold" aria-controls="cartDrawer" aria-expanded="false">
+  <span class="material-symbols-outlined text-[20px]" aria-hidden="true">shopping_bag</span>
+  <span>Ver pedido <span class="text-pink-300" data-cart-summary></span></span>
+</button>
+
+<!-- Aviso breve (agregado al pedido, etc.) -->
+<div id="storeToast" class="fixed top-[calc(var(--header-h,116px)+12px)] left-1/2 -translate-x-1/2 z-[70] w-[calc(100%-2rem)] max-w-sm px-4 py-3 rounded-2xl bg-slate-900 text-white text-sm font-semibold shadow-2xl flex items-center gap-2 transition-all duration-300 opacity-0 -translate-y-2 pointer-events-none" role="status" aria-live="polite">
+  <span class="material-symbols-outlined text-[20px] text-emerald-400" aria-hidden="true">check</span>
+  <span id="storeToastText"></span>
+</div>
+
+<!-- Panel del pedido -->
+<div id="cartOverlay" class="hidden fixed inset-0 z-[60] bg-slate-900/50 backdrop-blur-sm"></div>
+<aside id="cartDrawer" class="hidden fixed inset-y-0 right-0 z-[61] w-full sm:max-w-md bg-white shadow-2xl flex-col" role="dialog" aria-modal="true" aria-labelledby="cartTitle">
+  <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-pink-100 bg-[#fdf2f8]">
+    <div>
+      <h2 id="cartTitle" class="font-headline-sm text-xl font-bold text-slate-900">Tu pedido mayorista</h2>
+      <p class="text-xs text-slate-600" id="cartSubtitle">Sumá artículos y enviá el pedido por WhatsApp.</p>
+    </div>
+    <button type="button" id="cartClose" class="inline-flex items-center justify-center w-11 h-11 rounded-full bg-white border border-pink-200 text-slate-700 hover:text-[#be185d]" aria-label="Cerrar pedido">
+      <span class="material-symbols-outlined text-[22px]" aria-hidden="true">close</span>
+    </button>
+  </div>
+  <div class="flex-1 overflow-y-auto overscroll-contain px-5 py-4">
+    <ul id="cartItems" class="flex flex-col gap-3"></ul>
+    <div id="cartEmpty" class="hidden text-center py-12">
+      <span class="material-symbols-outlined text-[48px] text-pink-300 max-w-none" aria-hidden="true">shopping_bag</span>
+      <p class="mt-2 font-headline-sm text-lg font-bold text-slate-900">Tu pedido está vacío</p>
+      <p class="text-sm text-slate-600 mt-1">Tocá <strong>Agregar</strong> en los artículos de Novedades o del Catálogo.</p>
+      <a href="#articulos-marcas" data-close-cart class="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#be185d] text-white font-semibold text-sm hover:bg-[#970046]">Ver catálogo</a>
+    </div>
+    <form id="cartForm" class="hidden mt-5 pt-5 border-t border-pink-100 space-y-3" novalidate>
+      <p class="text-xs font-bold uppercase tracking-wider text-slate-600">Tus datos (opcional)</p>
+      <div>
+        <label for="cartName" class="block text-xs font-semibold text-slate-700 mb-1">Nombre y comercio</label>
+        <input id="cartName" name="name" type="text" maxlength="80" autocomplete="name" class="w-full rounded-xl border-pink-200 focus:border-[#be185d] focus:ring-[#be185d] text-base" placeholder="Ej. Romina – Lencería Romi">
+      </div>
+      <div>
+        <label for="cartCity" class="block text-xs font-semibold text-slate-700 mb-1">Localidad</label>
+        <input id="cartCity" name="city" type="text" maxlength="80" autocomplete="address-level2" class="w-full rounded-xl border-pink-200 focus:border-[#be185d] focus:ring-[#be185d] text-base" placeholder="Ej. Rosario, Santa Fe">
+      </div>
+      <div>
+        <label for="cartDelivery" class="block text-xs font-semibold text-slate-700 mb-1">Entrega</label>
+        <select id="cartDelivery" name="delivery" class="w-full rounded-xl border-pink-200 focus:border-[#be185d] focus:ring-[#be185d] text-base">
+          <option value="">A coordinar</option>
+          <option>Retiro en San Luis 1830 (Casa Central)</option>
+          <option>Retiro en Mendoza 4134 (Echesortu)</option>
+          <option>Retiro en Presidente Roca 1434</option>
+          <option>Envío por expreso / transporte</option>
+        </select>
+      </div>
+      <div>
+        <label for="cartNotes" class="block text-xs font-semibold text-slate-700 mb-1">Aclaraciones (colores, talles, etc.)</label>
+        <textarea id="cartNotes" name="notes" rows="2" maxlength="400" class="w-full rounded-xl border-pink-200 focus:border-[#be185d] focus:ring-[#be185d] text-base"></textarea>
+      </div>
+    </form>
+  </div>
+  <div id="cartFooter" class="hidden border-t border-pink-100 px-5 py-4 bg-white space-y-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+    <div>
+      <div class="flex items-baseline justify-between">
+        <span class="text-sm font-semibold text-slate-700">Total estimado</span>
+        <span id="cartTotal" class="font-headline-sm text-2xl font-bold text-slate-900"></span>
+      </div>
+      <div class="mt-2 h-2 rounded-full bg-pink-100 overflow-hidden" aria-hidden="true"><div id="cartProgress" class="h-full bg-[#be185d] rounded-full transition-all" style="width:0"></div></div>
+      <p id="cartMinMsg" class="mt-1.5 text-xs text-slate-600"></p>
+    </div>
+    <a id="cartSend" href="#" target="_blank" rel="noopener noreferrer" class="w-full flex items-center justify-center gap-2 py-3.5 rounded-full bg-whatsapp hover:bg-whatsapp-hover text-white font-bold text-sm shadow-md transition-colors aria-disabled:opacity-50 aria-disabled:cursor-not-allowed">
+      <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-whatsapp"></use></svg>
+      Enviar pedido por WhatsApp
+    </a>
+    <button type="button" id="cartClear" class="w-full text-xs font-semibold text-slate-600 hover:text-[#be185d] underline">Vaciar pedido</button>
+  </div>
 </aside>
 
 <!-- Ícono de WhatsApp reutilizable -->

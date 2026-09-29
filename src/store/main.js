@@ -1,5 +1,6 @@
 import { whatsappLink, formatPrice } from '../config.js';
 import { esc, safeImg, formatSizes, api, initials } from '../shared/utils.js';
+import { initCart, add as addToCart, qtyOf, setArticles } from './cart.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -85,6 +86,55 @@ $('#copyrightYear').textContent = new Date().getFullYear();
 const orderMessage = (a) =>
   `Hola ÚNICA LENCERÍA, quiero hacer un pedido mayorista de ${a.brand} Art. ${a.code || '-'} – ${a.title} (${a.presentation}).`;
 
+const ADD_BTN =
+  'inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-full font-label-sm text-xs font-semibold transition-colors shrink-0';
+const ADD_IDLE = 'bg-[#be185d] text-white hover:bg-[#970046]';
+const ADD_IN_CART = 'bg-emerald-700 text-white hover:bg-emerald-800';
+
+/** Botón "Agregar" al pedido; muestra cuántos packs hay ya en el carrito. */
+function addButton(a, label) {
+  return `<button type="button" data-add="${esc(a.id)}" data-label="${esc(label)}" data-title="${esc(a.title)}" class="${ADD_BTN} ${ADD_IDLE}">
+      <span class="material-symbols-outlined text-[16px]" aria-hidden="true">add_shopping_cart</span> <span data-add-text>${esc(label)}</span>
+    </button>`;
+}
+
+/** Sin stock: consulta de reposición directa por WhatsApp. */
+function consultLink(a) {
+  return `<a class="${ADD_BTN} bg-white border border-pink-300 text-slate-800 hover:bg-pink-50" href="${esc(whatsappLink(orderMessage(a)))}" target="_blank" rel="noopener noreferrer" aria-label="${esc(`Consultar reposición de ${a.title} (${a.brand}) por WhatsApp`)}">
+      <span class="material-symbols-outlined text-[16px]" aria-hidden="true">chat</span> Consultar
+    </a>`;
+}
+
+/** Refleja en los botones de las tarjetas la cantidad que ya está en el pedido. */
+function syncAddButtons() {
+  $$('[data-add]').forEach((btn) => {
+    const qty = qtyOf(btn.dataset.add);
+    btn.className = `${ADD_BTN} ${qty ? ADD_IN_CART : ADD_IDLE}`;
+    btn.querySelector('.material-symbols-outlined').textContent = qty ? 'check' : 'add_shopping_cart';
+    btn.querySelector('[data-add-text]').textContent = qty ? `En el pedido (${qty})` : btn.dataset.label;
+    btn.setAttribute(
+      'aria-label',
+      qty ? `${btn.dataset.title}: ${qty} en el pedido. Agregar otro pack` : `Agregar ${btn.dataset.title} al pedido`
+    );
+  });
+}
+
+let toastTimer;
+function toast(msg) {
+  const el = $('#storeToast');
+  $('#storeToastText').textContent = msg;
+  el.classList.remove('opacity-0', '-translate-y-2');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.add('opacity-0', '-translate-y-2'), 2200);
+}
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-add]');
+  if (!btn) return;
+  addToCart(btn.dataset.add);
+  toast(`Agregado al pedido: ${btn.dataset.title} (${qtyOf(btn.dataset.add)})`);
+});
+
 const cardImage = (a) => safeImg(a.images?.[0]);
 const altFor = (a) => `${a.title} – ${a.brand}`;
 
@@ -109,14 +159,12 @@ function newArrivalCard(a) {
       <div class="flex justify-between gap-3"><dt class="font-bold text-slate-800 shrink-0">Presentación:</dt> <dd class="text-right">${esc(a.saleType || a.presentation)}</dd></div>
     </dl>
   </div>
-  <div class="pt-4 mt-3 border-t border-pink-100 flex items-center justify-between">
+  <div class="pt-4 mt-3 border-t border-pink-100 flex items-center justify-between gap-3">
     <div>
       <span class="text-[10px] text-slate-600 uppercase font-semibold block">Precio Curva Mayorista</span>
       <span class="text-base font-bold text-slate-900">${esc(formatPrice(a.priceUnit))} <span class="text-[11px] font-normal text-slate-600">c/u x pack</span></span>
     </div>
-    <a class="p-2 rounded-full bg-pink-100 hover:bg-[#be185d] text-[#be185d] hover:text-white transition-colors" href="${esc(whatsappLink(orderMessage(a)))}" target="_blank" rel="noopener noreferrer" aria-label="${esc(`Pedir por mayor ${a.title} (${a.brand}) por WhatsApp`)}" title="Pedir x Mayor">
-      <span class="material-symbols-outlined text-[20px] block" aria-hidden="true">add_shopping_cart</span>
-    </a>
+    ${a.inStock ? addButton(a, 'Agregar') : consultLink(a)}
   </div>
 </article>`;
 }
@@ -147,14 +195,12 @@ function catalogCard(a) {
       <div class="flex justify-between gap-3"><dt class="font-bold text-slate-800 shrink-0">Tipo de Venta:</dt> <dd class="text-right">${esc(a.saleType || a.presentation)}</dd></div>
     </dl>
   </div>
-  <div class="mt-4 pt-3 border-t border-pink-200 flex items-center justify-between">
+  <div class="mt-4 pt-3 border-t border-pink-200 flex items-center justify-between gap-3">
     <div>
       <span class="text-[10px] text-slate-600 uppercase font-semibold block">Precio Curva Mayorista</span>
       <span class="font-headline-sm text-lg font-bold text-[#be185d]">${esc(formatPrice(a.priceUnit))} <span class="text-xs font-normal text-slate-600">c/u</span></span>
     </div>
-    <a class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-[#be185d] text-white hover:bg-[#970046] font-label-sm text-xs font-semibold transition-colors" href="${esc(whatsappLink(orderMessage(a)))}" target="_blank" rel="noopener noreferrer" aria-label="${esc(`${a.inStock ? (isCurve ? 'Pedir curva' : 'Pedir pack') : 'Consultar reposición'}: ${a.title} (${a.brand}) por WhatsApp`)}">
-      <span class="material-symbols-outlined text-[16px]" aria-hidden="true">${a.inStock ? 'add' : 'chat'}</span> ${a.inStock ? (isCurve ? 'Pedir Curva' : 'Pedir Pack') : 'Consultar'}
-    </a>
+    ${a.inStock ? addButton(a, isCurve ? 'Agregar Curva' : 'Agregar Pack') : consultLink(a)}
   </div>
 </article>`;
 }
@@ -229,6 +275,7 @@ function renderCatalog() {
     ? shown.map(catalogCard).join('')
     : '<p class="col-span-full text-center text-sm text-slate-600 py-10">No hay artículos cargados para esta marca por el momento.</p>';
   grid.setAttribute('aria-busy', 'false');
+  syncAddButtons();
   const more = $('#catalogMore');
   const rest = list.length - shown.length;
   more.classList.toggle('hidden', rest <= 0);
@@ -252,7 +299,7 @@ $('#catalogMore').addEventListener('click', () => {
   state.catalogLimit += CATALOG_PAGE;
   renderCatalog();
   // Lleva el foco al primer artículo nuevo.
-  $$('#catalogGrid article')[before]?.querySelector('a')?.focus({ preventScroll: false });
+  $$('#catalogGrid article')[before]?.querySelector('a,button')?.focus({ preventScroll: false });
 });
 
 function applyHero(banners) {
@@ -284,6 +331,8 @@ async function load() {
   renderFilters();
   renderCatalog();
   applyHero(banners);
+  setArticles(articles);
+  syncAddButtons();
 }
 
 let resizeTimer;
@@ -295,4 +344,5 @@ window.addEventListener('resize', () => {
   resizeTimer = setTimeout(renderBrands, 250);
 });
 
+initCart({ onUpdate: syncAddButtons });
 load();
