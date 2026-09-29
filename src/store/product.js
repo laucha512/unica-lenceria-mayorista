@@ -43,12 +43,13 @@ function galleryHtml(a) {
   const imgs = (a.images?.length ? a.images : ['/img/logo-unica.webp']).map((u) => safeImg(u));
   const many = imgs.length > 1;
   return `
-<div class="relative bg-pink-50 md:rounded-l-3xl overflow-hidden min-w-0">
-  <ul id="productTrack" class="flex overflow-x-auto snap-x snap-mandatory aspect-[4/5] md:aspect-auto md:h-full md:min-h-[560px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Fotos de ${esc(a.title)}" tabindex="0">
+<div class="relative bg-pink-50 md:rounded-l-3xl overflow-hidden min-w-0 md:self-start md:sticky md:top-0">
+  <ul id="productTrack" class="flex overflow-x-auto snap-x snap-mandatory h-[min(70vh,520px)] md:h-[min(85vh,680px)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Fotos de ${esc(a.title)}" tabindex="0">
     ${imgs
       .map(
-        (src, i) => `<li class="w-full h-full shrink-0 snap-center" aria-label="Foto ${i + 1} de ${imgs.length}">
-      <img src="${esc(src)}" alt="${esc(`${a.title} – ${a.brand}, foto ${i + 1}`)}" class="w-full h-full object-cover" ${i ? 'loading="lazy"' : ''} decoding="async" width="900" height="1125">
+        (src, i) => `<li class="relative w-full h-full shrink-0 snap-center overflow-hidden" aria-label="Foto ${i + 1} de ${imgs.length}">
+      <img src="${esc(src)}" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-50" ${i ? 'loading="lazy"' : ''} decoding="async">
+      <img src="${esc(src)}" alt="${esc(`${a.title} – ${a.brand}, foto ${i + 1}`)}" class="relative w-full h-full object-contain" ${i ? 'loading="lazy"' : ''} decoding="async" width="900" height="1125">
     </li>`
       )
       .join('')}
