@@ -10,6 +10,10 @@ const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const HASH_RE = /^#producto\/([\w-]{1,80})$/;
 const MAX_QTY = 999;
 
+/** Tamaño del título según su largo, para que los nombres largos entren en la ficha. */
+const titleSize = (t = '') =>
+  t.length > 90 ? 'text-lg md:text-xl' : t.length > 50 ? 'text-xl md:text-2xl' : 'text-2xl md:text-3xl';
+
 let articles = new Map();
 let current = null; // { article, colors:Set, sizes:Set, qty, photo }
 let pushedHistory = false;
@@ -39,7 +43,7 @@ function galleryHtml(a) {
   const imgs = (a.images?.length ? a.images : ['/img/logo-unica.webp']).map((u) => safeImg(u));
   const many = imgs.length > 1;
   return `
-<div class="relative bg-pink-50 md:rounded-l-3xl overflow-hidden">
+<div class="relative bg-pink-50 md:rounded-l-3xl overflow-hidden min-w-0">
   <ul id="productTrack" class="flex overflow-x-auto snap-x snap-mandatory aspect-[4/5] md:aspect-auto md:h-full md:min-h-[560px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Fotos de ${esc(a.title)}" tabindex="0">
     ${imgs
       .map(
@@ -91,22 +95,22 @@ function infoHtml(a) {
     </fieldset>`
     : '';
   return `
-<div class="p-5 sm:p-8 flex flex-col">
+<div class="p-5 sm:p-8 flex flex-col min-w-0">
   <div class="flex items-center gap-2 flex-wrap pr-12">
     <span class="text-xs font-bold uppercase tracking-wider text-[#be185d]">${esc(a.brand)}</span>
     ${a.code ? `<span class="text-xs font-semibold text-slate-600 uppercase tracking-wider">· Art. ${esc(a.code)}</span>` : ''}
     ${a.isNew ? '<span class="px-2 py-0.5 rounded-full bg-[#be185d] text-white font-bold text-[10px] uppercase tracking-wider">Novedad</span>' : ''}
     ${tag}
   </div>
-  <h2 id="productTitle" class="mt-2 font-headline-sm text-2xl md:text-3xl font-bold text-slate-900 leading-tight">${esc(a.title)}</h2>
+  <h2 id="productTitle" class="mt-2 font-headline-sm ${titleSize(a.title)} font-bold text-slate-900 leading-tight break-words [overflow-wrap:anywhere] hyphens-auto">${esc(a.title)}</h2>
   <div class="mt-3 flex items-baseline gap-2 flex-wrap">
     <span class="font-headline-sm text-3xl font-bold text-[#be185d]">${esc(formatPrice(price))}</span>
     <span class="text-sm font-semibold text-slate-700">${esc(a.presentation)}</span>
   </div>
   ${a.description ? `<p class="mt-3 text-sm text-slate-700 leading-relaxed">${esc(a.description)}</p>` : ''}
   <dl class="mt-4 p-3 bg-[#fdf2f8] rounded-xl border border-pink-100 text-sm text-slate-700 space-y-1.5">
-    <div class="flex justify-between gap-3"><dt class="font-bold text-slate-900 shrink-0">Curva de talles</dt><dd class="text-right">${esc(formatSizes(a.sizes))}</dd></div>
-    <div class="flex justify-between gap-3"><dt class="font-bold text-slate-900 shrink-0">Presentación</dt><dd class="text-right">${esc(a.saleType || a.presentation)}</dd></div>
+    <div class="flex justify-between gap-3"><dt class="font-bold text-slate-900 shrink-0">Curva de talles</dt><dd class="text-right min-w-0 [overflow-wrap:anywhere]">${esc(formatSizes(a.sizes))}</dd></div>
+    <div class="flex justify-between gap-3"><dt class="font-bold text-slate-900 shrink-0">Presentación</dt><dd class="text-right min-w-0 [overflow-wrap:anywhere]">${esc(a.saleType || a.presentation)}</dd></div>
   </dl>
   ${colorsBlock}
   ${sizesBlock}

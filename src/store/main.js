@@ -109,6 +109,8 @@ document.addEventListener('click', (e) => {
 });
 
 const cardImage = (a) => safeImg(a.images?.[0]);
+/** Títulos largos (ej. con todos los colores y talles) se muestran un poco más chicos. */
+const cardTitleSize = (t = '') => (t.length > 60 ? 'text-base' : 'text-lg');
 
 /** Precio único: el del pack (lo mismo que se cobra en el pedido). */
 const priceBlock = (a, big) => `
@@ -148,7 +150,7 @@ function newArrivalCard(a) {
       <span class="font-bold text-[#be185d]">${esc(a.brand)}</span>
       ${a.code ? `<span>Art. ${esc(a.code)}</span>` : ''}
     </div>
-    <h3 class="font-headline-sm text-lg font-bold text-slate-900 leading-snug">${titleLink(a)}</h3>
+    <h3 class="font-headline-sm ${cardTitleSize(a.title)} font-bold text-slate-900 leading-snug">${titleLink(a)}</h3>
     <dl class="mt-3 space-y-1.5 text-xs text-slate-600 bg-[#fdf2f8] p-2.5 rounded-xl border border-pink-100">
       <div class="flex justify-between gap-3"><dt class="font-bold text-slate-800 shrink-0">Curva de Talles:</dt> <dd class="text-right">${esc(formatSizes(a.sizes))}</dd></div>
       <div class="flex justify-between gap-3"><dt class="font-bold text-slate-800 shrink-0">Colores Surtidos:</dt> <dd class="text-right">${esc(a.colors.join(', ') || 'Consultar')}</dd></div>
@@ -182,7 +184,7 @@ function catalogCard(a) {
       <span class="font-label-sm text-xs text-slate-600 uppercase tracking-wider font-semibold">${a.code ? `Art. ${esc(a.code)}` : ''}</span>
       ${tag}
     </div>
-    <h4 class="font-headline-sm text-lg font-bold text-slate-900 leading-tight">${titleLink(a)}</h4>
+    <h4 class="font-headline-sm ${cardTitleSize(a.title)} font-bold text-slate-900 leading-tight">${titleLink(a)}</h4>
     <dl class="mt-3 p-3 bg-white rounded-xl border border-pink-100 text-xs text-slate-600 space-y-1">
       <div class="flex justify-between gap-3"><dt class="font-bold text-slate-800 shrink-0">Curva de Talles:</dt> <dd class="text-right">${esc(formatSizes(a.sizes))}</dd></div>
       <div class="flex justify-between gap-3"><dt class="font-bold text-slate-800 shrink-0">Colores Disponibles:</dt> <dd class="text-right">${esc(a.colors.join(', ') || 'Consultar')}</dd></div>

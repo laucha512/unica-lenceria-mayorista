@@ -19,6 +19,20 @@
   main > :last-child {
     margin-bottom: 0 !important;
   }
+  /* Títulos y textos largos cargados por el admin se parten dentro de su tarjeta. */
+  h1,
+  h2,
+  h3,
+  p,
+  dd,
+  li {
+    overflow-wrap: anywhere;
+  }
+  #articlesContainer > *,
+  #bannersContainer > *,
+  #brandListContainer > * {
+    min-width: 0;
+  }
   :focus-visible {
     outline: 3px solid #970046;
     outline-offset: 2px;

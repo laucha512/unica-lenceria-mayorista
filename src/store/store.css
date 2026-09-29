@@ -25,6 +25,23 @@
     margin-bottom: 0 !important;
   }
 
+  /* Textos cargados desde el admin (títulos largos, "NEGRO/ORO/…"): se parten dentro de su caja. */
+  h1,
+  h2,
+  h3,
+  h4,
+  p,
+  dd,
+  li {
+    overflow-wrap: anywhere;
+  }
+  /* Las tarjetas dentro de grillas no pueden ensancharse por una palabra larga. */
+  #catalogGrid > *,
+  #newArrivalsGrid > *,
+  #productContent > * {
+    min-width: 0;
+  }
+
   /* Foco visible y consistente (teclado). */
   :focus-visible {
     outline: 3px solid #be185d;
