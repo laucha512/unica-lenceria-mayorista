@@ -43,14 +43,16 @@ function galleryHtml(a) {
   const imgs = (a.images?.length ? a.images : ['/img/logo-unica.webp']).map((u) => safeImg(u));
   const many = imgs.length > 1;
   return `
-<div class="group/gallery relative bg-pink-50 md:rounded-l-3xl overflow-hidden min-w-0 md:self-start md:sticky md:top-0">
-  <span class="pointer-events-none absolute top-3 right-16 md:right-3 z-10 hidden [@media(hover:hover)]:flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-white/95 text-slate-800 text-xs font-bold shadow opacity-80 group-hover/gallery:opacity-100 transition-opacity" aria-hidden="true">
-    <span class="material-symbols-outlined text-[18px]">zoom_in</span> Pasá el mouse para ampliar
+<div class="group/gallery relative bg-pink-50 md:rounded-l-3xl overflow-hidden min-w-0 md:self-start md:sticky md:top-6">
+  <span class="pointer-events-none absolute top-3 right-16 md:right-3 z-10 flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-white/95 text-slate-800 text-xs font-bold shadow opacity-80 group-hover/gallery:opacity-100 transition-opacity" aria-hidden="true">
+    <span class="material-symbols-outlined text-[18px]">zoom_in</span>
+    <span class="hidden [@media(hover:hover)]:inline">Pasá el mouse para ampliar</span>
+    <span class="[@media(hover:hover)]:hidden" data-zoom-hint>Tocá dos veces para ampliar</span>
   </span>
-  <ul id="productTrack" class="flex overflow-x-auto snap-x snap-mandatory h-[min(70vh,520px)] md:h-[min(85vh,680px)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Fotos de ${esc(a.title)}" tabindex="0">
+  <ul id="productTrack" class="flex overflow-hidden h-[min(70svh,520px)] md:h-[min(85svh,680px)] touch-pan-y select-none" aria-label="Fotos de ${esc(a.title)}" tabindex="0">
     ${imgs
       .map(
-        (src, i) => `<li data-zoom class="relative w-full h-full shrink-0 snap-center overflow-hidden [@media(hover:hover)]:cursor-zoom-in" aria-label="Foto ${i + 1} de ${imgs.length}">
+        (src, i) => `<li data-zoom class="relative w-full h-full shrink-0 overflow-hidden [@media(hover:hover)]:cursor-zoom-in" aria-label="Foto ${i + 1} de ${imgs.length}">
       <img src="${esc(src)}" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-50" ${i ? 'loading="lazy"' : ''} decoding="async">
       <img data-zoom-img src="${esc(src)}" alt="${esc(`${a.title} – ${a.brand}, foto ${i + 1}`)}" class="relative w-full h-full object-contain transition-transform duration-200 ease-out will-change-transform" ${i ? 'loading="lazy"' : ''} decoding="async" width="900" height="1125">
     </li>`
@@ -162,30 +164,120 @@ function render() {
   wireZoom(track);
 }
 
-/* ---------------------------------------------------------------- Zoom con el mouse */
-// En dispositivos con mouse: al pasar sobre la foto se amplía 2x siguiendo el cursor.
+/* ---------------------------------------------------------------- Zoom y gestos de la galería */
+// Mouse: al pasar sobre la foto se amplía 2x siguiendo el cursor.
+// Celular: doble toque amplía 2x en el punto tocado; con zoom se arrastra para recorrer la foto
+// y otro doble toque la vuelve a su tamaño. El carrusel solo cambia de foto con un deslizamiento
+// claramente horizontal: al scrollear arriba/abajo la foto queda quieta y siempre entera.
 const ZOOM = 2;
+const DOUBLE_TAP_MS = 300;
 const canHover = () => matchMedia('(hover: hover) and (pointer: fine)').matches;
 
+let touchZoom = null; // { slide, img } de la foto ampliada con doble toque
+
+const pct = (v, min, size) => Math.min(100, Math.max(0, ((v - min) / size) * 100));
+
+function zoomAt(slide, clientX, clientY) {
+  const img = slide.querySelector('[data-zoom-img]');
+  const r = slide.getBoundingClientRect();
+  img.style.transformOrigin = `${pct(clientX, r.left, r.width)}% ${pct(clientY, r.top, r.height)}%`;
+  img.style.transform = `scale(${ZOOM})`;
+}
+
+function unzoom(slide) {
+  const img = slide.querySelector('[data-zoom-img]');
+  img.style.transform = '';
+  img.style.transformOrigin = '';
+}
+
+function resetTouchZoom() {
+  if (!touchZoom) return;
+  unzoom(touchZoom.slide);
+  touchZoom.slide.style.touchAction = '';
+  touchZoom = null;
+  const hint = $('[data-zoom-hint]');
+  if (hint) hint.textContent = 'Tocá dos veces para ampliar';
+}
+
 function wireZoom(track) {
+  // Mouse
   track.querySelectorAll('[data-zoom]').forEach((slide) => {
-    const img = slide.querySelector('[data-zoom-img]');
-    const move = (e) => {
-      if (!canHover()) return;
-      const r = slide.getBoundingClientRect();
-      const x = Math.min(100, Math.max(0, ((e.clientX - r.left) / r.width) * 100));
-      const y = Math.min(100, Math.max(0, ((e.clientY - r.top) / r.height) * 100));
-      img.style.transformOrigin = `${x}% ${y}%`;
-      img.style.transform = `scale(${ZOOM})`;
-    };
-    const reset = () => {
-      img.style.transform = '';
-      img.style.transformOrigin = '';
-    };
+    const move = (e) => canHover() && zoomAt(slide, e.clientX, e.clientY);
     slide.addEventListener('mouseenter', move);
     slide.addEventListener('mousemove', move);
-    slide.addEventListener('mouseleave', reset);
+    slide.addEventListener('mouseleave', () => canHover() && unzoom(slide));
   });
+
+  // Táctil
+  let start = null;
+  let lastTap = { time: 0, x: 0, y: 0 };
+
+  track.addEventListener(
+    'touchstart',
+    (e) => {
+      if (e.touches.length !== 1) return (start = null);
+      const t = e.touches[0];
+      start = { x: t.clientX, y: t.clientY, time: Date.now(), moved: false };
+    },
+    { passive: true }
+  );
+
+  track.addEventListener(
+    'touchmove',
+    (e) => {
+      if (!start || e.touches.length !== 1) return;
+      const t = e.touches[0];
+      if (Math.abs(t.clientX - start.x) > 8 || Math.abs(t.clientY - start.y) > 8) start.moved = true;
+      if (touchZoom) {
+        // Con zoom, arrastrar recorre la foto (y no scrollea la página).
+        e.preventDefault();
+        zoomAt(touchZoom.slide, t.clientX, t.clientY);
+      }
+    },
+    { passive: false }
+  );
+
+  track.addEventListener('touchend', (e) => {
+    if (!start) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    const slide = e.target.closest('[data-zoom]');
+
+    // Doble toque
+    if (!start.moved && Date.now() - start.time < 250 && slide) {
+      const now = Date.now();
+      const near = Math.abs(t.clientX - lastTap.x) < 30 && Math.abs(t.clientY - lastTap.y) < 30;
+      if (now - lastTap.time < DOUBLE_TAP_MS && near) {
+        e.preventDefault(); // evita el zoom de página del navegador
+        lastTap = { time: 0, x: 0, y: 0 };
+        if (touchZoom) {
+          resetTouchZoom();
+        } else {
+          zoomAt(slide, t.clientX, t.clientY);
+          slide.style.touchAction = 'none';
+          touchZoom = { slide };
+          const hint = $('[data-zoom-hint]');
+          if (hint) hint.textContent = 'Tocá dos veces para salir';
+        }
+      } else {
+        lastTap = { time: now, x: t.clientX, y: t.clientY };
+      }
+      start = null;
+      return;
+    }
+
+    // Deslizamiento horizontal claro: foto anterior/siguiente (sin zoom).
+    if (!touchZoom && Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      setActivePhoto(current.photo + (dx < 0 ? 1 : -1));
+    }
+    start = null;
+  });
+
+  // Si cambia el ancho (rotar el celular), la foto actual queda centrada en su cuadro.
+  new ResizeObserver(() => {
+    if (current) track.scrollLeft = current.photo * track.clientWidth;
+  }).observe(track);
 }
 
 function renderGroup(group) {
@@ -231,6 +323,7 @@ function setActivePhoto(i, scroll = true) {
   const track = $('#productTrack');
   const total = track.children.length;
   const idx = Math.max(0, Math.min(total - 1, i));
+  if (idx !== current.photo) resetTouchZoom();
   current.photo = idx;
   if (scroll) {
     const left = idx * track.clientWidth;
@@ -255,6 +348,7 @@ function setActivePhoto(i, scroll = true) {
 function show(article) {
   if (!isOpen()) lastFocus = document.activeElement;
   current = { article, color: null, size: null, qty: 1, photo: 0 };
+  touchZoom = null;
   render();
   dialog().classList.remove('hidden');
   $('#productOverlay').classList.remove('hidden');
