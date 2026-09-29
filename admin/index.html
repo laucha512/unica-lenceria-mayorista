@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>ÚNICA LENCERÍA | Portal Operativo &amp; Panel de Control Mayorista</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&icon_names=add,add_box,add_circle,add_photo_alternate,aspect_ratio,auto_awesome,check_circle,checkroom,chevron_right,close,cloud_upload,delete,edit,error,inventory_2,lock,logout,menu,pause_circle,play_circle,progress_activity,publish,receipt_long,search,star,storefront,verified,view_carousel,visibility,visibility_off,wallpaper,warning&display=block">
+<link rel="stylesheet" href="/src/admin/admin.css">
+</head>
+<body class="bg-surface font-body-md text-body-md text-on-surface antialiased selection:bg-primary-fixed selection:text-primary">
+
+<!-- ============================ LOGIN ============================ -->
+<div id="loginView" class="hidden min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-surface-container-low via-surface to-primary-fixed/40">
+  <form id="loginForm" class="w-full max-w-sm bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-xl p-7" novalidate>
+    <div class="flex items-center gap-3 mb-6">
+      <img alt="Logo Única Lencería" class="h-12 w-12 rounded-full object-cover shadow-sm ring-2 ring-primary/20" src="/img/logo-unica.webp" width="48" height="48">
+      <div class="flex flex-col">
+        <span class="font-headline-sm text-lg text-primary font-bold tracking-tight leading-none">ÚNICA LENCERÍA</span>
+        <span class="text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant mt-0.5">Control Central Rosario</span>
+      </div>
+    </div>
+    <h1 class="font-headline-lg text-2xl text-on-surface font-semibold">Ingresar al panel</h1>
+    <p class="text-sm text-on-surface-variant mt-1 mb-5">Acceso exclusivo para la administración mayorista.</p>
+    <label for="loginPassword" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1.5">Contraseña</label>
+    <div class="relative">
+      <input id="loginPassword" type="password" autocomplete="current-password" required class="w-full pl-3.5 pr-11 py-2.5 bg-surface-container-low rounded-xl text-sm border-none focus:ring-2 focus:ring-primary text-on-surface">
+      <button type="button" id="togglePassword" class="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-on-surface-variant hover:text-primary" aria-label="Mostrar contraseña" aria-pressed="false">
+        <span class="material-symbols-outlined text-[20px]" aria-hidden="true">visibility</span>
+      </button>
+    </div>
+    <p id="loginError" class="hidden mt-3 text-xs font-semibold text-error flex items-center gap-1.5" role="alert"></p>
+    <button id="loginSubmit" type="submit" class="mt-5 w-full py-3 rounded-full bg-primary hover:bg-primary-container text-on-primary font-bold text-sm tracking-wider uppercase transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-60">
+      <span class="material-symbols-outlined text-[20px]" aria-hidden="true">lock</span>
+      <span>Ingresar</span>
+    </button>
+    <a href="/" class="mt-4 flex items-center justify-center gap-1.5 text-xs font-semibold text-on-surface-variant hover:text-primary">
+      <span class="material-symbols-outlined text-[16px]" aria-hidden="true">storefront</span> Volver a la tienda
+    </a>
+  </form>
+</div>
+
+<!-- ============================ APP ============================ -->
+<div id="appView" class="hidden">
+<!-- Overlay del drawer (móvil) -->
+<div id="drawerOverlay" class="fixed inset-0 z-40 bg-on-surface/40 backdrop-blur-sm hidden lg:hidden"></div>
+
+<!-- Sidebar -->
+<aside id="sidebar" class="fixed left-0 top-0 h-full w-72 bg-surface-container-low z-50 flex flex-col pt-5 pb-6 border-r border-outline-variant/30 shadow-[2px_0_16px_rgba(151,0,70,0.03)] -translate-x-full lg:translate-x-0 transition-transform duration-300" aria-label="Menú del panel">
+  <div class="px-6 mb-6 flex items-center gap-3">
+    <img alt="Logo Única Lencería" class="h-11 w-11 rounded-full object-cover shadow-sm ring-2 ring-primary/20" src="/img/logo-unica.webp" width="44" height="44">
+    <div class="flex flex-col flex-1">
+      <span class="font-headline-sm text-lg text-primary font-bold tracking-tight leading-none">ÚNICA LENCERÍA</span>
+      <span class="text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant mt-0.5">Control Central Rosario</span>
+    </div>
+    <button type="button" id="drawerClose" class="lg:hidden p-1.5 rounded-lg text-on-surface-variant hover:text-primary" aria-label="Cerrar menú">
+      <span class="material-symbols-outlined text-[22px]" aria-hidden="true">close</span>
+    </button>
+  </div>
+  <nav class="flex-1 px-3 flex flex-col gap-1.5" id="sidebarNav">
+    <button type="button" class="nav-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 text-left text-on-surface-variant" data-tab="publicaciones">
+      <span class="material-symbols-outlined text-[20px]" aria-hidden="true">inventory_2</span>
+      <span class="text-sm tracking-wide">Publicaciones &amp; Artículos</span>
+    </button>
+    <button type="button" class="nav-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 text-left text-on-surface-variant" data-tab="portadas">
+      <span class="material-symbols-outlined text-[20px]" aria-hidden="true">view_carousel</span>
+      <span class="text-sm tracking-wide">Gestión de Portadas &amp; Banners</span>
+    </button>
+    <button type="button" class="nav-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 text-left text-on-surface-variant" data-tab="marcas">
+      <span class="material-symbols-outlined text-[20px]" aria-hidden="true">add_circle</span>
+      <span class="text-sm tracking-wide">Carrusel de Marcas (Solo Agregar)</span>
+    </button>
+    <button type="button" class="nav-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 text-left text-on-surface-variant" data-tab="pedidos">
+      <span class="material-symbols-outlined text-[20px]" aria-hidden="true">receipt_long</span>
+      <span class="text-sm tracking-wide flex-1">Pedidos Mayoristas</span>
+      <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container">Pronto</span>
+    </button>
+    <a class="mt-auto flex items-center gap-3 px-3.5 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors text-left border-t border-outline-variant/30 pt-4" href="/" target="_blank" rel="noopener">
+      <span class="material-symbols-outlined text-[20px]" aria-hidden="true">storefront</span>
+      <span class="flex flex-col">
+        <span class="text-sm font-semibold">Ver Tienda Online</span>
+        <span class="text-[11px] text-on-surface-variant/80">Se abre en una pestaña nueva</span>
+      </span>
+    </a>
+  </nav>
+</aside>
+
+<div class="lg:pl-72">
+<!-- Header -->
+<header class="fixed top-0 left-0 lg:left-72 right-0 h-16 bg-surface/90 backdrop-blur-xl border-b border-outline-variant/30 shadow-[0_1px_10px_rgba(151,0,70,0.03)] z-30 flex items-center justify-between px-4 md:px-8">
+  <div class="flex items-center gap-3 min-w-0">
+    <button type="button" id="drawerOpen" class="lg:hidden p-2 -ml-1 rounded-full text-on-surface-variant hover:text-primary hover:bg-surface-container-high" aria-label="Abrir menú" aria-expanded="false" aria-controls="sidebar">
+      <span class="material-symbols-outlined text-[22px]" aria-hidden="true">menu</span>
+    </button>
+    <img alt="" class="h-8 w-8 rounded-full object-cover shadow-sm ring-1 ring-primary/20 hidden sm:block" src="/img/logo-unica.webp" width="32" height="32">
+    <div class="flex items-center gap-2 min-w-0">
+      <span class="text-xs font-bold uppercase tracking-widest text-primary truncate">Centro de Distribución Mayorista</span>
+      <span class="text-outline-variant hidden md:inline" aria-hidden="true">•</span>
+      <span class="text-xs text-on-surface-variant hidden md:inline">Rosario, Santa Fe</span>
+    </div>
+  </div>
+  <div class="flex items-center gap-2 md:gap-4">
+    <button type="button" id="logoutBtn" class="relative p-2 text-on-surface-variant hover:text-primary rounded-full hover:bg-surface-container-high transition-colors" aria-label="Cerrar sesión" title="Cerrar sesión">
+      <span class="material-symbols-outlined text-[20px]" aria-hidden="true">logout</span>
+    </button>
+    <div class="h-6 w-px bg-outline-variant/40 hidden sm:block"></div>
+    <div class="flex items-center gap-3 pl-1">
+      <div class="flex-col text-right hidden sm:flex">
+        <span class="text-xs font-bold text-on-surface leading-tight">Administración Central Rosario</span>
+        <span class="text-[11px] text-primary font-medium" id="sessionInfo">Panel Operativo Activo</span>
+      </div>
+      <div class="w-9 h-9 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-bold text-sm shadow-sm ring-2 ring-primary/20" aria-hidden="true">AC</div>
+    </div>
+  </div>
+</header>
+
+<!-- Main Workspace -->
+<main class="relative pt-20 px-4 md:px-8 pb-14 bg-surface min-h-screen">
+  <!-- Toast -->
+  <div id="toastNotification" class="fixed bottom-6 right-6 left-6 sm:left-auto z-[70] transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-2.5 bg-inverse-surface text-inverse-on-surface px-5 py-3 rounded-xl shadow-2xl" role="status" aria-live="polite">
+    <span id="toastIcon" class="material-symbols-outlined text-secondary-fixed text-[20px]" aria-hidden="true">check_circle</span>
+    <span class="text-sm font-medium" id="toastMessage"></span>
+  </div>
+
+  <!-- KPIs (calculados desde los datos reales) -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm flex flex-col justify-between">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Artículos Activos</span>
+        <div class="w-9 h-9 rounded-xl bg-secondary-container text-primary flex items-center justify-center"><span class="material-symbols-outlined text-[20px]" aria-hidden="true">checkroom</span></div>
+      </div>
+      <div class="mt-4 flex items-baseline gap-2">
+        <span class="font-headline-xl text-3xl font-bold text-primary" id="kpiActive">–</span>
+        <span class="text-xs text-on-surface-variant" id="kpiActiveOf">en catálogo mayorista</span>
+      </div>
+      <span class="mt-2 text-xs text-on-surface-variant flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true"></span> <span id="kpiStockPct">–</span>
+      </span>
+    </div>
+    <div class="p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm flex flex-col justify-between">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Novedades Publicadas</span>
+        <div class="w-9 h-9 rounded-xl bg-primary-fixed text-primary flex items-center justify-center"><span class="material-symbols-outlined text-[20px]" aria-hidden="true">auto_awesome</span></div>
+      </div>
+      <div class="mt-4 flex items-baseline gap-2">
+        <span class="font-headline-xl text-3xl font-bold text-on-surface" id="kpiNew">–</span>
+        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary text-on-primary">Destacados</span>
+      </div>
+      <span class="mt-2 text-xs text-on-surface-variant">Visibles en "Novedades" de la tienda</span>
+    </div>
+    <div class="p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm flex flex-col justify-between">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Marcas Asociadas</span>
+        <div class="w-9 h-9 rounded-xl bg-surface-container-high text-primary flex items-center justify-center"><span class="material-symbols-outlined text-[20px]" aria-hidden="true">verified</span></div>
+      </div>
+      <div class="mt-4 flex items-baseline gap-2">
+        <span class="font-headline-xl text-3xl font-bold text-on-surface" id="kpiBrands">–</span>
+        <span class="text-xs text-on-surface-variant">firmas oficiales</span>
+      </div>
+      <span class="mt-2 text-xs text-on-surface-variant truncate" id="kpiBrandNames">–</span>
+    </div>
+    <div class="p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm flex flex-col justify-between">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Portadas Activas</span>
+        <div class="w-9 h-9 rounded-xl bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center"><span class="material-symbols-outlined text-[20px]" aria-hidden="true">wallpaper</span></div>
+      </div>
+      <div class="mt-4 flex items-baseline gap-2">
+        <span class="font-headline-xl text-3xl font-bold text-on-surface" id="kpiBanners">–</span>
+        <span class="text-xs text-on-surface-variant">portadas y banners</span>
+      </div>
+      <span class="mt-2 text-xs text-on-surface-variant" id="kpiBannersOf">–</span>
+    </div>
+  </div>
+
+  <!-- ===================== TAB 1: PUBLICACIONES & ARTÍCULOS ===================== -->
+  <section class="tab-section hidden" id="section-publicaciones" aria-labelledby="h-publicaciones">
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+      <div>
+        <div class="flex items-center gap-1.5 text-xs uppercase font-bold text-primary tracking-wider mb-1">
+          <span>Catálogo Mayorista</span>
+          <span class="material-symbols-outlined text-[14px]" aria-hidden="true">chevron_right</span>
+          <span class="text-on-surface-variant font-semibold">Artículos &amp; Curvas</span>
+        </div>
+        <h1 id="h-publicaciones" class="font-headline-lg text-2xl md:text-3xl text-on-surface font-semibold">Publicaciones &amp; Artículos por Marca</h1>
+        <p class="text-sm text-on-surface-variant mt-1 max-w-2xl">Cargue nuevos modelos por pack mayorista, gestione curvas de talles, variantes cromáticas y marque lanzamientos como NOVEDAD para la portada.</p>
+      </div>
+      <button type="button" id="newArticleBtn" class="flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary-container hover:bg-primary text-on-primary font-semibold text-sm shadow-md transition-all w-fit">
+        <span class="material-symbols-outlined text-[20px]" aria-hidden="true">add</span>
+        <span>Nueva Publicación Mayorista</span>
+      </button>
+    </div>
+    <div class="p-3.5 mb-6 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm flex flex-wrap items-center justify-between gap-3">
+      <div class="flex flex-wrap items-center gap-3 flex-1 min-w-0 sm:min-w-[280px]">
+        <div class="relative w-full max-w-sm">
+          <span class="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-[18px]" aria-hidden="true">search</span>
+          <input class="w-full pl-9 pr-3 py-2 bg-surface-container-low rounded-xl text-xs sm:text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary border-none" id="articleSearchInput" placeholder="Buscar por código, modelo o línea..." type="search" aria-label="Buscar artículos">
+        </div>
+        <select class="bg-surface-container-low px-3 py-2 pr-8 rounded-xl text-xs sm:text-sm text-on-surface border-none focus:ring-2 focus:ring-primary font-medium" id="articleBrandFilter" aria-label="Filtrar por marca">
+          <option value="all">Todas las Marcas</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-2 text-xs text-on-surface-variant">
+        <span class="font-medium" id="articlesCountBadge" aria-live="polite"></span>
+      </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5" id="articlesContainer"></div>
+  </section>
+
+  <!-- ===================== TAB 2: PORTADAS & BANNERS ===================== -->
+  <section class="tab-section hidden" id="section-portadas" aria-labelledby="h-portadas">
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+      <div>
+        <div class="flex items-center gap-1.5 text-xs uppercase font-bold text-primary tracking-wider mb-1">
+          <span>Visual Storefront</span>
+          <span class="material-symbols-outlined text-[14px]" aria-hidden="true">chevron_right</span>
+          <span class="text-on-surface-variant font-semibold">Hero Sliders &amp; Banners</span>
+        </div>
+        <h1 id="h-portadas" class="font-headline-lg text-2xl md:text-3xl text-on-surface font-semibold">Gestión de Portadas &amp; Banners</h1>
+        <p class="text-sm text-on-surface-variant mt-1 max-w-2xl">Actualice las imágenes principales de apertura de la tienda online. La <strong>Portada Inicio</strong> activa reemplaza la imagen principal de la tienda.</p>
+      </div>
+      <button type="button" id="newBannerBtn" class="flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary-container hover:bg-primary text-on-primary font-semibold text-sm shadow-md transition-all w-fit">
+        <span class="material-symbols-outlined text-[20px]" aria-hidden="true">cloud_upload</span>
+        <span>Subir Nueva Portada</span>
+      </button>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="bannersContainer"></div>
+  </section>
+
+  <!-- ===================== TAB 3: CARRUSEL DE MARCAS ===================== -->
+  <section class="tab-section hidden" id="section-marcas" aria-labelledby="h-marcas">
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+      <div>
+        <div class="flex items-center gap-1.5 text-xs uppercase font-bold text-primary tracking-wider mb-1">
+          <span>Alianzas Comerciales</span>
+          <span class="material-symbols-outlined text-[14px]" aria-hidden="true">chevron_right</span>
+          <span class="text-on-surface-variant font-semibold">Expansión de Marcas</span>
+        </div>
+        <h1 id="h-marcas" class="font-headline-lg text-2xl md:text-3xl text-on-surface font-semibold">Carrusel de Marcas (Solo Agregar)</h1>
+        <p class="text-sm text-on-surface-variant mt-1 max-w-2xl">Módulo simplificado y seguro: configure e incorpore de manera inmediata nuevas marcas aliadas al carrusel continuo de la tienda sin alterar las firmas existentes.</p>
+      </div>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div class="lg:col-span-5 bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 shadow-sm">
+        <div class="flex items-center gap-2 mb-4 pb-3 border-b border-outline-variant/20">
+          <span class="material-symbols-outlined text-primary text-[24px]" aria-hidden="true">add_circle</span>
+          <h2 class="font-headline-sm text-xl text-on-surface font-bold">Agregar Nueva Marca al Carrusel</h2>
+        </div>
+        <p class="text-xs text-on-surface-variant mb-5">Complete los datos de la marca para integrarla de forma automática al carrusel de firmas de la portada.</p>
+        <form class="space-y-4" id="brandForm" novalidate>
+          <div>
+            <label for="newBrandName" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1.5">Nombre de la Marca *</label>
+            <input class="w-full px-3.5 py-2.5 bg-surface-container-low rounded-xl text-sm border-none focus:ring-2 focus:ring-primary text-on-surface" id="newBrandName" maxlength="40" placeholder="Ej. Lara Teens, Sigry, Marcela Koury..." required type="text">
+          </div>
+          <div>
+            <label for="newBrandCategory" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1.5">Categoría / Especialidad *</label>
+            <input class="w-full px-3.5 py-2.5 bg-surface-container-low rounded-xl text-sm border-none focus:ring-2 focus:ring-primary text-on-surface" id="newBrandCategory" maxlength="50" placeholder="Ej. Teen &amp; Juvenil, Microfibra, Maternal..." required type="text">
+          </div>
+          <div>
+            <label for="newBrandInitials" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1.5">Monograma o Siglas (2-3 Letras)</label>
+            <input class="w-full px-3.5 py-2.5 bg-surface-container-low rounded-xl text-sm border-none focus:ring-2 focus:ring-primary text-on-surface uppercase" id="newBrandInitials" maxlength="3" placeholder="Ej. LT" type="text">
+          </div>
+          <div>
+            <span class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1.5" id="brandLogoLabel">Logotipo / Isotipo (SVG o PNG transparente)</span>
+            <label class="dropzone border-2 border-dashed border-outline-variant/60 rounded-xl p-4 text-center cursor-pointer hover:bg-surface-container-low transition-colors group flex flex-col items-center" id="brandLogoDrop">
+              <input type="file" id="brandLogoInput" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="sr-only" aria-labelledby="brandLogoLabel">
+              <img id="brandLogoPreview" alt="Vista previa del logo" class="hidden h-14 w-14 object-contain rounded-lg bg-white border border-outline-variant/30 mb-2">
+              <span class="material-symbols-outlined text-primary text-[28px] group-hover:scale-110 transition-transform" aria-hidden="true">cloud_upload</span>
+              <span class="text-xs text-on-surface font-semibold mt-1" id="brandUploadLabel">Haga clic para subir isotipo oficial</span>
+              <span class="text-[11px] text-on-surface-variant">Formato recomendado 180x60px fondo transparente · máx. 4 MB</span>
+            </label>
+          </div>
+          <p id="brandFormError" class="hidden text-xs font-semibold text-error" role="alert"></p>
+          <div class="pt-2">
+            <button class="w-full py-3 rounded-full bg-primary hover:bg-primary-container text-on-primary font-bold text-sm tracking-wider uppercase transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-60" type="submit">
+              <span class="material-symbols-outlined text-[20px]" aria-hidden="true">add_circle</span>
+              <span>Incorporar al Carrusel Web</span>
+            </button>
+          </div>
+        </form>
+      </div>
+      <div class="lg:col-span-7 space-y-6">
+        <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-5 shadow-sm">
+          <div class="flex items-center justify-between gap-3 mb-3">
+            <span class="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-primary animate-pulse" aria-hidden="true"></span> Vista en vivo: Carrusel en Front Store
+            </span>
+            <span class="text-[11px] text-on-surface-variant">Rotación continua activa</span>
+          </div>
+          <div class="overflow-x-auto py-2 bg-surface-container-low rounded-xl p-3">
+            <div class="flex items-center gap-4 shrink-0" id="liveBrandsStrip"></div>
+          </div>
+        </div>
+        <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-3 pb-2 border-b border-outline-variant/20">
+            <h2 class="font-headline-sm text-base text-on-surface font-bold">Marcas Actualmente en Carrusel</h2>
+            <span class="text-xs text-on-surface-variant" id="brandCounter"></span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="brandListContainer"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TAB 4: PEDIDOS (PRÓXIMAMENTE) ===================== -->
+  <section class="tab-section hidden" id="section-pedidos" aria-labelledby="h-pedidos">
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+      <div>
+        <div class="flex items-center gap-1.5 text-xs uppercase font-bold text-primary tracking-wider mb-1">
+          <span>Operaciones B2B</span>
+          <span class="material-symbols-outlined text-[14px]" aria-hidden="true">chevron_right</span>
+          <span class="text-on-surface-variant font-semibold">Pedidos Recibidos</span>
+        </div>
+        <h1 id="h-pedidos" class="font-headline-lg text-2xl md:text-3xl text-on-surface font-semibold">Pedidos Mayoristas Rosario</h1>
+        <p class="text-sm text-on-surface-variant mt-1 max-w-2xl">Seguimiento de órdenes por bulto cerrado, curvas de talles y pedidos para retiro en sucursales o despacho a revendedoras.</p>
+      </div>
+    </div>
+    <div class="mb-5 p-4 rounded-2xl bg-secondary-container/50 border border-outline-variant/40 flex items-start gap-3">
+      <span class="material-symbols-outlined text-primary text-[22px]" aria-hidden="true">auto_awesome</span>
+      <div>
+        <p class="text-sm font-bold text-on-surface">Próximamente</p>
+        <p class="text-xs text-on-surface-variant">Hoy los pedidos llegan por WhatsApp. Esta sección muestra <strong>datos de ejemplo</strong> de cómo se verá el seguimiento de pedidos cuando se habilite.</p>
+      </div>
+    </div>
+    <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl overflow-hidden shadow-sm opacity-80" aria-describedby="h-pedidos">
+      <div class="p-4 bg-surface-container-low flex flex-wrap gap-2 items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-on-surface">2 Pedidos de ejemplo</span>
+        <span class="text-xs text-on-surface-variant">Datos ficticios</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm border-collapse min-w-[760px]">
+          <caption class="sr-only">Pedidos de ejemplo (función próximamente)</caption>
+          <thead class="bg-surface-container-high/40 text-on-surface-variant text-xs uppercase font-semibold">
+            <tr>
+              <th scope="col" class="py-3 px-4">N° Pedido</th>
+              <th scope="col" class="py-3 px-4">Cliente / Revendedora</th>
+              <th scope="col" class="py-3 px-4">Curvas &amp; Packs</th>
+              <th scope="col" class="py-3 px-4">Total Mayorista</th>
+              <th scope="col" class="py-3 px-4">Destino / Sucursal</th>
+              <th scope="col" class="py-3 px-4">Estado</th>
+              <th scope="col" class="py-3 px-4 text-right">Acción</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-outline-variant/20 text-on-surface">
+            <tr>
+              <td class="py-3 px-4 font-bold text-primary">#MAY-8942</td>
+              <td class="py-3 px-4"><div class="font-semibold">Lencería Romina</div><div class="text-[11px] text-on-surface-variant">Rosario Centro</div></td>
+              <td class="py-3 px-4">4 Packs x12 Brillite + 2 Packs Kaury</td>
+              <td class="py-3 px-4 font-bold">$ 284.500</td>
+              <td class="py-3 px-4">Retiro Sucursal San Luis</td>
+              <td class="py-3 px-4"><span class="px-2.5 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-xs font-bold whitespace-nowrap">En Preparación</span></td>
+              <td class="py-3 px-4 text-right"><button type="button" disabled class="text-xs font-bold text-on-surface-variant cursor-not-allowed" title="Disponible próximamente">Ver Detalle</button></td>
+            </tr>
+            <tr>
+              <td class="py-3 px-4 font-bold text-primary">#MAY-8941</td>
+              <td class="py-3 px-4"><div class="font-semibold">Valeria Distribuciones</div><div class="text-[11px] text-on-surface-variant">San Lorenzo / Santa Fe</div></td>
+              <td class="py-3 px-4">8 Packs x6 Lody Corsetería</td>
+              <td class="py-3 px-4 font-bold">$ 342.000</td>
+              <td class="py-3 px-4">Envío Transporte Rosario</td>
+              <td class="py-3 px-4"><span class="px-2.5 py-0.5 rounded-full bg-primary-fixed text-primary text-xs font-bold whitespace-nowrap">Listo Despacho</span></td>
+              <td class="py-3 px-4 text-right"><button type="button" disabled class="text-xs font-bold text-on-surface-variant cursor-not-allowed" title="Disponible próximamente">Ver Detalle</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+</div>
+</div>
+
+<!-- ===================== MODAL: ARTÍCULO (CREAR / EDITAR) ===================== -->
+<div class="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 bg-on-surface/40 backdrop-blur-sm hidden" id="articleModal" role="dialog" aria-modal="true" aria-labelledby="articleModalTitle">
+  <div class="bg-surface-container-lowest rounded-2xl shadow-2xl max-w-2xl w-full max-h-[94vh] overflow-y-auto border border-outline-variant/30 flex flex-col">
+    <div class="px-6 py-4 bg-surface-container-low border-b border-outline-variant/30 flex items-center justify-between sticky top-0 z-10">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-[24px]" aria-hidden="true">add_box</span>
+        <h2 class="font-headline-sm text-lg text-on-surface font-bold" id="articleModalTitle">Nueva Publicación de Producto Mayorista</h2>
+      </div>
+      <button type="button" class="text-on-surface-variant hover:text-primary p-1 rounded-lg" data-close-modal aria-label="Cerrar">
+        <span class="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
+      </button>
+    </div>
+    <form class="p-6 space-y-5" id="articleForm" novalidate>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label for="artBrand" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1">Seleccionar Marca *</label>
+          <select class="w-full px-3.5 py-2.5 bg-surface-container-low rounded-xl text-sm border-none focus:ring-2 focus:ring-primary text-on-surface font-semibold" id="artBrand" required></select>
+          <input class="hidden mt-2 w-full px-3.5 py-2.5 bg-surface-container-low rounded-xl text-sm border-none focus:ring-2 focus:ring-primary text-on-surface" id="artNewBrand" maxlength="40" placeholder="Nombre de la nueva marca" aria-label="Nombre de la nueva marca" type="text">
+        </div>
+        <div>
+          <label for="artTitle" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1">Título / Modelo del Artículo *</label>
+          <input class="w-full px-3.5 py-2.5 bg-surface-container-low rounded-xl text-sm border-none focus:ring-2 focus:ring-primary text-on-surface" id="artTitle" maxlength="120" placeholder="Ej. Conjunto Puntilla Tazas Soft" required type="text">
+        </div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div>
+          <label for="artCode" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1">Código / Art.</label>
+          <input class="w-full px-3.5 py-2.5 bg-surface-container-low rounded-xl text-sm border-none focus:ring-2 focus:ring-primary text-on-surface" id="artCode" maxlength="30" placeholder="Ej. 402 o LD-4420" type="text">
+        </div>
+        <div>
+          <label for="artTag" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1">Etiqueta destacada</label>
+          <input class="w-full px-3.5 py-2.5 bg-surface-container-low rounded-xl text-sm border-none focus:ring-2 focus:ring-primary text-on-surface" id="artTag" maxlength="30" list="tagOptions" placeholder="Ej. Stock Inmediato" type="text">
+          <datalist id="tagOptions"><option value="Stock Inmediato"><option value="Alta Rotación"><option value="Línea Teen"><option value="Satén Premium"><option value="Especial Reductor"></datalist>
+        </div>
+        <div>
+          <label for="artSaleType" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1">Detalle de venta</label>
+          <input class="w-full px-3.5 py-2.5 bg-surface-container-low rounded-xl text-sm border-none focus:ring-2 focus:ring-primary text-on-surface" id="artSaleType" maxlength="80" placeholder="Ej. Pack x 6 cajas individuales" type="text">
+        </div>
+      </div>
+      <div>
+        <span class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1" id="photosLabel">Cargar Fotos del Artículo * <span class="normal-case font-medium">(hasta 5 · la primera es la principal)</span></span>
+        <label class="dropzone border-2 border-dashed border-outline-variant rounded-xl p-4 text-center cursor-pointer hover:bg-surface-container-low transition-colors group flex flex-col items-center" id="photoDrop">
+          <input type="file" id="photoInput" accept="image/jpeg,image/png,image/webp" multiple class="sr-only" aria-labelledby="photosLabel">
+          <span class="material-symbols-outlined text-primary text-[28px] group-hover:scale-110 transition-transform" aria-hidden="true">add_photo_alternate</span>
+          <span class="text-xs text-on-surface font-semibold mt-1">Arrastre o haga clic para seleccionar fotografías</span>
+          <span class="text-[11px] text-on-surface-variant">JPG, PNG o WebP · máx. 4 MB c/u · se optimizan a 1200 px</span>
+        </label>
+        <div class="flex flex-wrap items-center gap-3 mt-3" id="photosPreviewRow"></div>
+      </div>
+      <div>
+        <label for="artDescription" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1">Descripción Detallada &amp; Composición</label>
+        <textarea class="w-full px-3.5 py-2 bg-surface-container-low rounded-xl text-sm border-none focus:ring-2 focus:ring-primary text-on-surface" id="artDescription" maxlength="1000" placeholder="Ej. Conjunto triángulo armado con detalles en microtul y base reforzada. Composición: 85% Poliamida, 15% Elastano." rows="2"></textarea>
+      </div>
+      <div>
+        <span class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1.5" id="sizesLabel">Talles Disponibles (Click para activar/desactivar)</span>
+        <div class="flex flex-wrap gap-2" id="sizesChipsContainer" role="group" aria-labelledby="sizesLabel"></div>
+        <div class="flex gap-2 mt-2 max-w-xs">
+          <input id="customSize" type="text" maxlength="20" placeholder="Otro talle (ej. XL, 1(S))" aria-label="Agregar otro talle" class="flex-1 px-3 py-1.5 bg-surface-container-low rounded-lg text-xs border-none focus:ring-2 focus:ring-primary">
+          <button type="button" id="addSizeBtn" class="px-3 py-1.5 rounded-lg bg-surface-container-high text-xs font-bold text-primary hover:bg-secondary-container">Agregar</button>
+        </div>
+      </div>
+      <div>
+        <span class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1.5" id="colorsLabel">Colores Disponibles</span>
+        <div class="flex flex-wrap gap-2.5" id="colorSwatchesContainer" role="group" aria-labelledby="colorsLabel"></div>
+        <div class="flex gap-2 mt-2 max-w-xs">
+          <input id="customColor" type="text" maxlength="30" placeholder="Otro color (ej. Visón)" aria-label="Agregar otro color" class="flex-1 px-3 py-1.5 bg-surface-container-low rounded-lg text-xs border-none focus:ring-2 focus:ring-primary">
+          <button type="button" id="addColorBtn" class="px-3 py-1.5 rounded-lg bg-surface-container-high text-xs font-bold text-primary hover:bg-secondary-container">Agregar</button>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-surface-container-low">
+        <div>
+          <label for="artPresentation" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1">Presentación Mayorista *</label>
+          <input class="w-full px-3 py-2 bg-surface-container-lowest rounded-lg text-xs font-semibold border-none focus:ring-2 focus:ring-primary" id="artPresentation" list="presentationOptions" maxlength="40" required placeholder="Pack x 6 Unid." type="text">
+          <datalist id="presentationOptions"><option value="Pack x 6 Unid."><option value="Pack x 12 Unid."><option value="Pack x 4 Unid."><option value="Curva completa"><option value="Bulto x 6 Unid."></datalist>
+        </div>
+        <div>
+          <label for="artPriceUnit" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1">Precio x Unidad ($) *</label>
+          <input class="w-full px-3 py-2 bg-surface-container-lowest rounded-lg text-xs font-semibold border-none focus:ring-2 focus:ring-primary" id="artPriceUnit" placeholder="4200" required type="number" min="0" step="1" inputmode="numeric">
+        </div>
+        <div>
+          <label for="artPricePack" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1">Precio x Pack ($) *</label>
+          <input class="w-full px-3 py-2 bg-surface-container-lowest rounded-lg text-xs font-semibold border-none focus:ring-2 focus:ring-primary" id="artPricePack" placeholder="25200" required type="number" min="0" step="1" inputmode="numeric">
+        </div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="p-4 rounded-xl bg-secondary-container/40 border border-outline-variant/40 flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-full bg-primary-fixed text-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-[20px]" aria-hidden="true">auto_awesome</span></div>
+            <div>
+              <div class="text-sm font-bold text-on-surface" id="artIsNewLabel">Activar como NOVEDAD</div>
+              <div class="text-xs text-on-surface-variant">Badge visible y ubicación en "Novedades".</div>
+            </div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer shrink-0">
+            <input class="sr-only peer" id="artIsNew" type="checkbox" aria-labelledby="artIsNewLabel">
+            <div class="w-11 h-6 bg-surface-container-highest rounded-full peer peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+          </label>
+        </div>
+        <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/40 flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-[20px]" aria-hidden="true">inventory_2</span></div>
+            <div>
+              <div class="text-sm font-bold text-on-surface" id="artInStockLabel">Con stock</div>
+              <div class="text-xs text-on-surface-variant">Si se pausa, figura "Sin stock momentáneo".</div>
+            </div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer shrink-0">
+            <input class="sr-only peer" id="artInStock" type="checkbox" checked aria-labelledby="artInStockLabel">
+            <div class="w-11 h-6 bg-surface-container-highest rounded-full peer peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+          </label>
+        </div>
+      </div>
+      <p id="articleFormError" class="hidden text-xs font-semibold text-error p-3 rounded-lg bg-error-container" role="alert"></p>
+      <div class="flex items-center justify-end gap-3 pt-2">
+        <button class="px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider text-on-surface-variant hover:bg-surface-container" data-close-modal type="button">Cancelar</button>
+        <button class="px-6 py-2.5 rounded-full bg-primary hover:bg-primary-container text-on-primary text-xs font-bold uppercase tracking-wider shadow-md transition-all flex items-center gap-2 disabled:opacity-60" type="submit" id="articleSubmit">
+          <span class="material-symbols-outlined text-[18px]" aria-hidden="true">publish</span>
+          <span>Guardar &amp; Publicar</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== MODAL: PORTADA (CREAR / EDITAR) ===================== -->
+<div class="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 bg-on-surface/40 backdrop-blur-sm hidden" id="bannerModal" role="dialog" aria-modal="true" aria-labelledby="bannerModalTitle">
+  <div class="bg-surface-container-lowest rounded-2xl shadow-2xl max-w-xl w-full max-h-[94vh] overflow-y-auto border border-outline-variant/30">
+    <div class="px-6 py-4 bg-surface-container-low border-b border-outline-variant/30 flex items-center justify-between sticky top-0 z-10">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-[24px]" aria-hidden="true">wallpaper</span>
+        <h2 class="font-headline-sm text-lg text-on-surface font-bold" id="bannerModalTitle">Nueva Portada</h2>
+      </div>
+      <button type="button" class="text-on-surface-variant hover:text-primary p-1 rounded-lg" data-close-modal aria-label="Cerrar">
+        <span class="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
+      </button>
+    </div>
+    <form class="p-6 space-y-4" id="bannerForm" novalidate>
+      <div>
+        <span class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1" id="bannerImageLabel">Imagen *</span>
+        <label class="dropzone relative block rounded-xl overflow-hidden border-2 border-dashed border-outline-variant cursor-pointer group bg-surface-container-low h-44" id="bannerDrop">
+          <input type="file" id="bannerImageInput" accept="image/jpeg,image/png,image/webp" class="sr-only" aria-labelledby="bannerImageLabel">
+          <img id="bannerPreview" alt="Vista previa de la portada" class="hidden absolute inset-0 w-full h-full object-cover">
+          <span class="absolute inset-0 flex flex-col items-center justify-center text-center bg-surface-container-lowest/70 group-hover:bg-surface-container-lowest/85 transition-colors">
+            <span class="material-symbols-outlined text-primary text-[28px]" aria-hidden="true">cloud_upload</span>
+            <span class="text-xs font-semibold text-on-surface mt-1" id="bannerDropText">Haga clic para subir o reemplazar la imagen</span>
+            <span class="text-[11px] text-on-surface-variant">JPG, PNG o WebP · máx. 4 MB · se optimiza a 1920 px</span>
+          </span>
+        </label>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label for="bannerType" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1">Ubicación *</label>
+          <select id="bannerType" class="w-full px-3.5 py-2.5 bg-surface-container-low rounded-xl text-sm border-none focus:ring-2 focus:ring-primary font-semibold">
+            <option value="hero">Portada Inicio (imagen principal)</option>
+            <option value="promo">Banner Promocional</option>
+            <option value="category">Portada Categoría</option>
+          </select>
+        </div>
+        <div>
+          <label for="bannerLabel" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1">Etiqueta *</label>
+          <input id="bannerLabel" type="text" maxlength="40" required placeholder="Ej. Portada Inicio #1" class="w-full px-3.5 py-2.5 bg-surface-container-low rounded-xl text-sm border-none focus:ring-2 focus:ring-primary">
+        </div>
+      </div>
+      <div>
+        <label for="bannerTitle" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1">Título *</label>
+        <input id="bannerTitle" type="text" maxlength="90" required placeholder="Ej. Colección Nueva Temporada Rosario" class="w-full px-3.5 py-2.5 bg-surface-container-low rounded-xl text-sm border-none focus:ring-2 focus:ring-primary">
+      </div>
+      <div>
+        <label for="bannerDescription" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1">Descripción</label>
+        <textarea id="bannerDescription" rows="2" maxlength="240" class="w-full px-3.5 py-2 bg-surface-container-low rounded-xl text-sm border-none focus:ring-2 focus:ring-primary"></textarea>
+      </div>
+      <div>
+        <label for="bannerAlt" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1">Texto alternativo (accesibilidad)</label>
+        <input id="bannerAlt" type="text" maxlength="160" placeholder="Describí la imagen para lectores de pantalla" class="w-full px-3.5 py-2.5 bg-surface-container-low rounded-xl text-sm border-none focus:ring-2 focus:ring-primary">
+      </div>
+      <div class="p-4 rounded-xl bg-secondary-container/40 border border-outline-variant/40 flex items-center justify-between gap-3">
+        <div>
+          <div class="text-sm font-bold text-on-surface" id="bannerActiveLabel">Portada activa</div>
+          <div class="text-xs text-on-surface-variant">Solo puede haber una Portada Inicio activa: activar esta desactiva la anterior.</div>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer shrink-0">
+          <input class="sr-only peer" id="bannerActive" type="checkbox" checked aria-labelledby="bannerActiveLabel">
+          <div class="w-11 h-6 bg-surface-container-highest rounded-full peer peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+        </label>
+      </div>
+      <p id="bannerFormError" class="hidden text-xs font-semibold text-error p-3 rounded-lg bg-error-container" role="alert"></p>
+      <div class="flex items-center justify-end gap-3 pt-2">
+        <button class="px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider text-on-surface-variant hover:bg-surface-container" data-close-modal type="button">Cancelar</button>
+        <button class="px-6 py-2.5 rounded-full bg-primary hover:bg-primary-container text-on-primary text-xs font-bold uppercase tracking-wider shadow-md transition-all flex items-center gap-2 disabled:opacity-60" type="submit" id="bannerSubmit">
+          <span class="material-symbols-outlined text-[18px]" aria-hidden="true">publish</span>
+          <span>Guardar Portada</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== MODAL: CONFIRMACIÓN ===================== -->
+<div class="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-on-surface/50 backdrop-blur-sm hidden" id="confirmModal" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmMessage">
+  <form class="bg-surface-container-lowest rounded-2xl shadow-2xl max-w-md w-full border border-outline-variant/30 p-6" id="confirmForm" novalidate>
+    <div class="flex items-start gap-3">
+      <div class="w-10 h-10 rounded-full bg-error-container text-error flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-[22px]" aria-hidden="true">warning</span></div>
+      <div class="flex-1">
+        <h2 class="font-headline-sm text-lg text-on-surface font-bold" id="confirmTitle"></h2>
+        <p class="text-sm text-on-surface-variant mt-1" id="confirmMessage"></p>
+      </div>
+    </div>
+    <div id="confirmTypeWrap" class="hidden mt-4">
+      <label for="confirmInput" class="block text-xs font-bold text-on-surface-variant mb-1" id="confirmInputLabel"></label>
+      <input id="confirmInput" type="text" autocomplete="off" class="w-full px-3.5 py-2.5 bg-surface-container-low rounded-xl text-sm border-none focus:ring-2 focus:ring-error">
+    </div>
+    <div class="flex items-center justify-end gap-3 mt-6">
+      <button type="button" id="confirmCancel" class="px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider text-on-surface-variant hover:bg-surface-container">Cancelar</button>
+      <button type="submit" id="confirmOk" class="px-6 py-2.5 rounded-full bg-error text-on-error text-xs font-bold uppercase tracking-wider shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+        <span class="material-symbols-outlined text-[18px]" aria-hidden="true">delete</span>
+        <span id="confirmOkLabel">Eliminar</span>
+      </button>
+    </div>
+  </form>
+</div>
+
+<script type="module" src="/src/admin/main.js"></script>
+</body>
+</html>

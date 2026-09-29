@@ -1,0 +1,67 @@
+@config "../../tailwind.admin.config.js";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
+  body {
+    overscroll-behavior: none;
+  }
+  main > :first-child {
+    margin-top: 0 !important;
+  }
+  main > :last-child {
+    margin-bottom: 0 !important;
+  }
+  :focus-visible {
+    outline: 3px solid #970046;
+    outline-offset: 2px;
+  }
+  /* El dropzone es un <label> con el input oculto: mostrar foco en el contenedor. */
+  .dropzone:focus-within {
+    outline: 3px solid #970046;
+    outline-offset: 2px;
+  }
+  .dropzone.is-dragover {
+    @apply bg-surface-container-low border-primary;
+  }
+}
+
+@layer components {
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    overflow: hidden;
+    display: inline-block;
+    max-width: 1.2em;
+    line-height: 1;
+    user-select: none;
+  }
+  .icon-fill {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  .spin {
+    animation: spin 0.9s linear infinite;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
