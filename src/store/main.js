@@ -3,7 +3,7 @@ import { esc, safeImg, formatSizes, api, initials } from '../shared/utils.js';
 import { initCart, qtyOf, setArticles, packPrice, refresh as refreshCart } from './cart.js';
 import { initProduct, openProduct, setProducts } from './product.js';
 import { initMenu, setTree } from './menu.js';
-import { buildTreeFrom, slugify } from '../shared/tree.js';
+import { buildTreeFrom, slugify, normalizeName } from '../shared/tree.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -15,6 +15,7 @@ const state = {
   tree: { categories: [], brands: [] },
   filter: { cat: null, sub: null, brand: null },
   catalogLimit: CATALOG_PAGE,
+  search: '',
 };
 
 /* ---------------------------------------------------------------- Header */
@@ -265,9 +266,58 @@ function articlesInScope() {
   return state.articles;
 }
 
+/* ---------------------------------------------------------------- Buscador */
+// Busca en título, código, marca, descripción, presentación, colores, talles y categoría.
+// Sin distinguir mayúsculas ni acentos; todas las palabras tienen que aparecer.
+
+function searchText(a) {
+  const sub = state.tree.categories.flatMap((c) => c.subcategories.map((s) => ({ c, s }))).find((x) => x.s.id === a.subcategoryId);
+  return normalizeName(
+    [a.title, a.code, a.brand, a.description, a.saleType, a.presentation, a.tag, ...(a.colors || []), ...(a.sizes || []), sub?.c.name, sub?.s.name].join(' ')
+  );
+}
+
+function matchesSearch(a) {
+  const terms = normalizeName(state.search).split(/\s+/).filter(Boolean);
+  if (!terms.length) return true;
+  const hay = searchText(a);
+  return terms.every((t) => hay.includes(t));
+}
+
+let searchTimer;
+function onSearchInput() {
+  const input = $('#catalogSearch');
+  $('#catalogSearchClear').classList.toggle('hidden', !input.value);
+  $('#catalogSearchClear').classList.toggle('inline-flex', !!input.value);
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    state.search = input.value.trim().slice(0, 80);
+    state.catalogLimit = CATALOG_PAGE;
+    writeFilterToUrl(false);
+    renderCatalog();
+  }, 150);
+}
+
+$('#catalogSearch').addEventListener('input', onSearchInput);
+$('#catalogSearch').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    $('#catalogGrid').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  }
+  if (e.key === 'Escape' && e.currentTarget.value) {
+    e.currentTarget.value = '';
+    onSearchInput();
+  }
+});
+$('#catalogSearchClear').addEventListener('click', () => {
+  $('#catalogSearch').value = '';
+  onSearchInput();
+  $('#catalogSearch').focus();
+});
+
 function filteredArticles() {
   const brand = state.filter.brand;
-  return articlesInScope().filter((a) => !brand || brandSlug(a.brand) === brand);
+  return articlesInScope().filter((a) => (!brand || brandSlug(a.brand) === brand) && matchesSearch(a));
 }
 
 /** Normaliza el filtro contra el árbol: descarta slugs que ya no existen. */
@@ -281,6 +331,13 @@ function sanitizeFilter() {
 function readFilterFromUrl() {
   const p = new URLSearchParams(location.search);
   state.filter = { cat: p.get('categoria'), sub: p.get('subcategoria'), brand: p.get('marca') };
+  state.search = (p.get('buscar') || '').slice(0, 80);
+  const input = $('#catalogSearch');
+  if (input && input.value !== state.search) {
+    input.value = state.search;
+    $('#catalogSearchClear').classList.toggle('hidden', !state.search);
+    $('#catalogSearchClear').classList.toggle('inline-flex', !!state.search);
+  }
 }
 
 function writeFilterToUrl(push = true) {
@@ -289,6 +346,7 @@ function writeFilterToUrl(push = true) {
   set('categoria', state.filter.cat);
   set('subcategoria', state.filter.sub);
   set('marca', state.filter.brand);
+  set('buscar', state.search);
   const qs = p.toString();
   // Al reemplazar (carga inicial) se conserva el #producto/… de un enlace directo.
   const url = `${location.pathname}${qs ? `?${qs}` : ''}${push ? '' : location.hash}`;
@@ -433,11 +491,16 @@ function renderCatalog() {
     }
     html += catalogCard(x.article);
   });
-  const filtering = state.filter.cat || state.filter.brand;
+  const filtering = state.filter.cat || state.filter.brand || state.search;
+  const emptyMsg = state.search
+    ? `No encontramos artículos para “${esc(state.search)}”${state.filter.cat || state.filter.brand ? ' con los filtros elegidos' : ''}. Probá con otra palabra.`
+    : filtering
+      ? 'Todavía no hay artículos cargados con este filtro.'
+      : 'No hay artículos cargados por el momento.';
   grid.innerHTML = shown.length
     ? html
     : `<div class="col-span-full text-center py-10">
-        <p class="text-sm text-slate-600">${filtering ? 'Todavía no hay artículos cargados con este filtro.' : 'No hay artículos cargados por el momento.'}</p>
+        <p class="text-sm text-slate-600">${emptyMsg}</p>
         ${filtering ? '<button type="button" data-clear-filter class="mt-3 px-5 py-2.5 rounded-full bg-[#be185d] text-white text-sm font-semibold hover:bg-[#970046]">Ver todo el catálogo</button>' : ''}
       </div>`;
   grid.setAttribute('aria-busy', 'false');
@@ -451,7 +514,12 @@ function renderCatalog() {
 }
 
 $('#catalogGrid').addEventListener('click', (e) => {
-  if (e.target.closest('[data-clear-filter]')) return applyFilter({}, { scroll: false });
+  if (e.target.closest('[data-clear-filter]')) {
+    $('#catalogSearch').value = '';
+    state.search = '';
+    $('#catalogSearchClear').classList.add('hidden');
+    return applyFilter({}, { scroll: false });
+  }
   const narrow = e.target.closest('button[data-filter]');
   if (narrow) applyFilter(JSON.parse(narrow.dataset.filter), { scroll: true });
 });

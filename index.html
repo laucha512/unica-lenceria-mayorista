@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=add,add_shopping_cart,category,chat,check,chevron_left,chevron_right,close,delete,description,download,expand_more,filter_alt,inventory,inventory_2,local_shipping,location_on,menu,navigation,new_releases,open_in_new,payments,photo_camera,remove,schedule,shopping_bag,storefront,table_view,verified,verified_user,zoom_in&display=block">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=add,add_shopping_cart,category,chat,check,chevron_left,chevron_right,close,delete,description,download,expand_more,filter_alt,inventory,inventory_2,local_shipping,location_on,menu,navigation,new_releases,open_in_new,payments,photo_camera,remove,schedule,search,shopping_bag,storefront,table_view,verified,verified_user,zoom_in&display=block">
 <link rel="preload" as="image" href="/img/hero-coleccion-saten-encaje.webp" fetchpriority="high">
 <link rel="stylesheet" href="/src/store/store.css">
 <script type="application/ld+json">
@@ -336,6 +336,16 @@
       </p>
     </div>
     <!-- Filtros por marca -->
+    <div class="max-w-xl mx-auto mb-space-md" role="search">
+      <label for="catalogSearch" class="sr-only">Buscar artículos</label>
+      <div class="relative">
+        <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[22px] text-slate-500 pointer-events-none" aria-hidden="true">search</span>
+        <input id="catalogSearch" type="search" inputmode="search" autocomplete="off" enterkeyhint="search" maxlength="80" placeholder="Buscar artículo, marca o código (ej. boxer, Ynaam, 3521)" class="w-full pl-12 pr-12 py-3 rounded-full border-2 border-pink-200 bg-white text-base text-slate-900 placeholder:text-slate-500 shadow-sm focus:border-[#be185d] focus:ring-[#be185d] [&::-webkit-search-cancel-button]:hidden">
+        <button type="button" id="catalogSearchClear" class="hidden absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 items-center justify-center rounded-full text-slate-600 hover:text-[#be185d] hover:bg-pink-50" aria-label="Borrar búsqueda">
+          <span class="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
+        </button>
+      </div>
+    </div>
     <div id="catalogFilterBar" class="hidden mb-space-md flex flex-wrap items-center justify-center gap-2" aria-live="polite"></div>
     <div id="brandFilters" class="flex flex-wrap items-center justify-center gap-2 mb-space-lg" role="group" aria-label="Filtrar catálogo por marca"></div>
     <!-- Grilla del catálogo -->
