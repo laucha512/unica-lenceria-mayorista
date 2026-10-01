@@ -576,6 +576,8 @@ async function load() {
   state.articles = articles;
   state.brands = brands;
   state.tree = tree;
+  // Contador del inicio: cantidad de marcas cargadas en el admin (Carrusel de Marcas).
+  $('#statBrands').textContent = String(brands.length);
   setTree(tree);
   readFilterFromUrl();
   sanitizeFilter();
