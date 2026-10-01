@@ -36,7 +36,7 @@ function chip(kind, value, on) {
   const cls = on
     ? 'bg-[#be185d] border-[#be185d] text-white'
     : 'bg-white border-pink-200 text-slate-800 hover:border-[#be185d]';
-  return `<button type="button" role="radio" data-${kind}="${esc(value)}" aria-checked="${on}" class="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-full border-2 text-sm font-semibold transition-colors ${cls}">${dot}${esc(value)}${on ? '<span class="material-symbols-outlined text-[18px]" aria-hidden="true">check</span>' : ''}</button>`;
+  return `<button type="button" role="${kind === 'size' ? 'checkbox' : 'radio'}" data-${kind}="${esc(value)}" aria-checked="${on}" class="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-full border-2 text-sm font-semibold transition-colors ${cls}">${dot}${esc(value)}${on ? '<span class="material-symbols-outlined text-[18px]" aria-hidden="true">check</span>' : ''}</button>`;
 }
 
 function galleryHtml(a) {
@@ -94,10 +94,10 @@ function infoHtml(a) {
     : '';
   const sizesBlock = a.sizes.length
     ? `<fieldset class="mt-5">
-      <legend class="text-sm font-bold text-slate-900" id="sizeLegend">Elegí un talle <span class="text-[#be185d]">*</span></legend>
-      <p class="text-xs text-slate-600 mb-2">Para pedir otro talle, agregá este y volvé a elegir.</p>
-      <div class="flex flex-wrap gap-2" data-group="size" role="radiogroup" aria-labelledby="sizeLegend" aria-required="true">${a.sizes.map((s) => chip('size', s, current.size === s)).join('')}</div>
-      <p class="hidden mt-2 text-sm font-semibold text-red-700" data-error="size" role="alert">Elegí un talle para continuar.</p>
+      <legend class="text-sm font-bold text-slate-900" id="sizeLegend">Elegí uno o más talles <span class="text-[#be185d]">*</span></legend>
+      <p class="text-xs text-slate-600 mb-2">Podés marcar varios: se agrega la cantidad elegida de cada talle.</p>
+      <div class="flex flex-wrap gap-2" data-group="size" role="group" aria-labelledby="sizeLegend">${a.sizes.map((s) => chip('size', s, current.sizes.has(s))).join('')}</div>
+      <p class="hidden mt-2 text-sm font-semibold text-red-700" data-error="size" role="alert">Elegí al menos un talle para continuar.</p>
     </fieldset>`
     : '';
   return `
@@ -125,7 +125,7 @@ function infoHtml(a) {
       a.inStock
         ? `<div class="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <span class="block text-xs font-bold uppercase tracking-wider text-slate-600" id="productQtyLabel">Cantidad de packs de esta combinación</span>
+          <span class="block text-xs font-bold uppercase tracking-wider text-slate-600" id="productQtyLabel">Cantidad de packs por talle</span>
           <div class="mt-1 inline-flex items-center rounded-full border-2 border-pink-200 bg-white">
             <button type="button" data-pqty="-1" class="w-11 h-11 inline-flex items-center justify-center rounded-full text-slate-700 hover:text-[#be185d]" aria-label="Un pack menos"><span class="material-symbols-outlined text-[20px]" aria-hidden="true">remove</span></button>
             <input id="productQty" type="number" inputmode="numeric" min="1" max="${MAX_QTY}" value="${current.qty}" aria-labelledby="productQtyLabel" class="w-14 border-0 p-0 text-center text-lg font-bold text-slate-900 focus:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none">
@@ -134,7 +134,7 @@ function infoHtml(a) {
         </div>
         <div class="text-right">
           <span class="block text-xs font-bold uppercase tracking-wider text-slate-600">Subtotal</span>
-          <span id="productSubtotal" class="font-headline-sm text-2xl font-bold text-slate-900">${esc(formatPrice(price * current.qty))}</span>
+          <span id="productSubtotal" class="font-headline-sm text-2xl font-bold text-slate-900">${esc(formatPrice(price * current.qty * Math.max(1, current.sizes.size)))}</span>
         </div>
       </div>
       <p id="productSelection" class="mt-3 text-xs text-slate-600"></p>
@@ -284,18 +284,23 @@ function renderGroup(group) {
   const box = $(`[data-group="${group}"]`);
   if (!box) return;
   const list = group === 'color' ? current.article.colors : current.article.sizes;
-  box.innerHTML = list.map((v) => chip(group, v, current[group] === v)).join('');
+  box.innerHTML = list.map((v) => chip(group, v, group === 'size' ? current.sizes.has(v) : current.color === v)).join('');
 }
 
 function updateSummary() {
   const a = current.article;
   const sub = $('#productSubtotal');
-  if (sub) sub.textContent = formatPrice(packPrice(a) * current.qty);
+  const sizeCount = Math.max(1, current.sizes.size);
+  if (sub) sub.textContent = formatPrice(packPrice(a) * current.qty * sizeCount);
   const sel = $('#productSelection');
   if (sel) {
     const parts = [`${current.qty} ${current.qty === 1 ? 'pack' : 'packs'}`];
     if (a.colors.length) parts.push(`Color: ${current.color || '— elegí uno —'}`);
-    if (a.sizes.length) parts.push(`Talle: ${current.size || '— elegí uno —'}`);
+    if (a.sizes.length) {
+      const chosen = a.sizes.filter((x) => current.sizes.has(x));
+      parts.push(chosen.length ? `Talle${chosen.length > 1 ? 's' : ''}: ${chosen.join(', ')}` : 'Talle: — elegí uno o más —');
+      if (chosen.length > 1) parts.push(`${current.qty * chosen.length} packs en total`);
+    }
     sel.textContent = parts.join(' · ');
   }
   const inCart = qtyOf(a.id);
@@ -347,7 +352,7 @@ function setActivePhoto(i, scroll = true) {
 
 function show(article) {
   if (!isOpen()) lastFocus = document.activeElement;
-  current = { article, color: null, size: null, qty: 1, photo: 0 };
+  current = { article, color: null, sizes: new Set(), qty: 1, photo: 0 };
   touchZoom = null;
   render();
   dialog().classList.remove('hidden');
@@ -449,7 +454,8 @@ export function initProduct({ onChange } = {}) {
     if (color || size) {
       const group = color ? 'color' : 'size';
       const value = (color || size).dataset[group];
-      current[group] = value;
+      if (color) current.color = value;
+      else current.sizes.has(value) ? current.sizes.delete(value) : current.sizes.add(value);
       renderGroup(group);
       $(`[data-group="${group}"] [data-${group}="${CSS.escape(value)}"]`)?.focus();
       $(`[data-error="${group}"]`)?.classList.add('hidden');
@@ -465,27 +471,27 @@ export function initProduct({ onChange } = {}) {
 
     if (e.target.closest('#productAdd')) {
       const a = current.article;
-      const missing = [a.colors.length && !current.color && 'color', a.sizes.length && !current.size && 'size'].filter(Boolean);
+      const missing = [a.colors.length && !current.color && 'color', a.sizes.length && !current.sizes.size && 'size'].filter(Boolean);
       missing.forEach((g) => $(`[data-error="${g}"]`)?.classList.remove('hidden'));
       if (missing.length) {
         $(`[data-group="${missing[0]}"] button`)?.focus();
         return;
       }
-      addToCart(a.id, current.qty, {
-        colors: current.color ? [current.color] : [],
-        sizes: current.size ? [current.size] : [],
-      });
-      const added = [current.color, current.size].filter(Boolean).join(' / ');
+      const chosenSizes = a.sizes.filter((x) => current.sizes.has(x));
+      const colors = current.color ? [current.color] : [];
+      if (chosenSizes.length) chosenSizes.forEach((sz) => addToCart(a.id, current.qty, { colors, sizes: [sz] }));
+      else addToCart(a.id, current.qty, { colors, sizes: [] });
+      const added = [current.color, chosenSizes.join(', ')].filter(Boolean).join(' / ');
       // Selección nueva para la próxima combinación
       current.color = null;
-      current.size = null;
+      current.sizes = new Set();
       current.qty = 1;
       renderGroup('color');
       renderGroup('size');
       if ($('#productQty')) $('#productQty').value = 1;
       const note = $('#productAdded');
       if (note) {
-        note.textContent = `Agregado${added ? `: ${added}` : ''}. Si querés otro color o talle, elegilo y volvé a agregar.`;
+        note.textContent = `Agregado${added ? `: ${added}` : ''}. Para otro color, elegilo y volvé a agregar.`;
         note.classList.remove('hidden');
       }
       const btn = $('#productAdd');
