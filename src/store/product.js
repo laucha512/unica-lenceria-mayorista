@@ -47,7 +47,7 @@ function galleryHtml(a) {
   <span class="pointer-events-none absolute top-3 right-16 md:right-3 z-10 flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-white/95 text-slate-800 text-xs font-bold shadow opacity-80 group-hover/gallery:opacity-100 transition-opacity" aria-hidden="true">
     <span class="material-symbols-outlined text-[18px]">zoom_in</span>
     <span class="hidden [@media(hover:hover)]:inline">Pasá el mouse para ampliar</span>
-    <span class="[@media(hover:hover)]:hidden" data-zoom-hint>Tocá dos veces para ampliar</span>
+    <span class="[@media(hover:hover)]:hidden" data-zoom-hint>Pellizcá con dos dedos para ampliar</span>
   </span>
   <ul id="productTrack" class="flex overflow-hidden h-[min(70svh,520px)] md:h-[min(85svh,680px)] touch-pan-y select-none" aria-label="Fotos de ${esc(a.title)}" tabindex="0">
     ${imgs
@@ -166,16 +166,17 @@ function render() {
 
 /* ---------------------------------------------------------------- Zoom y gestos de la galería */
 // Mouse: al pasar sobre la foto se amplía 2x siguiendo el cursor.
-// Celular: doble toque amplía 2x en el punto tocado; con zoom se arrastra para recorrer la foto
-// y otro doble toque la vuelve a su tamaño. El carrusel solo cambia de foto con un deslizamiento
-// claramente horizontal: al scrollear arriba/abajo la foto queda quieta y siempre entera.
+// Celular: se amplía pellizcando con dos dedos (hasta 4x); con zoom se arrastra con un dedo para
+// recorrer la foto, y al achicarla del todo vuelve a su tamaño. El carrusel solo cambia de foto con
+// un deslizamiento claramente horizontal: al scrollear arriba/abajo la foto queda quieta y entera.
 const ZOOM = 2;
-const DOUBLE_TAP_MS = 300;
+const MAX_PINCH = 4;
 const canHover = () => matchMedia('(hover: hover) and (pointer: fine)').matches;
 
-let touchZoom = null; // { slide, img } de la foto ampliada con doble toque
+let touchZoom = null; // { slide, s, tx, ty } de la foto ampliada con los dedos
 
 const pct = (v, min, size) => Math.min(100, Math.max(0, ((v - min) / size) * 100));
+const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 
 function zoomAt(slide, clientX, clientY) {
   const img = slide.querySelector('[data-zoom-img]');
@@ -188,6 +189,23 @@ function unzoom(slide) {
   const img = slide.querySelector('[data-zoom-img]');
   img.style.transform = '';
   img.style.transformOrigin = '';
+  img.style.transition = '';
+}
+
+// Aplica escala y desplazamiento sin dejar bordes vacíos dentro del cuadro.
+function applyPinch(z) {
+  const w = z.slide.clientWidth;
+  const h = z.slide.clientHeight;
+  z.tx = clamp(z.tx, w - z.s * w, 0);
+  z.ty = clamp(z.ty, h - z.s * h, 0);
+  const img = z.slide.querySelector('[data-zoom-img]');
+  img.style.transformOrigin = '0 0';
+  img.style.transform = `translate(${z.tx}px, ${z.ty}px) scale(${z.s})`;
+}
+
+function setZoomHint(zoomed) {
+  const hint = $('[data-zoom-hint]');
+  if (hint) hint.textContent = zoomed ? 'Pellizcá para achicar' : 'Pellizcá con dos dedos para ampliar';
 }
 
 function resetTouchZoom() {
@@ -195,8 +213,7 @@ function resetTouchZoom() {
   unzoom(touchZoom.slide);
   touchZoom.slide.style.touchAction = '';
   touchZoom = null;
-  const hint = $('[data-zoom-hint]');
-  if (hint) hint.textContent = 'Tocá dos veces para ampliar';
+  setZoomHint(false);
 }
 
 function wireZoom(track) {
@@ -209,15 +226,38 @@ function wireZoom(track) {
   });
 
   // Táctil
-  let start = null;
-  let lastTap = { time: 0, x: 0, y: 0 };
+  let swipe = null; // un dedo sin zoom: posible deslizamiento a otra foto
+  let pan = null; // un dedo con zoom: recorrer la foto
+  let pinch = null; // dos dedos: ampliar/achicar
+
+  const local = (slide, x, y) => {
+    const r = slide.getBoundingClientRect();
+    return { x: x - r.left, y: y - r.top };
+  };
+  const mid = (a, b) => ({ x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 });
+  const dist = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+
+  function beginOneFinger(t) {
+    if (touchZoom) pan = { x: t.clientX, y: t.clientY, tx: touchZoom.tx, ty: touchZoom.ty };
+    else swipe = { x: t.clientX, y: t.clientY };
+  }
 
   track.addEventListener(
     'touchstart',
     (e) => {
-      if (e.touches.length !== 1) return (start = null);
-      const t = e.touches[0];
-      start = { x: t.clientX, y: t.clientY, time: Date.now(), moved: false };
+      const slide = e.target.closest('[data-zoom]');
+      if (!slide) return;
+      if (e.touches.length === 2) {
+        swipe = pan = null;
+        if (touchZoom && touchZoom.slide !== slide) resetTouchZoom();
+        if (!touchZoom) touchZoom = { slide, s: 1, tx: 0, ty: 0 };
+        const m = local(slide, ...Object.values(mid(e.touches[0], e.touches[1])));
+        pinch = { d: dist(e.touches[0], e.touches[1]) || 1, s: touchZoom.s, px: (m.x - touchZoom.tx) / touchZoom.s, py: (m.y - touchZoom.ty) / touchZoom.s };
+        slide.querySelector('[data-zoom-img]').style.transition = 'none';
+        slide.style.touchAction = 'none';
+      } else if (e.touches.length === 1) {
+        beginOneFinger(e.touches[0]);
+      }
     },
     { passive: true }
   );
@@ -225,57 +265,50 @@ function wireZoom(track) {
   track.addEventListener(
     'touchmove',
     (e) => {
-      if (!start || e.touches.length !== 1) return;
-      const t = e.touches[0];
-      if (Math.abs(t.clientX - start.x) > 8 || Math.abs(t.clientY - start.y) > 8) start.moved = true;
-      if (touchZoom) {
-        // Con zoom, arrastrar recorre la foto (y no scrollea la página).
-        e.preventDefault();
-        zoomAt(touchZoom.slide, t.clientX, t.clientY);
+      if (pinch && e.touches.length === 2 && touchZoom) {
+        e.preventDefault(); // el pellizco amplía la foto, no la página
+        const z = touchZoom;
+        z.s = clamp(pinch.s * (dist(e.touches[0], e.touches[1]) / pinch.d), 1, MAX_PINCH);
+        const m = local(z.slide, ...Object.values(mid(e.touches[0], e.touches[1])));
+        z.tx = m.x - z.s * pinch.px;
+        z.ty = m.y - z.s * pinch.py;
+        applyPinch(z);
+      } else if (pan && e.touches.length === 1 && touchZoom) {
+        e.preventDefault(); // con zoom, arrastrar recorre la foto (y no scrollea la página)
+        const t = e.touches[0];
+        touchZoom.tx = pan.tx + (t.clientX - pan.x);
+        touchZoom.ty = pan.ty + (t.clientY - pan.y);
+        touchZoom.slide.querySelector('[data-zoom-img]').style.transition = 'none';
+        applyPinch(touchZoom);
       }
     },
     { passive: false }
   );
 
-  track.addEventListener('touchend', (e) => {
-    if (!start) return;
-    const t = e.changedTouches[0];
-    const dx = t.clientX - start.x;
-    const dy = t.clientY - start.y;
-    const slide = e.target.closest('[data-zoom]');
-
-    // Doble toque
-    if (!start.moved && Date.now() - start.time < 250 && slide) {
-      const now = Date.now();
-      const near = Math.abs(t.clientX - lastTap.x) < 30 && Math.abs(t.clientY - lastTap.y) < 30;
-      if (now - lastTap.time < DOUBLE_TAP_MS && near) {
-        e.preventDefault(); // evita el zoom de página del navegador
-        lastTap = { time: 0, x: 0, y: 0 };
-        if (touchZoom) {
-          resetTouchZoom();
-        } else {
-          zoomAt(slide, t.clientX, t.clientY);
-          slide.style.touchAction = 'none';
-          touchZoom = { slide };
-          const hint = $('[data-zoom-hint]');
-          if (hint) hint.textContent = 'Tocá dos veces para salir';
-        }
-      } else {
-        lastTap = { time: now, x: t.clientX, y: t.clientY };
-      }
-      start = null;
+  const end = (e) => {
+    if (pinch && e.touches.length < 2) {
+      pinch = null;
+      if (touchZoom && touchZoom.s < 1.05) resetTouchZoom();
+      else setZoomHint(true);
+      // Si queda un dedo apoyado, sigue recorriendo la foto (nunca cambia de foto).
+      if (e.touches.length === 1 && touchZoom) beginOneFinger(e.touches[0]);
       return;
     }
-
-    // Deslizamiento horizontal claro: foto anterior/siguiente (sin zoom).
-    if (!touchZoom && Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-      setActivePhoto(current.photo + (dx < 0 ? 1 : -1));
+    if (swipe && !touchZoom && e.touches.length === 0) {
+      const t = e.changedTouches[0];
+      const dx = t.clientX - swipe.x;
+      const dy = t.clientY - swipe.y;
+      // Deslizamiento horizontal claro: foto anterior/siguiente.
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) setActivePhoto(current.photo + (dx < 0 ? 1 : -1));
     }
-    start = null;
-  });
+    if (e.touches.length === 0) swipe = pan = null;
+  };
+  track.addEventListener('touchend', end);
+  track.addEventListener('touchcancel', end);
 
   // Si cambia el ancho (rotar el celular), la foto actual queda centrada en su cuadro.
   new ResizeObserver(() => {
+    resetTouchZoom();
     if (current) track.scrollLeft = current.photo * track.clientWidth;
   }).observe(track);
 }
