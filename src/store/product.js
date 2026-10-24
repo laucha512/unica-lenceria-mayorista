@@ -25,6 +25,21 @@ const isOpen = () => !dialog().classList.contains('hidden');
 
 /* ---------------------------------------------------------------- Render */
 
+/** Colores distintos por talle: se elige un talle y después un color de ese talle. */
+const bySize = (a) => Object.keys(a.colorsBySize || {}).length > 0;
+const chosenSize = () => [...current.sizes][0] || null;
+function colorList(a) {
+  if (!bySize(a)) return a.colors;
+  const size = chosenSize();
+  return size ? a.colorsBySize[size] || [] : [];
+}
+function colorHint(a) {
+  if (!bySize(a)) return 'Para pedir otro color, agregá este y volvé a elegir.';
+  const size = chosenSize();
+  if (!size) return 'Primero elegí un talle: cada talle tiene sus propios colores.';
+  return colorList(a).length ? `Colores disponibles en talle ${size}.` : `El talle ${size} no tiene colores para elegir.`;
+}
+
 function chip(kind, value, on) {
   const hex = kind === 'color' ? swatchOf(value) : null;
   const dot =
@@ -36,7 +51,8 @@ function chip(kind, value, on) {
   const cls = on
     ? 'bg-[#be185d] border-[#be185d] text-white'
     : 'bg-white border-pink-200 text-slate-800 hover:border-[#be185d]';
-  return `<button type="button" role="${kind === 'size' ? 'checkbox' : 'radio'}" data-${kind}="${esc(value)}" aria-checked="${on}" class="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-full border-2 text-sm font-semibold transition-colors ${cls}">${dot}${esc(value)}${on ? '<span class="material-symbols-outlined text-[18px]" aria-hidden="true">check</span>' : ''}</button>`;
+  const role = kind === 'size' && !bySize(current.article) ? 'checkbox' : 'radio';
+  return `<button type="button" role="${role}" data-${kind}="${esc(value)}" aria-checked="${on}" class="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-full border-2 text-sm font-semibold transition-colors ${cls}">${dot}${esc(value)}${on ? '<span class="material-symbols-outlined text-[18px]" aria-hidden="true">check</span>' : ''}</button>`;
 }
 
 function galleryHtml(a) {
@@ -84,20 +100,21 @@ function infoHtml(a) {
       ? `<span class="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">${esc(a.tag)}</span>`
       : ''
     : '<span class="text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">Sin stock momentáneo</span>';
-  const colorsBlock = a.colors.length
+  const colorsBlock = a.colors.length || bySize(a)
     ? `<fieldset class="mt-5">
       <legend class="text-sm font-bold text-slate-900" id="colorLegend">Elegí un color <span class="text-[#be185d]">*</span></legend>
-      <p class="text-xs text-slate-600 mb-2">Para pedir otro color, agregá este y volvé a elegir.</p>
-      <div class="flex flex-wrap gap-2" data-group="color" role="radiogroup" aria-labelledby="colorLegend" aria-required="true">${a.colors.map((c) => chip('color', c, current.color === c)).join('')}</div>
+      <p class="text-xs text-slate-600 mb-2" data-color-hint aria-live="polite">${esc(colorHint(a))}</p>
+      <div class="flex flex-wrap gap-2" data-group="color" role="radiogroup" aria-labelledby="colorLegend" aria-required="true">${colorList(a).map((c) => chip('color', c, current.color === c)).join('')}</div>
       <p class="hidden mt-2 text-sm font-semibold text-red-700" data-error="color" role="alert">Elegí un color para continuar.</p>
     </fieldset>`
     : '';
+  const one = bySize(a);
   const sizesBlock = a.sizes.length
     ? `<fieldset class="mt-5">
-      <legend class="text-sm font-bold text-slate-900" id="sizeLegend">Elegí uno o más talles <span class="text-[#be185d]">*</span></legend>
-      <p class="text-xs text-slate-600 mb-2">Podés marcar varios: se agrega la cantidad elegida de cada talle.</p>
-      <div class="flex flex-wrap gap-2" data-group="size" role="group" aria-labelledby="sizeLegend">${a.sizes.map((s) => chip('size', s, current.sizes.has(s))).join('')}</div>
-      <p class="hidden mt-2 text-sm font-semibold text-red-700" data-error="size" role="alert">Elegí al menos un talle para continuar.</p>
+      <legend class="text-sm font-bold text-slate-900" id="sizeLegend">${one ? 'Elegí un talle' : 'Elegí uno o más talles'} <span class="text-[#be185d]">*</span></legend>
+      <p class="text-xs text-slate-600 mb-2">${one ? 'Según el talle vas a ver sus colores. Para otro talle, agregá este y volvé a elegir.' : 'Podés marcar varios: se agrega la cantidad elegida de cada talle.'}</p>
+      <div class="flex flex-wrap gap-2" data-group="size" role="${one ? 'radiogroup' : 'group'}" aria-labelledby="sizeLegend">${a.sizes.map((s) => chip('size', s, current.sizes.has(s))).join('')}</div>
+      <p class="hidden mt-2 text-sm font-semibold text-red-700" data-error="size" role="alert">${one ? 'Elegí un talle para continuar.' : 'Elegí al menos un talle para continuar.'}</p>
     </fieldset>`
     : '';
   return `
@@ -118,14 +135,13 @@ function infoHtml(a) {
     <div class="flex justify-between gap-3"><dt class="font-bold text-slate-900 shrink-0">Curva de talles</dt><dd class="text-right min-w-0 [overflow-wrap:anywhere]">${esc(formatSizes(a.sizes))}</dd></div>
     <div class="flex justify-between gap-3"><dt class="font-bold text-slate-900 shrink-0">Presentación</dt><dd class="text-right min-w-0 [overflow-wrap:anywhere]">${esc(a.saleType || a.presentation)}</dd></div>
   </dl>
-  ${colorsBlock}
-  ${sizesBlock}
+  ${bySize(a) ? sizesBlock + colorsBlock : colorsBlock + sizesBlock}
   <div class="mt-6 pt-5 border-t border-pink-100">
     ${
       a.inStock
         ? `<div class="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <span class="block text-xs font-bold uppercase tracking-wider text-slate-600" id="productQtyLabel">Cantidad de packs por talle</span>
+          <span class="block text-xs font-bold uppercase tracking-wider text-slate-600" id="productQtyLabel">${bySize(a) ? 'Cantidad de packs' : 'Cantidad de packs por talle'}</span>
           <div class="mt-1 inline-flex items-center rounded-full border-2 border-pink-200 bg-white">
             <button type="button" data-pqty="-1" class="w-11 h-11 inline-flex items-center justify-center rounded-full text-slate-700 hover:text-[#be185d]" aria-label="Un pack menos"><span class="material-symbols-outlined text-[20px]" aria-hidden="true">remove</span></button>
             <input id="productQty" type="number" inputmode="numeric" min="1" max="${MAX_QTY}" value="${current.qty}" aria-labelledby="productQtyLabel" class="w-14 border-0 p-0 text-center text-lg font-bold text-slate-900 focus:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none">
@@ -316,7 +332,11 @@ function wireZoom(track) {
 function renderGroup(group) {
   const box = $(`[data-group="${group}"]`);
   if (!box) return;
-  const list = group === 'color' ? current.article.colors : current.article.sizes;
+  const list = group === 'color' ? colorList(current.article) : current.article.sizes;
+  if (group === 'color') {
+    const hint = $('[data-color-hint]');
+    if (hint) hint.textContent = colorHint(current.article);
+  }
   box.innerHTML = list.map((v) => chip(group, v, group === 'size' ? current.sizes.has(v) : current.color === v)).join('');
 }
 
@@ -328,7 +348,7 @@ function updateSummary() {
   const sel = $('#productSelection');
   if (sel) {
     const parts = [`${current.qty} ${current.qty === 1 ? 'pack' : 'packs'}`];
-    if (a.colors.length) parts.push(`Color: ${current.color || '— elegí uno —'}`);
+    if (colorList(a).length) parts.push(`Color: ${current.color || '— elegí uno —'}`);
     if (a.sizes.length) {
       const chosen = a.sizes.filter((x) => current.sizes.has(x));
       parts.push(chosen.length ? `Talle${chosen.length > 1 ? 's' : ''}: ${chosen.join(', ')}` : 'Talle: — elegí uno o más —');
@@ -488,7 +508,11 @@ export function initProduct({ onChange } = {}) {
       const group = color ? 'color' : 'size';
       const value = (color || size).dataset[group];
       if (color) current.color = value;
-      else current.sizes.has(value) ? current.sizes.delete(value) : current.sizes.add(value);
+      else if (bySize(current.article)) {
+        current.sizes = new Set([value]);
+        if (!colorList(current.article).includes(current.color)) current.color = null;
+        renderGroup('color');
+      } else current.sizes.has(value) ? current.sizes.delete(value) : current.sizes.add(value);
       renderGroup(group);
       $(`[data-group="${group}"] [data-${group}="${CSS.escape(value)}"]`)?.focus();
       $(`[data-error="${group}"]`)?.classList.add('hidden');
@@ -504,7 +528,9 @@ export function initProduct({ onChange } = {}) {
 
     if (e.target.closest('#productAdd')) {
       const a = current.article;
-      const missing = [a.colors.length && !current.color && 'color', a.sizes.length && !current.sizes.size && 'size'].filter(Boolean);
+      const needColor = colorList(a).length && !current.color;
+      const needSize = a.sizes.length && !current.sizes.size;
+      const missing = bySize(a) ? [needSize && 'size', !needSize && needColor && 'color'].filter(Boolean) : [needColor && 'color', needSize && 'size'].filter(Boolean);
       missing.forEach((g) => $(`[data-error="${g}"]`)?.classList.remove('hidden'));
       if (missing.length) {
         $(`[data-group="${missing[0]}"] button`)?.focus();
@@ -524,7 +550,7 @@ export function initProduct({ onChange } = {}) {
       if ($('#productQty')) $('#productQty').value = 1;
       const note = $('#productAdded');
       if (note) {
-        note.textContent = `Agregado${added ? `: ${added}` : ''}. Para otro color, elegilo y volvé a agregar.`;
+        note.textContent = `Agregado${added ? `: ${added}` : ''}. ${bySize(a) ? 'Para otro talle o color, elegilo y volvé a agregar.' : 'Para otro color, elegilo y volvé a agregar.'}`;
         note.classList.remove('hidden');
       }
       const btn = $('#productAdd');

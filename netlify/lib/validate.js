@@ -38,6 +38,23 @@ function list(obj, key, { label, maxItems, maxLen }) {
   return out;
 }
 
+/** { talle: [colores] } — colores distintos por talle ({} = una sola tira para todos). */
+function colorsBySize(obj, key) {
+  const raw = obj[key] ?? {};
+  if (typeof raw !== 'object' || Array.isArray(raw)) throw new HttpError('Los colores por talle no son válidos.');
+  const entries = Object.entries(raw);
+  if (entries.length > 20) throw new HttpError('Colores por talle: máximo 20 talles.');
+  const sizes = Array.isArray(obj.sizes) ? obj.sizes.map((s) => clean(s).toLowerCase()) : null;
+  const out = {};
+  for (const [size, colors] of entries) {
+    const k = clean(size);
+    if (!k || k.length > 20) throw new HttpError('Colores por talle: talle inválido.');
+    if (sizes && !sizes.includes(k.toLowerCase())) continue; // talle que ya no está en la curva
+    out[k] = list({ c: colors }, 'c', { label: `Colores del talle ${k}`, maxItems: 20, maxLen: 30 });
+  }
+  return out;
+}
+
 function price(obj, key, label, { optional = false } = {}) {
   if (optional && (obj[key] === undefined || obj[key] === null || obj[key] === '')) return 0;
   const n = Number(obj[key]);
@@ -90,6 +107,7 @@ export function validateArticle(body, { partial = false } = {}) {
       description: (b) => text(b, 'description', { label: 'La descripción', max: 1000 }),
       sizes: (b) => list(b, 'sizes', { label: 'Talles', maxItems: 20, maxLen: 20 }),
       colors: (b) => list(b, 'colors', { label: 'Colores', maxItems: 20, maxLen: 30 }),
+      colorsBySize: (b) => colorsBySize(b, 'colorsBySize'),
       presentation: (b) => text(b, 'presentation', { label: 'La presentación', max: 40, required: true }),
       saleType: (b) => text(b, 'saleType', { label: 'El tipo de venta', max: 200 }),
       tag: (b) => text(b, 'tag', { label: 'La etiqueta', max: 30 }),

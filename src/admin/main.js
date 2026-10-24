@@ -397,8 +397,15 @@ function articleCard(a) {
       </div>
       <div class="mt-2 flex items-center gap-1 flex-wrap">
         <span class="text-[11px] text-on-surface-variant font-medium">Colores:</span>
-        ${a.colors.map((c) => `<span class="${colorCls}">${esc(c)}</span>`).join('') || '<span class="text-[11px] text-on-surface-variant">—</span>'}
+        ${
+          Object.keys(a.colorsBySize || {}).length
+            ? '<span class="text-[11px] text-primary font-bold">por talle</span>'
+            : a.colors.map((c) => `<span class="${colorCls}">${esc(c)}</span>`).join('') || '<span class="text-[11px] text-on-surface-variant">—</span>'
+        }
       </div>
+      ${Object.entries(a.colorsBySize || {})
+        .map(([size, list]) => `<p class="mt-1 text-[11px] text-on-surface"><span class="${tagCls}">${esc(size)}</span> ${esc(list.join(', ') || '—')}</p>`)
+        .join('')}
       <div class="mt-4 pt-3 border-t border-outline-variant/20 flex items-center justify-between">
         <span class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider">Precio ${esc(a.presentation)}</span>
         <span class="text-base font-bold text-primary">${esc(formatPrice(a.pricePack || a.priceUnit))}</span>
@@ -483,7 +490,7 @@ $('#articlesContainer').addEventListener('click', async (e) => {
 
 /* ---------------------------------------------------------------- Modal de artículo */
 
-const PRESET_SIZES = ['85', '90', '95', '100', '105', '110', 'Especiales'];
+const PRESET_SIZES = ['85', '90', '95', '100', '105', '110', 'Especiales', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
 const PRESET_COLORS = ['Blanco', 'Negro', 'Nude', 'Rosa Pastel', 'Borravino', 'Azul Marino'];
 
 /** Valores activos respetando el orden que ya tenía el artículo; los nuevos van al final. */
@@ -498,6 +505,8 @@ const form = {
   original: { sizes: [], colors: [] },
   sizes: [], // { value, on }
   colors: [], // { value, on }
+  bySize: false, // colores distintos por talle
+  sizeColors: new Map(), // talle → Set de colores (solo con bySize)
   photos: [], // { url?, blob?, preview }
 };
 
@@ -525,6 +534,73 @@ function renderColorChips() {
     .join('');
 }
 
+/** Una tira de colores por cada talle activo (modo "Colores distintos por talle"). */
+function renderColorsBySize() {
+  const box = $('#colorsBySizeContainer');
+  box.classList.toggle('hidden', !form.bySize);
+  $('#colorSwatchesContainer').classList.toggle('hidden', form.bySize);
+  $('#colorsLabel').textContent = form.bySize ? 'Colores (agregá acá colores nuevos y marcalos en cada talle)' : 'Colores Disponibles';
+  if (!form.bySize) return (box.innerHTML = '');
+  const sizes = form.sizes.filter((s) => s.on).map((s) => s.value);
+  if (!sizes.length) {
+    box.innerHTML = '<p class="text-xs text-on-surface-variant">Activá al menos un talle para elegir sus colores.</p>';
+    return;
+  }
+  box.innerHTML = sizes
+    .map((size) => {
+      const on = form.sizeColors.get(size) || new Set();
+      const chips = form.colors
+        .map((c) => {
+          const active = on.has(c.value);
+          const hex = swatchOf(c.value);
+          const dot = hex
+            ? `<span class="w-3 h-3 rounded-full border border-gray-300" style="background:${hex}" aria-hidden="true"></span>`
+            : '<span class="w-3 h-3 rounded-full border border-dashed border-gray-400 bg-gradient-to-br from-white to-gray-200" aria-hidden="true"></span>';
+          return `<button type="button" data-size-color="${esc(c.value)}" aria-pressed="${active}" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium transition-all ${
+            active ? 'bg-primary-fixed border-primary text-primary ring-1 ring-primary' : 'bg-surface-container-lowest border-outline-variant/40 text-on-surface'
+          }">${dot} ${esc(c.value)}</button>`;
+        })
+        .join('');
+      return `<div class="p-3 rounded-xl border border-outline-variant/40 bg-surface-container-lowest" data-size-row="${esc(size)}">
+  <div class="flex items-center justify-between gap-2 mb-2">
+    <span class="text-xs font-bold text-on-surface">Talle <span class="px-2 py-0.5 rounded-full bg-primary-container text-on-primary">${esc(size)}</span></span>
+    <span class="text-[11px] text-on-surface-variant">${on.size ? `${on.size} color${on.size === 1 ? '' : 'es'}` : 'Sin colores'}</span>
+  </div>
+  <div class="flex flex-wrap gap-2" role="group" aria-label="Colores del talle ${esc(size)}">${chips}</div>
+</div>`;
+    })
+    .join('');
+}
+
+$('#colorsBySizeContainer').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-size-color]');
+  if (!b) return;
+  const size = b.closest('[data-size-row]').dataset.sizeRow;
+  const color = b.dataset.sizeColor;
+  const set = form.sizeColors.get(size) || new Set();
+  set.has(color) ? set.delete(color) : set.add(color);
+  form.sizeColors.set(size, set);
+  renderColorsBySize();
+  $(`#colorsBySizeContainer [data-size-row="${CSS.escape(size)}"] button[data-size-color="${CSS.escape(color)}"]`)?.focus();
+});
+
+$('#artColorsBySize').addEventListener('change', (e) => {
+  form.bySize = e.target.checked;
+  if (form.bySize) {
+    // Arranca cada talle con los colores que ya estaban marcados.
+    const on = form.colors.filter((c) => c.on).map((c) => c.value);
+    form.sizes.filter((s) => s.on).forEach((s) => {
+      if (!form.sizeColors.get(s.value)?.size) form.sizeColors.set(s.value, new Set(on));
+    });
+  } else {
+    // Vuelve a una sola tira: quedan marcados todos los colores usados en algún talle.
+    const used = new Set([...form.sizeColors.values()].flatMap((set) => [...set]));
+    if (used.size) form.colors.forEach((c) => (c.on = used.has(c.value)));
+    renderColorChips();
+  }
+  renderColorsBySize();
+});
+
 function renderPhotos() {
   const row = $('#photosPreviewRow');
   row.innerHTML =
@@ -549,6 +625,7 @@ $('#sizesChipsContainer').addEventListener('click', (e) => {
   const s = form.sizes[b.dataset.i];
   s.on = !s.on;
   renderSizeChips();
+  renderColorsBySize();
   $(`#sizesChipsContainer button[data-i="${b.dataset.i}"]`).focus();
 });
 $('#colorSwatchesContainer').addEventListener('click', (e) => {
@@ -573,7 +650,13 @@ function addCustom(listName, inputSel, render) {
   render();
 }
 $('#addSizeBtn').addEventListener('click', () => addCustom('sizes', '#customSize', renderSizeChips));
-$('#addColorBtn').addEventListener('click', () => addCustom('colors', '#customColor', renderColorChips));
+$('#addColorBtn').addEventListener('click', () =>
+  addCustom('colors', '#customColor', () => {
+    renderColorChips();
+    renderColorsBySize();
+  })
+);
+$('#addSizeBtn').addEventListener('click', renderColorsBySize);
 $('#customSize').addEventListener('keydown', (e) => e.key === 'Enter' && (e.preventDefault(), $('#addSizeBtn').click()));
 $('#customColor').addEventListener('keydown', (e) => e.key === 'Enter' && (e.preventDefault(), $('#addColorBtn').click()));
 
@@ -664,19 +747,25 @@ function openArticleModal(article = null) {
   $('#artDescription').value = article?.description || '';
   $('#artPresentation').value = article?.presentation || 'Pack x 6 Unid.';
   $('#artPricePack').value = article ? article.pricePack || article.priceUnit || '' : '';
-  $('#artIsNew').checked = article ? article.isNew : true;
+  $('#artIsNew').checked = article ? article.isNew : false;
   $('#artInStock').checked = article ? article.inStock : true;
 
   form.original = { sizes: article?.sizes || [], colors: article?.colors || [] };
   const sizes = article?.sizes || ['85', '90', '95', '100'];
   form.sizes = [...new Set([...PRESET_SIZES, ...sizes])].map((v) => ({ value: v, on: sizes.includes(v) }));
   const colors = article?.colors || [];
-  form.colors = [...new Set([...PRESET_COLORS, ...colors])].map((v) => ({ value: v, on: colors.includes(v) }));
+  const bySize = article?.colorsBySize || {};
+  const sizeColorValues = Object.values(bySize).flat();
+  form.colors = [...new Set([...PRESET_COLORS, ...colors, ...sizeColorValues])].map((v) => ({ value: v, on: colors.includes(v) }));
+  form.bySize = Object.keys(bySize).length > 0;
+  form.sizeColors = new Map(Object.entries(bySize).map(([k, v]) => [k, new Set(v)]));
+  $('#artColorsBySize').checked = form.bySize;
   form.photos.forEach((p) => p.blob && URL.revokeObjectURL(p.preview));
   form.photos = (article?.images || []).map((url) => ({ url, preview: url }));
 
   renderSizeChips();
   renderColorChips();
+  renderColorsBySize();
   renderPhotos();
   openModal($('#articleModal'), $('#artTitle'));
 }
@@ -710,6 +799,7 @@ $('#articleForm').addEventListener('submit', async (e) => {
   if ($('#artPricePack').value === '' || !(pricePack >= 0)) problems.push('el precio del pack');
   if (!$('#artSubcategory').value) problems.push('la categoría / subcategoría');
   if (!form.photos.length) problems.push('al menos una foto');
+  if (form.bySize && !form.sizes.some((s) => s.on)) problems.push('al menos un talle (para los colores por talle)');
   if (problems.length) return showFormError(errEl, `Completá: ${problems.join(', ')}.`);
 
   const btn = $('#articleSubmit');
@@ -725,6 +815,19 @@ $('#articleForm').addEventListener('submit', async (e) => {
       p.url = await uploadBlob(p.blob, state.token);
     }
 
+    const sizes = keepOrder(form.sizes, form.original.sizes);
+    const palette = form.colors.map((c) => c.value);
+    const colorsBySize = {};
+    if (form.bySize) {
+      sizes.forEach((size) => {
+        const set = form.sizeColors.get(size) || new Set();
+        colorsBySize[size] = palette.filter((c) => set.has(c));
+      });
+    }
+    const colors = form.bySize
+      ? palette.filter((c) => Object.values(colorsBySize).some((list) => list.includes(c))).slice(0, 20)
+      : keepOrder(form.colors, form.original.colors);
+
     const body = {
       brand,
       title,
@@ -733,8 +836,9 @@ $('#articleForm').addEventListener('submit', async (e) => {
       saleType: $('#artSaleType').value.trim(),
       description: $('#artDescription').value.trim(),
       presentation,
-      sizes: keepOrder(form.sizes, form.original.sizes),
-      colors: keepOrder(form.colors, form.original.colors),
+      sizes,
+      colors,
+      colorsBySize,
       pricePack,
       isNew: $('#artIsNew').checked,
       inStock: $('#artInStock').checked,

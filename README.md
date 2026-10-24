@@ -8,7 +8,7 @@ Sitio web del mayorista de lencería **ÚNICA LENCERÍA** (Rosario, Santa Fe): t
 
 ## Pedido por WhatsApp (carrito)
 
-Cada artículo tiene su **ficha** (`#producto/<id>`, se abre desde la foto, el título o el botón "Elegir y pedir") con todas sus fotos, la descripción, el precio del pack y la elección de **un color** y **uno o más talles** (obligatorios si el artículo los tiene) y la cantidad de packs por talle. "Agregar al pedido" suma una línea por cada talle elegido; para otro color se vuelve a elegir y agregar. El pedido se abre desde el botón de la bolsa (header) o la píldora flotante "Ver pedido":
+Cada artículo tiene su **ficha** (`#producto/<id>`, se abre desde la foto, el título o el botón "Elegir y pedir") con todas sus fotos, la descripción, el precio del pack y la elección de **un color** y **uno o más talles** (obligatorios si el artículo los tiene) y la cantidad de packs por talle. Si el artículo tiene **colores distintos por talle**, primero se elige un talle y después un color de los de ese talle. "Agregar al pedido" suma una línea por cada talle elegido; para otro color se vuelve a elegir y agregar. El pedido se abre desde el botón de la bolsa (header) o la píldora flotante "Ver pedido":
 
 - Una línea por combinación de colores/talles, cantidades editables y total estimado.
 - Precio único: el del pack (es lo que se muestra en la tienda y se cobra en el pedido).
@@ -35,7 +35,7 @@ Elegir una opción filtra el catálogo y deja la URL compartible: `/?categoria=m
 | `categories`    | `id`, `name`, `slug`, `order`, `isActive`                        |
 | `subcategories` | `id`, `categoryId` → categoría, `name`, `slug`, `order`, `isActive` |
 | `brands`        | `id`, `name`, `logo`, `initials`, `category`                     |
-| `articles`      | … + `subcategoryId` → subcategoría, `brandId` → marca (se resuelve por nombre) |
+| `articles`      | … + `subcategoryId` → subcategoría, `brandId` → marca (se resuelve por nombre), `colorsBySize` (`{ talle: [colores] }`, vacío = una sola tira) |
 
 La primera vez se siembra el árbol inicial (Mujeres, Hombre y Niño/a con sus subcategorías) y los artículos existentes se migran solos a su subcategoría.
 
@@ -89,7 +89,7 @@ Nunca se commitea un `.env` real (está en `.gitignore`).
 
 Entrar a **`/admin`** e ingresar la contraseña (`ADMIN_PASSWORD`). La sesión dura 12 horas (token firmado guardado en `sessionStorage`); tras 8 intentos fallidos el login se bloquea 15 minutos.
 
-- **Publicaciones & Artículos:** crear, editar, eliminar, buscar, filtrar por marca, marcar como Novedad y pausar stock. Hasta 5 fotos por artículo (JPG/PNG/WebP ≤ 4 MB, se redimensionan a 1200 px en el navegador).
+- **Publicaciones & Artículos:** crear, editar, eliminar, buscar, filtrar por marca, marcar como Novedad y pausar stock. Talles rápidos (85 a 110, Especiales, S a XXXL) más talles propios; con "Colores distintos por talle" cada talle tiene su propia tira de colores. Los artículos nuevos arrancan sin Novedad. Hasta 5 fotos por artículo (JPG/PNG/WebP ≤ 4 MB, se redimensionan a 1200 px en el navegador).
 - **Categorías & Subcategorías:** crear, renombrar, reordenar (↑ ↓), mostrar/ocultar y eliminar categorías principales y subcategorías; una subcategoría se puede mover a otra categoría desde "Editar". Eliminar una categoría borra sus subcategorías y deja sus artículos "sin categoría" (pide escribir el nombre para confirmar). Cada artículo debe tener una subcategoría.
 - **Portadas & Banners:** subir/reemplazar imagen, editar textos, activar/desactivar. La **Portada Inicio** activa reemplaza la imagen principal de la tienda.
 - **Carrusel de Marcas:** agregar marcas con logo. Eliminar pide doble confirmación.
