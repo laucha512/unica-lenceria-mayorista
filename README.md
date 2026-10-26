@@ -12,7 +12,7 @@ Cada artículo tiene su **ficha** (`#producto/<id>`, se abre desde la foto, el t
 
 - Una línea por combinación de colores/talles, cantidades editables y total estimado.
 - Precio único: el del pack (es lo que se muestra en la tienda y se cobra en el pedido).
-- Barra de progreso hacia la compra mínima; el envío se habilita al alcanzarla.
+- Sin compra mínima: se puede enviar el pedido con cualquier monto.
 - Datos opcionales: nombre/comercio, localidad, entrega (retiro en sucursal o expreso) y aclaraciones.
 - **Enviar pedido por WhatsApp** abre `wa.me` con el mensaje armado con todo el detalle.
 - El pedido se guarda en el navegador (`localStorage`) hasta que se vacía.
@@ -44,7 +44,7 @@ La primera vez se siembra el árbol inicial (Mujeres, Hombre y Niño/a con sus s
 ```
 index.html                 Tienda pública
 admin/index.html           Panel de administración (/admin)
-src/config.js              WhatsApp, Instagram y compra mínima (única fuente de verdad)
+src/config.js              WhatsApp e Instagram (única fuente de verdad)
 src/store/                 JS y CSS de la tienda (cart.js: pedido; product.js: ficha; menu.js: menú ☰)
 src/admin/                 JS y CSS del panel (categories.js: gestión de categorías)
 src/shared/utils.js        Escape de HTML, cliente de la API, helpers
@@ -138,4 +138,4 @@ La configuración de build, redirects y headers de seguridad (CSP, X-Frame-Optio
 
 ## Cambiar datos de contacto
 
-WhatsApp, Instagram y la compra mínima están en `src/config.js`. En el build se reemplazan en el HTML los marcadores `{{WA_NUMBER}}`, `{{MIN_PURCHASE}}`, etc. (ver `vite.config.js`).
+WhatsApp e Instagram están en `src/config.js`. En el build se reemplazan en el HTML los marcadores `{{WA_NUMBER}}`, `{{IG_USER}}`, etc. (ver `vite.config.js`).

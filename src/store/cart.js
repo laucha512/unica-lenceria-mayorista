@@ -1,6 +1,6 @@
 // Carrito de pedido mayorista: se guarda en el navegador y se envía como mensaje de WhatsApp.
 // Cada línea es un artículo + la selección de colores y talles elegida en su ficha.
-import { whatsappLink, formatPrice, MIN_PURCHASE } from '../config.js';
+import { whatsappLink, formatPrice } from '../config.js';
 import { esc, safeImg } from '../shared/utils.js';
 
 // v2: una línea = un color + un talle (se descartan pedidos guardados con selección múltiple).
@@ -180,26 +180,13 @@ function render() {
     ? 'Sumá artículos y enviá el pedido por WhatsApp.'
     : `${ls.length} ${ls.length === 1 ? 'línea' : 'líneas'} · ${count} ${count === 1 ? 'pack' : 'packs'}`;
   $('#cartTotal').textContent = formatPrice(total);
-  $('#cartProgress').style.width = `${Math.min(100, (total / MIN_PURCHASE) * 100)}%`;
-  const missing = MIN_PURCHASE - total;
-  const reached = missing <= 0;
-  $('#cartMinMsg').innerHTML = reached
-    ? `<span class="font-semibold text-emerald-800">✓ Alcanzaste la compra mínima de ${esc(formatPrice(MIN_PURCHASE))}.</span>`
-    : `Te faltan <strong class="text-slate-900">${esc(formatPrice(missing))}</strong> para la compra mínima de ${esc(formatPrice(MIN_PURCHASE))}.`;
-  const send = $('#cartSend');
-  send.href = reached ? whatsappLink(buildMessage()) : '#';
-  send.setAttribute('aria-disabled', String(!reached));
+  // Sin compra mínima: se puede enviar con cualquier pedido.
+  $('#cartSend').href = empty ? '#' : whatsappLink(buildMessage());
 
   onChange();
 }
 
 export const refresh = () => render();
-
-function showCartHint() {
-  const msg = $('#cartMinMsg');
-  msg.classList.add('text-red-700', 'font-semibold');
-  setTimeout(() => msg.classList.remove('text-red-700', 'font-semibold'), 1800);
-}
 
 /* ---------------------------------------------------------------- Apertura del panel */
 
@@ -289,18 +276,11 @@ export function initCart({ onUpdate } = {}) {
     el.addEventListener('input', () => {
       state.info[k] = el.value;
       save();
-      $('#cartSend').href = totals().total >= MIN_PURCHASE ? whatsappLink(buildMessage()) : '#';
+      if (lines().length) $('#cartSend').href = whatsappLink(buildMessage());
     });
   }
   form.addEventListener('submit', (e) => e.preventDefault());
 
-  $('#cartSend').addEventListener('click', (e) => {
-    // Bajo el mínimo el enlace no abre WhatsApp; si no, abre el chat con el mensaje ya armado.
-    if ($('#cartSend').getAttribute('aria-disabled') === 'true') {
-      e.preventDefault();
-      showCartHint();
-    }
-  });
   $('#cartClear').addEventListener('click', () => {
     if (window.confirm('¿Vaciar todo el pedido?')) {
       clear();

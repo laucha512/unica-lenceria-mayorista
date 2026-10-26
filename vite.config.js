@@ -9,8 +9,6 @@ const tokens = {
   WA_DISPLAY: cfg.WHATSAPP_DISPLAY,
   IG_USER: cfg.INSTAGRAM_USER,
   IG_URL: cfg.INSTAGRAM_URL,
-  MIN_PURCHASE: cfg.MIN_PURCHASE_LABEL,
-  MIN_PURCHASE_RAW: String(cfg.MIN_PURCHASE),
   SITE_URL: cfg.SITE_URL,
   YEAR: String(new Date().getFullYear()),
 };
