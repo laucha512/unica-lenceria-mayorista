@@ -340,6 +340,8 @@ function readFilterFromUrl() {
   }
 }
 
+let renderedQuery = location.search; // filtros que muestra el catálogo ahora
+
 function writeFilterToUrl(push = true) {
   const p = new URLSearchParams(location.search);
   const set = (k, v) => (v ? p.set(k, v) : p.delete(k));
@@ -352,6 +354,7 @@ function writeFilterToUrl(push = true) {
   const url = `${location.pathname}${qs ? `?${qs}` : ''}${push ? '' : location.hash}`;
   if (push) history.pushState({ filter: { ...state.filter } }, '', url);
   else history.replaceState(history.state, '', url);
+  renderedQuery = location.search;
 }
 
 /** Aplica un filtro nuevo (desde el menú, los chips o los botones de marca). */
@@ -532,8 +535,11 @@ $('#brandFilters').addEventListener('click', (e) => {
   $(`#brandFilters button[data-brand="${CSS.escape(b.dataset.brand)}"]`)?.focus();
 });
 
-// Atrás / adelante del navegador entre filtros
+// Atrás / adelante del navegador entre filtros. Si solo cambió el #producto/… (abrir o cerrar
+// la ficha), el catálogo queda como estaba: mismos artículos cargados y misma posición.
 window.addEventListener('popstate', () => {
+  if (location.search === renderedQuery) return;
+  renderedQuery = location.search;
   readFilterFromUrl();
   sanitizeFilter();
   state.catalogLimit = CATALOG_PAGE;

@@ -403,8 +403,13 @@ function setActivePhoto(i, scroll = true) {
 
 /* ---------------------------------------------------------------- Abrir / cerrar */
 
+let savedScroll = null; // posición de la página al abrir la ficha
+
 function show(article) {
-  if (!isOpen()) lastFocus = document.activeElement;
+  if (!isOpen()) {
+    lastFocus = document.activeElement;
+    savedScroll = window.scrollY;
+  }
   current = { article, color: null, sizes: new Set(), qty: 1, photo: 0 };
   touchZoom = null;
   render();
@@ -428,6 +433,13 @@ function hide() {
   current = null;
   notify();
   lastFocus?.focus?.({ preventScroll: true });
+  // Al cerrar, la página queda exactamente donde estaba (el celular a veces la mueve).
+  if (savedScroll !== null) {
+    const y = savedScroll;
+    savedScroll = null;
+    window.scrollTo({ top: y, behavior: 'instant' });
+    requestAnimationFrame(() => Math.abs(window.scrollY - y) > 2 && window.scrollTo({ top: y, behavior: 'instant' }));
+  }
 }
 
 const BASE_TITLE = document.title;
