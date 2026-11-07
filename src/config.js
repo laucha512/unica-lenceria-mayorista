@@ -2,7 +2,7 @@
 // Se usan en el JS del sitio y, en build, se reemplazan en el HTML
 // mediante los marcadores {{WA_NUMBER}}, {{IG_USER}}, etc. (ver vite.config.js).
 
-export const SITE_URL = 'https://unica-lenceria-mayorista.netlify.app';
+export const SITE_URL = 'https://unicamayoristalenceria.com.ar';
 
 export const BUSINESS_NAME = 'ÚNICA LENCERÍA';
 
