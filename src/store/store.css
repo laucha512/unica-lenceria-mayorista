@@ -70,10 +70,6 @@
     width: max-content;
     animation: marquee var(--marquee-duration, 25s) linear infinite;
   }
-  .marquee-track:hover,
-  .marquee-track:focus-within {
-    animation-play-state: paused;
-  }
 
   .skeleton {
     @apply animate-pulse rounded-3xl bg-pink-100/70;
