@@ -26,7 +26,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=add,add_shopping_cart,category,chat,check,chevron_left,chevron_right,close,delete,description,download,expand_more,filter_alt,inventory,inventory_2,local_shipping,location_on,menu,navigation,new_releases,open_in_new,payments,photo_camera,remove,schedule,search,shopping_bag,storefront,table_view,verified,verified_user,zoom_in&display=block">
 <link rel="preload" as="image" href="/img/hero-coleccion-saten-encaje.webp" fetchpriority="high">
 <link rel="stylesheet" href="/src/store/store.css">
-<script type="application/ld+json">
+<script type="application/ld+json" id="ldBusiness">
 {
   "@context": "https://schema.org",
   "@graph": [
@@ -239,8 +239,8 @@
             <span class="font-headline-sm text-lg text-[#be185d] font-bold">24 / 48 hs</span>
             <span class="text-[11px] font-semibold text-slate-600 uppercase tracking-wider">Despacho Expreso</span>
           </div>
-          <div class="flex flex-col p-3 rounded-xl bg-white border border-pink-100 text-center">
-            <span class="font-headline-sm text-lg text-[#be185d] font-bold">3 Locales</span>
+          <div id="statBranchesBox" class="flex flex-col p-3 rounded-xl bg-white border border-pink-100 text-center">
+            <span id="statBranches" class="font-headline-sm text-lg text-[#be185d] font-bold">3 Locales</span>
             <span class="text-[11px] font-semibold text-slate-600 uppercase tracking-wider">Showrooms Rosario</span>
           </div>
         </div>
@@ -260,12 +260,12 @@
             </div>
           </div>
           <!-- Bottom B2B Floating Badge -->
-          <div class="absolute bottom-6 left-6 right-6 p-space-md rounded-2xl bg-white/95 backdrop-blur-md shadow-xl border border-pink-200 flex items-center justify-between">
+          <div id="heroBranch" class="absolute bottom-6 left-6 right-6 p-space-md rounded-2xl bg-white/95 backdrop-blur-md shadow-xl border border-pink-200 flex items-center justify-between">
             <div>
               <div class="inline-flex items-center gap-1 text-[#be185d] text-[11px] font-bold uppercase tracking-wider">
                 <span class="w-2 h-2 rounded-full bg-[#be185d]" aria-hidden="true"></span> Stock Mayorista en Rosario
               </div>
-              <p class="font-title-md text-slate-900 font-bold mt-0.5">Casa Central: San Luis 1830</p>
+              <p id="heroBranchName" class="font-title-md text-slate-900 font-bold mt-0.5">Casa Central: San Luis 1830</p>
               <p class="text-xs text-slate-600">Showroom Mayorista &amp; Retiro de pedidos</p>
             </div>
             <a class="inline-flex items-center justify-center w-11 h-11 rounded-full bg-[#fce7f3] text-[#be185d] hover:bg-[#be185d] hover:text-white transition-all shadow-sm flex-shrink-0" href="#sucursales-section" aria-label="Ver sucursales y showrooms">
@@ -386,12 +386,13 @@
         <span class="material-symbols-outlined text-[18px]" aria-hidden="true">storefront</span>
         <span>Puntos de Atención Mayorista Rosario</span>
       </div>
-      <h2 class="font-headline-xl text-3xl md:text-4xl text-slate-900 tracking-tight font-bold">Nuestras 3 Sucursales &amp; Showrooms</h2>
+      <h2 id="branchesTitle" class="font-headline-xl text-3xl md:text-4xl text-slate-900 tracking-tight font-bold">Nuestras 3 Sucursales &amp; Showrooms</h2>
       <p class="font-body-md text-slate-600 mt-2">
         Casa Central con showroom exclusivo para revendedores y comerciantes, además de nuestros puntos de retiro en zonas estratégicas de Rosario.
       </p>
     </div>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-space-md mb-space-xl">
+    <!-- Se reemplaza con los datos del admin (src/store/branches.js) -->
+    <div id="branchesGrid" class="grid grid-cols-1 md:grid-cols-3 gap-space-md mb-space-xl">
       <!-- Sucursal 1: San Luis 1830 (Casa Central) -->
       <article class="flex flex-col justify-between p-space-lg rounded-3xl bg-white border-2 border-[#be185d] shadow-md hover:shadow-xl transition-all relative overflow-hidden">
         <div class="absolute top-0 right-0 bg-[#be185d] text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl tracking-wider uppercase">
@@ -469,19 +470,19 @@
       </article>
     </div>
     <!-- Google Maps -->
-    <div class="w-full rounded-3xl overflow-hidden shadow-lg border border-pink-200 bg-white">
+    <div id="branchesMapBlock" class="w-full rounded-3xl overflow-hidden shadow-lg border border-pink-200 bg-white">
       <div class="p-4 bg-white border-b border-pink-100 flex flex-col sm:flex-row items-center justify-between gap-3">
         <div class="flex flex-wrap items-center justify-center sm:justify-start gap-x-2 gap-y-1 text-center sm:text-left">
           <span class="material-symbols-outlined text-[#be185d]" aria-hidden="true">location_on</span>
           <span class="font-label-lg text-slate-900 font-bold text-sm">Ubicaciones Mayoristas en Rosario:</span>
-          <span class="text-xs text-slate-600">San Luis 1830 (Casa Central) • Mendoza 4134 • Pte. Roca 1434</span>
+          <span id="branchesMapList" class="text-xs text-slate-600">San Luis 1830 (Casa Central) • Mendoza 4134 • Presidente Roca 1434</span>
         </div>
-        <a class="text-xs font-bold text-[#be185d] hover:text-[#970046] underline flex items-center gap-1" href="https://www.google.com/maps/search/?api=1&amp;query=San+Luis+1830,+Rosario,+Santa+Fe" target="_blank" rel="noopener noreferrer">
+        <a id="branchesMapLink" class="text-xs font-bold text-[#be185d] hover:text-[#970046] underline flex items-center gap-1" href="https://www.google.com/maps/search/?api=1&amp;query=San+Luis+1830,+Rosario,+Santa+Fe" target="_blank" rel="noopener noreferrer">
           <span class="material-symbols-outlined text-[15px]" aria-hidden="true">open_in_new</span> Abrir en Google Maps
         </a>
       </div>
       <div class="relative w-full h-80 bg-pink-50">
-        <iframe class="w-full h-full border-0" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen src="https://www.google.com/maps?q=San+Luis+1830,+Rosario,+Santa+Fe&amp;output=embed" title="Mapa: Casa Central Única Lencería, San Luis 1830, Rosario"></iframe>
+        <iframe id="branchesMap" class="w-full h-full border-0" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen src="https://www.google.com/maps?q=San+Luis+1830,+Rosario,+Santa+Fe&amp;output=embed" title="Mapa: Casa Central Única Lencería, San Luis 1830, Rosario"></iframe>
       </div>
     </div>
   </div>
@@ -546,9 +547,9 @@
         </p>
       </div>
       <!-- Col 2: Sucursales -->
-      <div class="flex flex-col gap-space-sm">
-        <h3 class="font-title-md text-slate-900 font-bold text-sm">3 Showrooms en Rosario</h3>
-        <ul class="flex flex-col gap-space-sm text-xs text-slate-600">
+      <div id="footerBranchesBox" class="flex flex-col gap-space-sm">
+        <h3 id="footerBranchesTitle" class="font-title-md text-slate-900 font-bold text-sm">3 Showrooms en Rosario</h3>
+        <ul id="footerBranches" class="flex flex-col gap-space-sm text-xs text-slate-600">
           <li>
             <strong class="text-slate-900 font-bold">San Luis 1830</strong> • Centro<br>
             <span class="text-[#be185d] font-semibold">Casa Central &amp; Showroom Mayorista</span>
@@ -589,7 +590,7 @@
       <div class="flex items-center gap-space-md">
         <span class="text-[#be185d] font-bold">Sin Compra Mínima</span>
         <span aria-hidden="true">•</span>
-        <a class="hover:text-[#be185d] transition-colors" href="#sucursales-section">3 Sucursales Rosario</a>
+        <a id="footerBranchesLink" class="hover:text-[#be185d] transition-colors" href="#sucursales-section">3 Sucursales Rosario</a>
       </div>
     </div>
   </div>
@@ -661,7 +662,7 @@
         <select id="cartDelivery" name="delivery" class="w-full rounded-xl border-pink-200 focus:border-[#be185d] focus:ring-[#be185d] text-base">
           <option value="">A coordinar</option>
           <option>Retiro en San Luis 1830 (Casa Central)</option>
-          <option>Retiro en Mendoza 4134 (Echesortu)</option>
+          <option>Retiro en Mendoza 4134</option>
           <option>Retiro en Presidente Roca 1434</option>
           <option>Envío por expreso / transporte</option>
         </select>

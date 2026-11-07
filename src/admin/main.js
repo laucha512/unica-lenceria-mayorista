@@ -16,6 +16,7 @@ const state = {
   articles: [],
   brands: [],
   banners: [],
+  branches: [],
   categories: [],
   subcategories: [],
   tab: 'publicaciones',
@@ -130,7 +131,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 $$('[data-close-modal]').forEach((b) => b.addEventListener('click', () => closeModal(b.closest('[role="dialog"]'))));
-['#articleModal', '#bannerModal', '#taxonomyModal'].forEach((id) =>
+['#articleModal', '#bannerModal', '#branchModal', '#taxonomyModal'].forEach((id) =>
   $(id).addEventListener('mousedown', (e) => {
     if (e.target === e.currentTarget) closeModal(e.currentTarget);
   })
@@ -203,7 +204,7 @@ function showLogin(message) {
 function logout(message) {
   clearSession();
   modalStack.slice().forEach((m) => closeModal(m.el));
-  state.articles = state.brands = state.banners = [];
+  state.articles = state.brands = state.banners = state.branches = [];
   showLogin(message);
 }
 
@@ -261,14 +262,15 @@ async function startApp() {
 
 async function loadAll() {
   try {
-    const [articles, brands, banners, categories, subcategories] = await Promise.all([
+    const [articles, brands, banners, branches, categories, subcategories] = await Promise.all([
       call('articles'),
       call('brands'),
       call('banners'),
+      call('branches'),
       call('categories'),
       call('subcategories'),
     ]);
-    Object.assign(state, { articles, brands, banners, categories, subcategories });
+    Object.assign(state, { articles, brands, banners, branches, categories, subcategories });
     renderAll();
   } catch (err) {
     if (err.status !== 401) showToast(`No se pudieron cargar los datos: ${err.message}`, 'error');
@@ -280,13 +282,14 @@ function renderAll() {
   renderBrandOptions();
   renderArticles();
   renderBanners();
+  renderBranches();
   renderBrands();
   renderCategories();
 }
 
 /* ================================================================ Navegación */
 
-const TABS = ['publicaciones', 'categorias', 'portadas', 'marcas', 'pedidos'];
+const TABS = ['publicaciones', 'categorias', 'portadas', 'marcas', 'sucursales', 'pedidos'];
 
 function switchTab(tab, focus = true) {
   if (!TABS.includes(tab)) tab = 'publicaciones';
@@ -1021,6 +1024,173 @@ $('#bannersContainer').addEventListener('click', async (e) => {
     renderBanners();
     renderKpis();
     $(`#bannersContainer article[data-id="${CSS.escape(id)}"] button[data-action="${action}"]`)?.focus();
+  } catch (err) {
+    btn.disabled = false;
+    if (err.status !== 401) showToast(err.message, 'error');
+  }
+});
+
+/* ================================================================ Sucursales */
+
+function branchCard(b) {
+  const hours = b.hours.map((r) => (r.days ? `<strong>${esc(r.days)}:</strong> ${esc(r.hours)}` : esc(r.hours))).join('<br>');
+  const panelBtn = (panel, icon, label) =>
+    `<button type="button" data-action="${panel}" class="flex-1 min-w-[6.5rem] px-2.5 py-2 rounded-lg bg-surface-container-high text-xs font-bold text-primary hover:bg-secondary-container flex items-center justify-center gap-1" aria-label="${label} de ${esc(b.name)}"><span class="material-symbols-outlined text-[16px]" aria-hidden="true">${icon}</span>${label}</button>`;
+  return `
+<article class="rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm p-5 flex flex-col" data-id="${esc(b.id)}">
+  <div class="flex flex-wrap items-center gap-2 mb-2">
+    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold ${b.active ? 'bg-secondary-container text-on-secondary-container' : 'bg-error-container text-error'}">${b.active ? 'Visible en la web' : 'Desactivada: no se ve en la web'}</span>
+    ${b.isMain ? '<span class="px-2.5 py-0.5 rounded-full bg-primary text-on-primary text-[11px] font-bold">Casa Central</span>' : ''}
+  </div>
+  <div class="flex-1 ${b.active ? '' : 'opacity-60'}">
+    <h2 class="font-headline-sm text-lg text-on-surface font-bold">${esc(b.name)}</h2>
+    ${b.subtitle ? `<p class="text-xs font-bold text-primary mt-0.5">${esc(b.subtitle)}</p>` : ''}
+    <p class="text-xs text-on-surface-variant mt-2">${esc(b.description) || '<em>Sin descripción</em>'}</p>
+    <p class="text-xs text-on-surface mt-2 p-3 rounded-xl bg-surface-container-low">${hours || '<em>Sin horarios cargados</em>'}</p>
+  </div>
+  <div class="mt-4 pt-3 border-t border-outline-variant/20 flex flex-wrap gap-2">
+    ${panelBtn('datos', 'edit', 'Datos')}
+    ${panelBtn('descripcion', 'description', 'Descripción')}
+    ${panelBtn('horarios', 'schedule', 'Horarios')}
+  </div>
+  <div class="mt-2 flex flex-wrap gap-2">
+    <button type="button" data-action="toggle" class="flex-1 px-2.5 py-2 rounded-lg border border-outline-variant/50 text-xs font-bold text-on-surface hover:bg-surface-container flex items-center justify-center gap-1" aria-label="${b.active ? 'Desactivar' : 'Activar'} ${esc(b.name)}"><span class="material-symbols-outlined text-[16px]" aria-hidden="true">${b.active ? 'pause_circle' : 'play_circle'}</span>${b.active ? 'Desactivar' : 'Activar'}</button>
+    <button type="button" data-action="delete" class="flex-1 px-2.5 py-2 rounded-lg border border-outline-variant/50 text-xs font-bold text-error hover:bg-error-container flex items-center justify-center gap-1" aria-label="Borrar ${esc(b.name)}"><span class="material-symbols-outlined text-[16px]" aria-hidden="true">delete</span>Borrar</button>
+  </div>
+</article>`;
+}
+
+function renderBranches() {
+  $('#branchesContainer').innerHTML = state.branches.length
+    ? state.branches.map(branchCard).join('')
+    : '<div class="col-span-full p-10 rounded-2xl border border-dashed border-outline-variant text-center text-sm text-on-surface-variant">No hay sucursales cargadas.</div>';
+}
+
+const branchForm = { editingId: null, panel: null };
+const BRANCH_PANELS = {
+  datos: { title: 'Datos', focus: '#branchName' },
+  descripcion: { title: 'Descripción', focus: '#branchDescription' },
+  horarios: { title: 'Horarios', focus: null },
+};
+
+function addHoursRow({ days = '', hours = '' } = {}) {
+  $('#branchHoursRows').insertAdjacentHTML(
+    'beforeend',
+    `<div class="flex items-start gap-2" data-hours-row>
+  <div class="flex-1 min-w-0 flex flex-col sm:flex-row gap-2">
+    <input type="text" data-hours-days maxlength="40" value="${esc(days)}" placeholder="Días (ej. Lun a Vie)" aria-label="Días" class="w-full sm:w-2/5 px-3 py-2 bg-surface-container-low rounded-xl text-sm border-none focus:ring-2 focus:ring-primary">
+    <input type="text" data-hours-time maxlength="80" value="${esc(hours)}" placeholder="Horario (ej. 9:00 a 19:30 hs)" aria-label="Horario" class="w-full sm:flex-1 min-w-0 px-3 py-2 bg-surface-container-low rounded-xl text-sm border-none focus:ring-2 focus:ring-primary">
+  </div>
+  <button type="button" data-remove-hours class="p-2 text-on-surface-variant hover:text-error rounded-lg hover:bg-surface-container shrink-0" aria-label="Quitar esta fila"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">delete</span></button>
+</div>`
+  );
+}
+
+$('#addBranchHoursBtn').addEventListener('click', () => {
+  if ($$('[data-hours-row]').length >= 8) return showFormError($('#branchFormError'), 'Máximo 8 filas de horarios.');
+  addHoursRow();
+  $$('[data-hours-days]').at(-1).focus();
+});
+$('#branchHoursRows').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-remove-hours]');
+  if (!b) return;
+  b.closest('[data-hours-row]').remove();
+  $('#addBranchHoursBtn').focus();
+});
+
+/** Con `panel` abre solo ese panel (datos, descripción u horarios); sin sucursal, todos para crear una. */
+function openBranchModal(branch = null, panel = null) {
+  branchForm.editingId = branch?.id || null;
+  branchForm.panel = panel;
+  $('#branchModalTitle').textContent = branch ? `${BRANCH_PANELS[panel].title}: ${branch.name}` : 'Nueva sucursal';
+  $$('[data-branch-panel]').forEach((el) => el.classList.toggle('hidden', !!panel && el.dataset.branchPanel !== panel));
+  showFormError($('#branchFormError'), '');
+  $('#branchName').value = branch?.name || '';
+  $('#branchSubtitle').value = branch?.subtitle || '';
+  $('#branchMapQuery').value = branch?.mapQuery || '';
+  $('#branchIsMain').checked = !!branch?.isMain;
+  $('#branchDescription').value = branch?.description || '';
+  $('#branchHighlight').value = branch?.highlight || '';
+  $('#branchHoursRows').innerHTML = '';
+  (branch?.hours?.length ? branch.hours : [{}]).forEach(addHoursRow);
+  const focus = panel ? BRANCH_PANELS[panel].focus : '#branchName';
+  openModal($('#branchModal'), focus ? $(focus) : $('[data-hours-days]'));
+}
+
+$('#newBranchBtn').addEventListener('click', () => openBranchModal());
+
+/** Solo los campos del panel abierto, para no pisar el resto. */
+function branchBody(panel) {
+  const hours = $$('[data-hours-row]').map((row) => ({
+    days: $('[data-hours-days]', row).value.trim(),
+    hours: $('[data-hours-time]', row).value.trim(),
+  }));
+  const parts = {
+    datos: {
+      name: $('#branchName').value.trim(),
+      subtitle: $('#branchSubtitle').value.trim(),
+      mapQuery: $('#branchMapQuery').value.trim(),
+      isMain: $('#branchIsMain').checked,
+    },
+    descripcion: { description: $('#branchDescription').value.trim(), highlight: $('#branchHighlight').value.trim() },
+    horarios: { hours },
+  };
+  return panel ? parts[panel] : { ...parts.datos, ...parts.descripcion, ...parts.horarios, active: true };
+}
+
+$('#branchForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errEl = $('#branchFormError');
+  showFormError(errEl, '');
+  const body = branchBody(branchForm.panel);
+  if ('name' in body && body.name.length < 3) return showFormError(errEl, 'Completá el nombre o dirección (mínimo 3 caracteres).');
+  const incomplete = (body.hours || []).find((r) => r.days && !r.hours);
+  if (incomplete) return showFormError(errEl, `Falta el horario de "${incomplete.days}".`);
+
+  const btn = $('#branchSubmit');
+  setBusy(btn, true, 'Guardando…');
+  try {
+    const id = branchForm.editingId;
+    if (id) await call(`branches?id=${encodeURIComponent(id)}`, { method: 'PUT', body });
+    else await call('branches', { method: 'POST', body });
+    // Recarga: marcar una Casa Central desmarca la anterior.
+    state.branches = await call('branches');
+    renderBranches();
+    closeModal($('#branchModal'));
+    showToast(id ? 'Cambios guardados: ya se ven en la web.' : `Sucursal "${body.name}" creada.`);
+  } catch (err) {
+    if (err.status !== 401) showFormError(errEl, err.message);
+  } finally {
+    setBusy(btn, false);
+  }
+});
+
+$('#branchesContainer').addEventListener('click', async (e) => {
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  const id = btn.closest('article').dataset.id;
+  const b = state.branches.find((x) => x.id === id);
+  if (!b) return;
+  const action = btn.dataset.action;
+  if (BRANCH_PANELS[action]) return openBranchModal(b, action);
+  try {
+    if (action === 'toggle') {
+      btn.disabled = true;
+      await call(`branches?id=${encodeURIComponent(id)}`, { method: 'PUT', body: { active: !b.active } });
+      showToast(`Sucursal "${b.name}" ${b.active ? 'desactivada: ya no se ve en la web' : 'activada: ya se ve en la web'}.`);
+    } else if (action === 'delete') {
+      const ok = await confirmDialog({
+        title: 'Borrar sucursal',
+        message: `Se borrará "${b.name}" con sus horarios y descripción, y no se puede deshacer. Si solo cierra por un tiempo, cancelá y usá Desactivar.`,
+        okLabel: 'Borrar',
+      });
+      if (!ok) return;
+      await call(`branches?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      showToast(`Sucursal "${b.name}" borrada.`);
+    }
+    state.branches = await call('branches');
+    renderBranches();
+    $(`#branchesContainer article[data-id="${CSS.escape(id)}"] button[data-action="${action}"]`)?.focus();
   } catch (err) {
     btn.disabled = false;
     if (err.status !== 401) showToast(err.message, 'error');

@@ -50,7 +50,7 @@ src/admin/                 JS y CSS del panel (categories.js: gestión de catego
 src/shared/utils.js        Escape de HTML, cliente de la API, helpers
 src/shared/tree.js         Árbol categorías → subcategorías → marcas (compartido API/tienda)
 src/data/seed.js           Datos iniciales (se siembran en Blobs la primera vez)
-netlify/functions/         auth, articles, brands, banners, categories, subcategories,
+netlify/functions/         auth, articles, brands, banners, branches, categories, subcategories,
                            categories-tree, upload, images
 netlify/lib/               Token HMAC, validación, acceso a Blobs, taxonomía
 public/img/                Imágenes del diseño en WebP
@@ -110,6 +110,8 @@ Las rutas `/api/*` se reescriben a `/.netlify/functions/*`.
 | POST/DELETE | `/api/brands[?id=]` | ✔   | Alta / baja                         |
 | GET    | `/api/banners`          | –    | Portadas activas (todas con token)  |
 | POST/PUT/DELETE | `/api/banners[?id=]` | ✔ | Alta / edición / baja             |
+| GET    | `/api/branches`         | –    | Sucursales activas (todas con token) |
+| POST/PUT/DELETE | `/api/branches[?id=]` | ✔ | Alta / edición parcial, activar o desactivar / baja |
 | GET    | `/api/categories/tree`  | –    | Árbol del menú con marcas derivadas (`?all=1` con token incluye lo oculto) |
 | GET    | `/api/categories`       | –    | Categorías (activas; todas con token) |
 | POST/PUT/DELETE | `/api/categories[?id=]` | ✔ | Alta / edición / baja (con cascada) |

@@ -3,6 +3,7 @@ import { esc, safeImg, formatSizes, api, initials } from '../shared/utils.js';
 import { initCart, qtyOf, setArticles, packPrice, refresh as refreshCart } from './cart.js';
 import { initProduct, openProduct, setProducts } from './product.js';
 import { initMenu, setTree } from './menu.js';
+import { renderBranches } from './branches.js';
 import { buildTreeFrom, slugify, normalizeName } from '../shared/tree.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -568,6 +569,10 @@ function applyHero(banners) {
 /* ---------------------------------------------------------------- Datos */
 
 async function load() {
+  // Aparte del catálogo: si falla, quedan las sucursales que trae el HTML.
+  api('branches')
+    .then(renderBranches)
+    .catch((err) => console.warn('No se pudieron cargar las sucursales.', err.message));
   let articles, brands, banners, tree;
   try {
     [articles, brands, banners, tree] = await Promise.all([api('articles'), api('brands'), api('banners'), api('categories/tree')]);

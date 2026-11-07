@@ -291,6 +291,21 @@ export function initCart({ onUpdate } = {}) {
   render();
 }
 
+/** Opciones de retiro según las sucursales activas. Si la elegida ya no está, vuelve a "A coordinar". */
+export function setPickupOptions(labels) {
+  const el = $('#cartDelivery');
+  [...el.options].filter((o) => o.textContent.startsWith('Retiro en ')).forEach((o) => o.remove());
+  const shipping = el.options[el.options.length - 1];
+  labels.forEach((label) => el.insertBefore(new Option(label, label), shipping));
+  const saved = state.info.delivery;
+  if (saved && ![...el.options].some((o) => o.value === saved)) {
+    state.info.delivery = '';
+    save();
+    if (lines().length) $('#cartSend').href = whatsappLink(buildMessage());
+  }
+  el.value = state.info.delivery;
+}
+
 /** Actualiza el catálogo de referencia (precios y datos vigentes) y re-renderiza. */
 export function setArticles(list) {
   state.articles = new Map(list.map((a) => [a.id, a]));

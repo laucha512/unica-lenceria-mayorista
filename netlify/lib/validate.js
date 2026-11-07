@@ -196,6 +196,43 @@ export function validateBrand(body) {
   return { name, category, initials, logo: imageUrl(body, 'logo') };
 }
 
+/** Filas de horario: [{ days: 'Lun a Vie', hours: '9:00 a 19:30 hs' }]. Sin días = aclaración. */
+function branchHours(obj, key) {
+  const raw = obj[key] ?? [];
+  if (!Array.isArray(raw)) throw new HttpError('Los horarios deben ser una lista.');
+  if (raw.length > 8) throw new HttpError('Horarios: máximo 8 filas.');
+  const out = [];
+  for (const row of raw) {
+    if (!row || typeof row !== 'object') throw new HttpError('Horarios: fila inválida.');
+    const days = text(row, 'days', { label: 'Los días', max: 40 });
+    const hours = text(row, 'hours', { label: 'El horario', max: 80 });
+    if (!days && !hours) continue;
+    if (!hours) throw new HttpError(`Falta el horario de "${days}".`);
+    out.push({ days, hours });
+  }
+  return out;
+}
+
+const BRANCH_ICONS = ['inventory_2', 'local_shipping', 'verified'];
+
+export function validateBranch(body, { partial = false } = {}) {
+  return pick(
+    body,
+    {
+      name: (b) => text(b, 'name', { label: 'El nombre de la sucursal', min: 3, max: 60, required: true }),
+      subtitle: (b) => text(b, 'subtitle', { label: 'El subtítulo', max: 60 }),
+      description: (b) => text(b, 'description', { label: 'La descripción', max: 300 }),
+      mapQuery: (b) => text(b, 'mapQuery', { label: 'La dirección para el mapa', max: 120 }),
+      hours: (b) => branchHours(b, 'hours'),
+      highlight: (b) => text(b, 'highlight', { label: 'El destacado', max: 80 }),
+      icon: (b) => (BRANCH_ICONS.includes(b.icon) ? b.icon : 'verified'),
+      isMain: (b) => bool(b, 'isMain', 'Casa Central'),
+      active: (b) => bool(b, 'active', 'Activa'),
+    },
+    { partial }
+  );
+}
+
 export function validateBanner(body, { partial = false } = {}) {
   return pick(
     body,

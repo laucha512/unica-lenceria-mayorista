@@ -182,6 +182,37 @@ const SEED_BRAND_IDS = {
   Natubel: 'brand-nt',
 };
 
+/** Sucursales iniciales: las mismas que trae index.html como primer pintado. */
+export function seedBranches(now = Date.now()) {
+  const updatedAt = daysAgo(now, 0);
+  return [
+    {
+      id: 'san-luis', name: 'San Luis 1830', subtitle: 'Casa Central & Distribución Mayorista',
+      description: 'Atención personalizada a revendedoras, armado de bultos y despacho expreso a todo el país.',
+      mapQuery: 'San Luis 1830, Rosario, Santa Fe',
+      hours: [{ days: 'Lun a Vie', hours: '9:00 a 19:30 hs' }, { days: 'Sábados', hours: '9:30 a 13:30 hs' }],
+      highlight: 'Stock permanente de curvas y bultos cerrados', icon: 'inventory_2',
+      isMain: true, active: true, updatedAt,
+    },
+    {
+      id: 'mendoza', name: 'Mendoza 4134', subtitle: 'Barrio Echesortu • Rosario',
+      description: 'Punto de retiro de pedidos mayoristas confirmados y asesoramiento técnico de curvas.',
+      mapQuery: 'Mendoza 4134, Rosario, Santa Fe',
+      hours: [{ days: 'Lun a Vie', hours: '9:00 a 13:00 y 16:00 a 20:00 hs' }, { days: 'Sábados', hours: '9:30 a 13:30 hs' }],
+      highlight: 'Retiro coordinado sin cargo para comerciantes', icon: 'local_shipping',
+      isMain: false, active: true, updatedAt,
+    },
+    {
+      id: 'roca', name: 'Presidente Roca 1434', subtitle: 'Horario Corrido',
+      description: 'Ubicación estratégica en el centro de Rosario con muestrarios de temporada y retiro express.',
+      mapQuery: 'Presidente Roca 1434, Rosario, Santa Fe',
+      hours: [{ days: 'Lunes a Sábados', hours: '9:30 a 19:30 hs' }, { days: '', hours: '(Horario continuado de corrido)' }],
+      highlight: 'Muestrario de catálogo disponible', icon: 'verified',
+      isMain: false, active: true, updatedAt,
+    },
+  ];
+}
+
 export function seedBanners(now = Date.now()) {
   return [
     {
