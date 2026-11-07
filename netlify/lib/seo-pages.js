@@ -180,7 +180,7 @@ export function productPage({ article: a, brand }) {
     path,
     ogType: 'product',
     image: a.images[0] || '/og-image.jpg',
-    title: clip(`${a.title} ${brand.name} por Mayor | ÚNICA`, 70),
+    title: `${clip(`${a.title} ${brand.name}`, 50)} por Mayor | ÚNICA`,
     description: `${summary} ${a.presentation || ''}. Lencería mayorista en Rosario, sin compra mínima y con envíos a toda la Argentina.`.replace(/\s*\.(\s*\.)+/g, '.'),
     schema: [
       crumbsSchema(trail),
