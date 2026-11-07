@@ -1,6 +1,7 @@
 // Páginas livianas para buscadores: HTML completo desde el servidor, con los datos del admin.
 // La tienda (index.html) sigue siendo donde se arma el pedido; estas páginas llevan hasta ahí.
 import { formatPrice, INSTAGRAM_URL, INSTAGRAM_USER, SITE_URL, WHATSAPP_DISPLAY, WHATSAPP_NUMBER, whatsappLink } from '../../src/config.js';
+import { imageSrcset, imageUrl } from '../../src/shared/images.js';
 import { openingHours } from '../../src/shared/opening-hours.js';
 
 const esc = (s) =>
@@ -120,7 +121,7 @@ const crumbs = (items) =>
     .join('')}</nav>`;
 
 const productCard = (a) => `<li><a class="card" href="/producto/${esc(a.id)}">
-  <img src="${esc(a.images[0] || '/og-image.jpg')}" alt="${esc(`${a.title} ${a.brand} por mayor`)}" width="400" height="500" loading="lazy" decoding="async">
+  <img src="${esc(imageUrl(a.images[0] || '/og-image.jpg', 480))}" srcset="${esc(imageSrcset(a.images[0], [320, 480]))}" sizes="(min-width: 760px) 240px, 50vw" alt="${esc(`${a.title} ${a.brand} por mayor`)}" width="400" height="500" loading="lazy" decoding="async">
   <div><b>${esc(a.title)}</b>${esc(a.brand)}<span>${esc(formatPrice(a.pricePack))}</span></div>
 </a></li>`;
 
@@ -203,7 +204,7 @@ export function productPage({ article: a, brand }) {
     ],
     body: `${crumbs(trail)}
 <div class="product">
-  <img src="${esc(a.images[0] || '/og-image.jpg')}" alt="${esc(`${a.title} ${brand.name}`)}" width="800" height="1000" fetchpriority="high">
+  <img src="${esc(imageUrl(a.images[0] || '/og-image.jpg', 640))}" srcset="${esc(imageSrcset(a.images[0], [480, 640, 800]))}" sizes="(min-width: 760px) 500px, 100vw" alt="${esc(`${a.title} ${brand.name}`)}" width="800" height="1000" fetchpriority="high">
   <div>
     <h1>${esc(a.title)}</h1>
     <p><a href="/marca/${esc(brand.slug)}">${esc(brand.name)}</a></p>

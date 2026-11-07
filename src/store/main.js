@@ -1,4 +1,14 @@
+import '@fontsource/playfair-display/latin-400.css';
+import '@fontsource/playfair-display/latin-500.css';
+import '@fontsource/playfair-display/latin-600.css';
+import '@fontsource/playfair-display/latin-700.css';
+import '@fontsource/playfair-display/latin-400-italic.css';
+import '@fontsource/plus-jakarta-sans/latin-400.css';
+import '@fontsource/plus-jakarta-sans/latin-500.css';
+import '@fontsource/plus-jakarta-sans/latin-600.css';
+import '@fontsource/plus-jakarta-sans/latin-700.css';
 import { formatPrice } from '../config.js';
+import { CARD_SIZES, imageSrcset, imageUrl } from '../shared/images.js';
 import { esc, safeImg, formatSizes, api, initials } from '../shared/utils.js';
 import { initCart, qtyOf, setArticles, packPrice, refresh as refreshCart } from './cart.js';
 import { initProduct, openProduct, setProducts } from './product.js';
@@ -8,6 +18,14 @@ import { buildTreeFrom, slugify, normalizeName } from '../shared/tree.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+
+// Íconos: se cargan después del contenido para no frenar el primer pintado.
+// La lista icon_names va en orden alfabético e incluye todos los íconos usados en la tienda.
+const iconFont = document.createElement('link');
+iconFont.rel = 'stylesheet';
+iconFont.href =
+  'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=add,add_shopping_cart,category,chat,check,chevron_left,chevron_right,close,delete,description,download,expand_more,filter_alt,inventory,inventory_2,local_shipping,location_on,menu,navigation,new_releases,open_in_new,payments,photo_camera,remove,schedule,search,shopping_bag,storefront,table_view,verified,verified_user,zoom_in&display=block';
+document.head.append(iconFont);
 
 const CATALOG_PAGE = 6;
 const state = {
@@ -22,12 +40,12 @@ const state = {
 /* ---------------------------------------------------------------- Header */
 
 const header = $('#siteHeader');
-const headerHeight = () => header.offsetHeight;
-function syncHeaderHeight() {
-  document.documentElement.style.setProperty('--header-h', `${headerHeight()}px`);
-}
-new ResizeObserver(syncHeaderHeight).observe(header);
-syncHeaderHeight();
+let headerH = 0; // alto del header, informado por el ResizeObserver sin forzar un recálculo del diseño
+new ResizeObserver(([entry]) => {
+  headerH = Math.round(entry.borderBoxSize[0].blockSize);
+  document.documentElement.style.setProperty('--header-h', `${headerH}px`);
+  if (!spy) createSpy();
+}).observe(header);
 
 // Sección activa en el nav según el scroll
 const ACTIVE = ['bg-[#be185d]', 'text-white', 'shadow-sm'];
@@ -56,11 +74,10 @@ function createSpy() {
       const current = sections.find((s) => visible.has(s));
       if (current) setActiveNav(current.id);
     },
-    { rootMargin: `-${headerHeight()}px 0px -55% 0px` }
+    { rootMargin: `-${headerH}px 0px -55% 0px` }
   );
   $$('[data-spy]').forEach((s) => spy.observe(s));
 }
-createSpy();
 let spyTimer;
 window.addEventListener('resize', () => {
   clearTimeout(spyTimer);
@@ -130,7 +147,7 @@ const photoCount = (a) =>
 /** Foto de la tarjeta: abre la ficha (para mouse/touch; el teclado usa el título y el botón). */
 const photoLink = (a, cls, inner) =>
   `<a href="${esc(productHref(a))}" data-product="${esc(a.id)}" class="block relative ${cls}" tabindex="-1" aria-hidden="true">
-      <img alt="" class="w-full h-full object-cover hover:scale-105 transition-transform duration-500" src="${esc(cardImage(a))}" loading="lazy" decoding="async" width="600" height="450">
+      <img alt="" class="w-full h-full object-cover hover:scale-105 transition-transform duration-500" src="${esc(imageUrl(cardImage(a), 640))}" srcset="${esc(imageSrcset(cardImage(a)))}" sizes="${CARD_SIZES}" loading="lazy" decoding="async" width="600" height="450">
       ${inner}
     </a>`;
 
@@ -225,8 +242,9 @@ function renderBrands() {
   const group = (content, clone) =>
     `<ul class="flex items-center gap-4 pr-4 flex-shrink-0"${clone ? ' data-clone aria-hidden="true"' : ''}>${content}</ul>`;
   // Si un set no llena el ancho de la pantalla, se repite dentro del grupo hasta cubrirlo.
-  track.innerHTML = group(chips(false), false);
-  const reps = Math.max(1, Math.ceil(window.innerWidth / Math.max(track.firstElementChild.offsetWidth, 1)));
+  // Se estima con un ancho mínimo por marca, para no medir el carrusel mientras carga la página.
+  const MIN_CHIP_WIDTH = 100;
+  const reps = Math.max(1, Math.ceil(window.innerWidth / (brands.length * MIN_CHIP_WIDTH)));
   const content = chips(false) + chips(true).repeat(reps - 1);
   // Dos grupos idénticos: la animación se desplaza -50% y vuelve a empezar sin salto.
   track.innerHTML = group(content, false) + group(content, true);
@@ -561,8 +579,12 @@ function applyHero(banners) {
   const hero = banners.find((b) => b.type === 'hero' && b.active);
   if (!hero) return;
   const img = $('#heroImage');
-  const src = safeImg(hero.image, img.getAttribute('src'));
-  if (img.getAttribute('src') !== src) img.src = src;
+  const src = safeImg(hero.image, img.dataset.base);
+  if (img.dataset.base !== src) {
+    img.dataset.base = src;
+    img.removeAttribute('srcset');
+    img.src = imageUrl(src, 614, 768);
+  }
   if (hero.alt || hero.title) img.alt = hero.alt || hero.title;
 }
 
