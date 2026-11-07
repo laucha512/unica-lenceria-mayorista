@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://unicamayoristalenceria.com.ar/sitemap.xml

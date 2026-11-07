@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ÚNICA LENCERÍA | Portal Exclusivo Mayorista • Rosario</title>
-<meta name="description" content="Única Lencería: distribuidora mayorista oficial de lencería en Rosario. Brillite, Kaury, Lody, G3, Acróbata, Belén, XY y Natubel por curva y pack cerrado. Sin compra mínima y envíos a todo el país.">
+<title>Lencería Mayorista en Rosario | ÚNICA – Ropa Interior por Mayor</title>
+<meta name="description" content="Lencería y ropa interior por mayor en Rosario: packs x3, corpiños, bombachas y boxers de Kaury, G3, Natubel y más. Sin compra mínima y envíos a todo el país.">
 <link rel="canonical" href="{{SITE_URL}}/">
 <meta name="theme-color" content="#be185d">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="es_AR">
 <meta property="og:site_name" content="ÚNICA LENCERÍA Mayorista">
-<meta property="og:title" content="ÚNICA LENCERÍA | Portal Exclusivo Mayorista • Rosario">
-<meta property="og:description" content="Abastecimiento directo de fábrica para revendedoras y comercios. Curvas de talles y packs cerrados. Sin compra mínima.">
+<meta property="og:title" content="Lencería Mayorista en Rosario | ÚNICA – Ropa Interior por Mayor">
+<meta property="og:description" content="Lencería y ropa interior por mayor para revendedoras y comercios. Packs x3 y curvas de talles, sin compra mínima y con envíos a todo el país.">
 <meta property="og:url" content="{{SITE_URL}}/">
 <meta property="og:image" content="{{SITE_URL}}/og-image.jpg">
 <meta property="og:image:width" content="1200">
@@ -30,6 +30,14 @@
 {
   "@context": "https://schema.org",
   "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "{{SITE_URL}}/#web",
+      "name": "ÚNICA LENCERÍA Mayorista",
+      "url": "{{SITE_URL}}/",
+      "inLanguage": "es-AR",
+      "publisher": { "@id": "{{SITE_URL}}/#org" }
+    },
     {
       "@type": "Organization",
       "@id": "{{SITE_URL}}/#org",
@@ -201,10 +209,10 @@
           <span class="font-label-sm text-label-sm tracking-wider uppercase font-bold">Portal Oficial Mayorista ÚNICA LENCERÍA</span>
         </div>
         <h1 class="font-display-lg text-display-lg-mobile md:text-display-lg text-slate-900 leading-[1.1] tracking-tight">
-          Abastecimiento Directo de Fábrica para <span class="font-editorial-italic italic text-[#be185d]">Revendedoras</span> y Comercios.
+          Lencería Mayorista en Rosario para <span class="font-editorial-italic italic text-[#be185d]">Revendedoras</span> y Comercios.
         </h1>
         <p class="font-body-lg text-body-lg text-slate-700 max-w-xl leading-relaxed">
-          Distribuidora mayorista oficial en Rosario con envíos a toda la Argentina. Accedé a precios de curva, reposición inmediata y catálogo de las marcas más demandadas del mercado íntimo.
+          Abastecimiento directo de fábrica: ropa interior por mayor, packs x3 y curvas de talles de las marcas más demandadas, con envíos a toda la Argentina.
         </p>
         <div class="p-space-md rounded-2xl bg-white/90 border border-pink-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div class="flex items-center gap-3">
@@ -332,7 +340,7 @@
       <span class="font-label-sm text-label-sm text-[#be185d] font-bold tracking-widest uppercase">Catálogo Mayorista Rosario</span>
       <h2 class="font-headline-xl text-3xl md:text-4xl text-slate-900 tracking-tight font-bold mt-1">Artículos por Marca &amp; Curvas Cerradas</h2>
       <p class="font-body-md text-slate-600 mt-2">
-        Disponibilidad en tiempo real para armar tu pedido, sin monto mínimo. Combiná marcas y líneas en una sola orden de compra.
+        Ropa interior por mayor en packs y por unidad, sin monto mínimo. Combiná marcas y líneas en una sola orden de compra.
       </p>
     </div>
     <!-- Filtros por marca -->
@@ -584,6 +592,12 @@
         </div>
       </div>
     </div>
+    <!-- Páginas principales: ayudan a Google a entender la estructura del sitio -->
+    <nav class="border-t border-pink-200 py-space-md flex flex-wrap justify-center gap-x-space-md gap-y-1 text-xs font-bold" aria-label="Páginas principales">
+      <a class="py-2 text-slate-800 hover:text-[#be185d] transition-colors" href="/catalogo">Todos los productos</a>
+      <a class="py-2 text-slate-800 hover:text-[#be185d] transition-colors" href="/sucursales">Sucursales y contacto</a>
+      <a class="py-2 text-slate-800 hover:text-[#be185d] transition-colors" href="/como-comprar">Cómo comprar</a>
+    </nav>
     <!-- Copyright -->
     <div class="border-t border-pink-200 pt-space-lg flex flex-col md:flex-row items-center justify-between gap-space-md text-xs text-slate-600 text-center md:text-left">
       <p>© <span id="copyrightYear">{{YEAR}}</span> Única Mayorista Lencería. Portal Exclusivo para Revendedoras y Comercios. Rosario, Santa Fe, Argentina.</p>

@@ -112,6 +112,7 @@ Las rutas `/api/*` se reescriben a `/.netlify/functions/*`.
 | POST/PUT/DELETE | `/api/banners[?id=]` | ✔ | Alta / edición / baja             |
 | GET    | `/api/branches`         | –    | Sucursales activas (todas con token) |
 | POST/PUT/DELETE | `/api/branches[?id=]` | ✔ | Alta / edición parcial, activar o desactivar / baja |
+| GET    | `/catalogo`, `/marca/:slug`, `/producto/:id`, `/sucursales`, `/como-comprar`, `/sitemap.xml` | – | Páginas para buscadores con datos del admin (caché de 10 minutos) |
 | GET    | `/api/categories/tree`  | –    | Árbol del menú con marcas derivadas (`?all=1` con token incluye lo oculto) |
 | GET    | `/api/categories`       | –    | Categorías (activas; todas con token) |
 | POST/PUT/DELETE | `/api/categories[?id=]` | ✔ | Alta / edición / baja (con cascada) |
