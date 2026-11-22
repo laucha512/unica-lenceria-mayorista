@@ -1,5 +1,5 @@
 // Validación de inputs del admin. Todo lo que llega del cliente pasa por acá.
-import { normalizeWhatsapp } from '../../src/shared/phone.js';
+import { formatWhatsapp, normalizeWhatsapp } from '../../src/shared/phone.js';
 import { HttpError } from './http.js';
 
 const IMAGE_URL_RE = /^(\/img\/[\w.-]+|\/api\/images\?key=[\w.-]+)$/;
@@ -295,7 +295,7 @@ export function validateOrder(body) {
     items,
     phone,
     info: {
-      phone: phoneDisplay,
+      phone: formatWhatsapp(phoneDisplay), // siempre igual: +54 9 341 720-3083
       name: text(info, 'name', { label: 'El nombre', max: 80 }),
       city: text(info, 'city', { label: 'La localidad', max: 80 }),
       delivery: text(info, 'delivery', { label: 'La entrega', max: 120 }),

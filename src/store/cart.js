@@ -1,7 +1,7 @@
 // Carrito de pedido mayorista: se guarda en el navegador y se envía como mensaje de WhatsApp.
 // Cada línea es un artículo + la selección de colores y talles elegida en su ficha.
 import { whatsappLink, formatPrice } from '../config.js';
-import { normalizeWhatsapp } from '../shared/phone.js';
+import { formatWhatsapp, normalizeWhatsapp } from '../shared/phone.js';
 import { esc, safeImg } from '../shared/utils.js';
 
 // v2: una línea = un color + un talle (se descartan pedidos guardados con selección múltiple).
@@ -303,6 +303,19 @@ export function initCart({ onUpdate } = {}) {
   }
   form.addEventListener('submit', (e) => e.preventDefault());
 
+  // Al terminar de escribir el WhatsApp, se acomoda al formato internacional (+54 9 341 720-3083).
+  const phoneInput = $('#cartPhone');
+  const tidyPhone = () => {
+    const formatted = formatWhatsapp(phoneInput.value);
+    if (formatted && formatted !== phoneInput.value) {
+      phoneInput.value = formatted;
+      state.info.phone = formatted;
+      save();
+    }
+  };
+  phoneInput.addEventListener('change', tidyPhone);
+  tidyPhone(); // números guardados antes de este cambio
+
   // Enviar: primero se registra el pedido (el servidor da el código o lo suma a su pedido abierto)
   // y después se abre WhatsApp con el mensaje que ya incluye ese código.
   let sending = false;
@@ -314,6 +327,7 @@ export function initCart({ onUpdate } = {}) {
       $('#cartPhone').focus();
       return;
     }
+    tidyPhone();
     showSendError('');
     // La pestaña se abre ya, dentro del toque, para que el navegador no la bloquee; después se le pone el link.
     const win = window.open('', '_blank');
