@@ -267,13 +267,13 @@ export function validateContact(body) {
 
 /* ------------------------------------------------------------ Pedidos y visitas (públicos) */
 
-export const ORDER_CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/;
-export const ORDER_STATUSES = ['nuevo', 'confirmado', 'entregado', 'cancelado'];
+export const ORDER_STATUSES = ['nuevo', 'en_preparacion', 'listo', 'entregado', 'cancelado'];
 
-/** Pedido enviado desde el carrito: solo ids y cantidades; precios y nombres los pone el servidor. */
+/**
+ * Pedido enviado desde el carrito: solo ids y cantidades; precios y nombres los pone el servidor.
+ * El WhatsApp es obligatorio: identifica a la persona para sumar a su pedido abierto.
+ */
 export function validateOrder(body) {
-  const code = String(body.code || '');
-  if (!ORDER_CODE_RE.test(code)) throw new HttpError('Código de pedido inválido.');
   if (!Array.isArray(body.items) || !body.items.length) throw new HttpError('El pedido está vacío.');
   if (body.items.length > 100) throw new HttpError('El pedido tiene demasiadas líneas.');
   const items = body.items.map((i) => {
@@ -288,10 +288,14 @@ export function validateOrder(body) {
     };
   });
   const info = body.info && typeof body.info === 'object' ? body.info : {};
+  const phoneDisplay = text(info, 'phone', { label: 'Tu WhatsApp', max: 30, required: true });
+  const phone = normalizeWhatsapp(phoneDisplay);
+  if (!phone) throw new HttpError('Revisá tu WhatsApp: escribilo con código de área, sin 0 ni 15 (ej. 341 555-1234).');
   return {
-    code,
     items,
+    phone,
     info: {
+      phone: phoneDisplay,
       name: text(info, 'name', { label: 'El nombre', max: 80 }),
       city: text(info, 'city', { label: 'La localidad', max: 80 }),
       delivery: text(info, 'delivery', { label: 'La entrega', max: 120 }),

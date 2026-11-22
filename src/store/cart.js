@@ -1,6 +1,7 @@
 // Carrito de pedido mayorista: se guarda en el navegador y se envía como mensaje de WhatsApp.
 // Cada línea es un artículo + la selección de colores y talles elegida en su ficha.
 import { whatsappLink, formatPrice } from '../config.js';
+import { normalizeWhatsapp } from '../shared/phone.js';
 import { esc, safeImg } from '../shared/utils.js';
 
 // v2: una línea = un color + un talle (se descartan pedidos guardados con selección múltiple).
@@ -11,20 +12,9 @@ const $ = (sel) => document.querySelector(sel);
 
 const state = {
   items: [], // [{ key, id, qty, colors: [], sizes: [] }]
-  info: { name: '', city: '', delivery: '', notes: '' },
-  code: '', // código del pedido: va en el mensaje y en el admin, para reconocerlo
+  info: { phone: '', name: '', city: '', delivery: '', notes: '' },
   articles: new Map(), // id -> artículo (datos actuales de la API)
 };
-
-const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sin 0/O ni 1/I, que se confunden
-const CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/;
-function orderCode() {
-  if (!CODE_RE.test(state.code)) {
-    state.code = Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => CODE_CHARS[b % CODE_CHARS.length]).join('');
-    save();
-  }
-  return state.code;
-}
 
 const cleanList = (v) =>
   Array.isArray(v) ? v.filter((x) => typeof x === 'string').map((x) => x.slice(0, 40)).slice(0, 30) : [];
@@ -42,7 +32,6 @@ function load() {
           return { key: keyOf(i.id, colors, sizes), id: i.id, qty: Math.min(i.qty, MAX_QTY), colors, sizes };
         });
     }
-    if (CODE_RE.test(data?.code || '')) state.code = data.code;
     if (data?.info && typeof data.info === 'object') {
       for (const k of Object.keys(state.info)) state.info[k] = String(data.info[k] || '').slice(0, 400);
     }
@@ -53,7 +42,7 @@ function load() {
 
 function save() {
   try {
-    localStorage.setItem(STORE_KEY, JSON.stringify({ items: state.items, info: state.info, code: state.code }));
+    localStorage.setItem(STORE_KEY, JSON.stringify({ items: state.items, info: state.info }));
   } catch {
     /* ignore */
   }
@@ -88,6 +77,7 @@ export function add(id, qty = 1, { colors = [], sizes = [] } = {}) {
   const item = state.items.find((i) => i.key === key);
   if (item) item.qty = Math.min(item.qty + qty, MAX_QTY);
   else state.items.push({ key, id, qty: Math.min(qty, MAX_QTY), colors: c, sizes: s });
+  sentNotice = ''; // ya está armando algo nuevo
   save();
   render();
 }
@@ -101,7 +91,6 @@ function setQty(key, qty) {
 
 function clear() {
   state.items = [];
-  state.code = ''; // el próximo pedido lleva un código nuevo
   save();
   render();
 }
@@ -111,9 +100,12 @@ const selectionText = (l) => [
   l.sizes.length === 1 ? `Talle: ${l.sizes[0]}` : `Talles: ${l.sizes.length ? l.sizes.join(', ') : 'curva completa'}`,
 ];
 
-export function buildMessage() {
+/** Mensaje de WhatsApp. Con `code` (lo da el servidor) lo incluye; `merged` = se suma a un pedido abierto. */
+export function buildMessage({ code = '', merged = false } = {}) {
   const { lines: ls, total, count } = totals();
-  const out = ['¡Hola ÚNICA LENCERÍA! Quiero hacer este pedido mayorista:', `Código de pedido: ${orderCode()}`, ''];
+  const out = merged
+    ? [`¡Hola ÚNICA LENCERÍA! Quiero sumar esto a mi pedido ${code}:`, '']
+    : ['¡Hola ÚNICA LENCERÍA! Quiero hacer este pedido mayorista:', ...(code ? [`Código de pedido: ${code}`] : []), ''];
   ls.forEach((l, n) => {
     const a = l.article;
     const price = packPrice(a);
@@ -121,7 +113,7 @@ export function buildMessage() {
     out.push(`   ${selectionText(l).join(' · ')}`);
     out.push(`   ${l.qty} x ${a.presentation} a ${formatPrice(price)} = ${formatPrice(l.qty * price)}`);
   });
-  out.push('', `Total estimado: ${formatPrice(total)} (${count} ${count === 1 ? 'pack' : 'packs'})`);
+  out.push('', `${merged ? 'Total de lo que sumo' : 'Total estimado'}: ${formatPrice(total)} (${count} ${count === 1 ? 'pack' : 'packs'})`);
   const { name, city, delivery, notes } = state.info;
   const extra = [
     name && `Nombre / comercio: ${name}`,
@@ -136,6 +128,20 @@ export function buildMessage() {
 /* ---------------------------------------------------------------- UI */
 
 let onChange = () => {};
+let sentNotice = ''; // aviso "pedido registrado" que se muestra hasta que se agregue algo nuevo
+
+function showSendError(msg) {
+  const el = $('#cartSendError');
+  el.textContent = msg;
+  el.classList.toggle('hidden', !msg);
+}
+
+function setSendBusy(busy) {
+  const btn = $('#cartSend');
+  btn.setAttribute('aria-busy', String(busy));
+  btn.classList.toggle('opacity-70', busy);
+  btn.querySelector('[data-send-label]').textContent = busy ? 'Registrando pedido…' : 'Enviar pedido por WhatsApp';
+}
 
 function lineItem(l) {
   const a = l.article;
@@ -187,6 +193,8 @@ function render() {
   // Panel
   $('#cartItems').innerHTML = ls.map(lineItem).join('');
   $('#cartEmpty').classList.toggle('hidden', !empty);
+  $('#cartNotice').textContent = sentNotice;
+  $('#cartNotice').classList.toggle('hidden', !sentNotice);
   $('#cartForm').classList.toggle('hidden', empty);
   $('#cartFooter').classList.toggle('hidden', empty);
   $('#cartSubtitle').textContent = empty
@@ -282,32 +290,65 @@ export function initCart({ onUpdate } = {}) {
   });
 
   const form = $('#cartForm');
-  const fields = { name: '#cartName', city: '#cartCity', delivery: '#cartDelivery', notes: '#cartNotes' };
+  const fields = { phone: '#cartPhone', name: '#cartName', city: '#cartCity', delivery: '#cartDelivery', notes: '#cartNotes' };
   for (const [k, sel] of Object.entries(fields)) {
     const el = $(sel);
     el.value = state.info[k];
     el.addEventListener('input', () => {
       state.info[k] = el.value;
       save();
+      if (k === 'phone') showSendError('');
       if (lines().length) $('#cartSend').href = whatsappLink(buildMessage());
     });
   }
   form.addEventListener('submit', (e) => e.preventDefault());
 
-  // Al enviar por WhatsApp, el pedido también queda guardado en el admin (Pedidos Mayoristas).
-  // No frena la apertura de WhatsApp: se manda en segundo plano y, si falla, el mensaje igual sale.
-  $('#cartSend').addEventListener('click', () => {
-    if (!lines().length) return;
-    fetch('/api/orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        code: orderCode(),
-        items: state.items.map(({ id, qty, colors, sizes }) => ({ id, qty, colors, sizes })),
-        info: state.info,
-      }),
-      keepalive: true,
-    }).catch(() => {});
+  // Enviar: primero se registra el pedido (el servidor da el código o lo suma a su pedido abierto)
+  // y después se abre WhatsApp con el mensaje que ya incluye ese código.
+  let sending = false;
+  $('#cartSend').addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (!lines().length || sending) return;
+    if (!normalizeWhatsapp(state.info.phone)) {
+      showSendError('Escribí tu WhatsApp con código de área, sin 0 ni 15 (ej. 341 555-1234). Lo usamos para reconocer tu pedido y avisarte.');
+      $('#cartPhone').focus();
+      return;
+    }
+    showSendError('');
+    // La pestaña se abre ya, dentro del toque, para que el navegador no la bloquee; después se le pone el link.
+    const win = window.open('', '_blank');
+    if (win) win.opener = null;
+    sending = true;
+    setSendBusy(true);
+    let result = null;
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 8000);
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: state.items.map(({ id, qty, colors, sizes }) => ({ id, qty, colors, sizes })), info: state.info }),
+        signal: ctrl.signal,
+      });
+      clearTimeout(timer);
+      if (res.ok) result = await res.json();
+    } catch {
+      /* sin conexión con el servidor: el mensaje sale igual, sin código */
+    }
+    const url = whatsappLink(buildMessage(result || {}));
+    if (win && !win.closed) win.location.href = url;
+    else window.location.href = url;
+    if (result) {
+      // Enviado: el carrito queda vacío; lo próximo que agregue se suma a este pedido.
+      state.items = [];
+      save();
+      sentNotice = result.merged
+        ? `Listo: lo sumamos a tu pedido ${result.code}. Si querés agregar algo más, sumalo y volvé a enviar.`
+        : `Listo: tu pedido ${result.code} quedó registrado. Si querés agregar algo más, sumalo y volvé a enviar: se suma al mismo pedido.`;
+      render();
+    }
+    sending = false;
+    setSendBusy(false);
   });
 
   $('#cartClear').addEventListener('click', () => {

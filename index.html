@@ -654,6 +654,7 @@
     </button>
   </div>
   <div class="flex-1 overflow-y-auto overscroll-contain px-5 py-4">
+    <p id="cartNotice" class="hidden mb-3 p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-900 font-semibold" role="status"></p>
     <ul id="cartItems" class="flex flex-col gap-3"></ul>
     <div id="cartEmpty" class="hidden text-center py-12">
       <span class="material-symbols-outlined text-[48px] text-pink-300 max-w-none" aria-hidden="true">shopping_bag</span>
@@ -662,7 +663,12 @@
       <a href="#articulos-marcas" data-close-cart class="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#be185d] text-white font-semibold text-sm hover:bg-[#970046]">Ver catálogo</a>
     </div>
     <form id="cartForm" class="hidden mt-5 pt-5 border-t border-pink-100 space-y-3" novalidate>
-      <p class="text-xs font-bold uppercase tracking-wider text-slate-600">Tus datos (opcional)</p>
+      <p class="text-xs font-bold uppercase tracking-wider text-slate-600">Tus datos</p>
+      <div>
+        <label for="cartPhone" class="block text-xs font-semibold text-slate-700 mb-1">Tu WhatsApp <span class="text-[#be185d]">*</span></label>
+        <input id="cartPhone" name="phone" type="tel" inputmode="tel" maxlength="30" autocomplete="tel" required aria-describedby="cartPhoneHelp" class="w-full rounded-xl border-pink-200 focus:border-[#be185d] focus:ring-[#be185d] text-base" placeholder="Ej. 341 555-1234">
+        <p id="cartPhoneHelp" class="mt-1 text-[11px] text-slate-600">Con código de área, sin 0 ni 15. Si después querés sumar algo, se agrega a este mismo pedido.</p>
+      </div>
       <div>
         <label for="cartName" class="block text-xs font-semibold text-slate-700 mb-1">Nombre y comercio</label>
         <input id="cartName" name="name" type="text" maxlength="80" autocomplete="name" class="w-full rounded-xl border-pink-200 focus:border-[#be185d] focus:ring-[#be185d] text-base" placeholder="Ej. Romina – Lencería Romi">
@@ -694,9 +700,10 @@
         <span id="cartTotal" class="font-headline-sm text-2xl font-bold text-slate-900"></span>
       </div>
     </div>
+    <p id="cartSendError" class="hidden text-sm font-semibold text-red-700" role="alert"></p>
     <a id="cartSend" href="#" target="_blank" rel="noopener noreferrer" class="w-full flex items-center justify-center gap-2 py-3.5 rounded-full bg-whatsapp hover:bg-whatsapp-hover text-white font-bold text-sm shadow-md transition-colors">
       <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-whatsapp"></use></svg>
-      Enviar pedido por WhatsApp
+      <span data-send-label>Enviar pedido por WhatsApp</span>
     </a>
     <button type="button" id="cartClear" class="w-full text-xs font-semibold text-slate-600 hover:text-[#be185d] underline">Vaciar pedido</button>
   </div>

@@ -385,13 +385,14 @@
     <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
       <div>
         <h1 id="h-pedidos" class="font-headline-lg text-2xl md:text-3xl text-on-surface font-semibold">Pedidos Mayoristas</h1>
-        <p class="text-sm text-on-surface-variant mt-1 max-w-2xl">Cada vez que alguien toca <strong>“Enviar pedido por WhatsApp”</strong> en la web, el pedido aparece acá con su código. El mismo código va en el mensaje de WhatsApp: comparalos para saber si cambiaron algo antes de enviarlo.</p>
+        <p class="text-sm text-on-surface-variant mt-1 max-w-2xl">Cada vez que alguien toca <strong>“Enviar pedido por WhatsApp”</strong> en la web, el pedido aparece acá con el mismo código que lleva el mensaje. Si la misma persona (mismo WhatsApp) vuelve a pedir con el mismo destino mientras el pedido está <strong>Nuevo</strong> o <strong>En preparación</strong>, lo nuevo se suma a ese pedido. Al marcarlo <strong>Listo</strong>, si faltó algo, te aparece el aviso para el cliente.</p>
       </div>
       <div class="flex items-center gap-2 shrink-0">
         <select id="ordersFilter" aria-label="Filtrar pedidos por estado" class="bg-surface-container-low px-3 py-2 pr-8 rounded-xl text-xs sm:text-sm text-on-surface border-none focus:ring-2 focus:ring-primary font-medium">
           <option value="all">Todos los pedidos</option>
           <option value="nuevo">Nuevos</option>
-          <option value="confirmado">Confirmados</option>
+          <option value="en_preparacion">En preparación</option>
+          <option value="listo">Listos</option>
           <option value="entregado">Entregados</option>
           <option value="cancelado">Cancelados</option>
         </select>

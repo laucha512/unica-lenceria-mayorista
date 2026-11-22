@@ -398,7 +398,8 @@ document.addEventListener('visibilitychange', () => {
 
 const ORDER_STATUS = {
   nuevo: { label: 'Nuevo', cls: 'bg-primary text-on-primary' },
-  confirmado: { label: 'Confirmado', cls: 'bg-secondary-container text-on-secondary-container' },
+  en_preparacion: { label: 'En preparación', cls: 'bg-secondary-container text-on-secondary-container' },
+  listo: { label: 'Listo', cls: 'bg-tertiary-container text-on-tertiary-container' },
   entregado: { label: 'Entregado', cls: 'bg-surface-container-high text-on-surface' },
   cancelado: { label: 'Cancelado', cls: 'bg-error-container text-error' },
 };
@@ -406,22 +407,80 @@ const ORDER_STATUS = {
 const dateTime = (iso) =>
   new Date(iso).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
 
+const lineSelection = (l) =>
+  [l.colors.length ? `Color: ${l.colors.join(', ')}` : 'Colores surtidos', l.sizes.length ? `Talle: ${l.sizes.join(', ')}` : 'Curva completa'].join(' · ');
+
+const packsWord = (n) => `${n} ${n === 1 ? 'pack' : 'packs'}`;
+const missingLines = (o) => o.items.filter((l) => l.prepared < l.qty);
+const faltaron = (n) => `${n === 1 ? "Faltó" : "Faltaron"} ${packsWord(n)}`;
+
+/** Aviso para el cliente con lo que no se pudo armar (listo para enviar o copiar). */
+function missingMessage(o) {
+  const first = (o.info.name || '').split(/[\s–-]+/)[0];
+  const list = missingLines(o).map(
+    (l) => `• ${l.qty - l.prepared} × ${l.brand}${l.code ? ` Art. ${l.code}` : ''} – ${l.title} (${lineSelection(l)})`
+  );
+  return [
+    `¡Hola${first ? ` ${first}` : ''}! Te escribimos de ÚNICA LENCERÍA por tu pedido ${o.code}.`,
+    'Ya lo tenemos listo, pero de esto no nos quedó stock:',
+    '',
+    ...list,
+    '',
+    '¿Querés que te ofrezcamos alguna alternativa (otro color, talle o modelo)? Avisanos y lo sumamos. ¡Gracias!',
+  ].join('\n');
+}
+
+function orderLine(l) {
+  const done = l.prepared >= l.qty;
+  return `<li class="py-2.5 flex flex-wrap items-center justify-between gap-3 ${done ? 'bg-emerald-50/60 -mx-2 px-2 rounded-lg' : ''}" data-line="${esc(l.lineId)}">
+    <div class="min-w-0 flex-1 basis-60">
+      <div class="font-semibold">${esc(l.brand)}${l.code ? ` · Art. ${esc(l.code)}` : ''} – ${esc(l.title)}</div>
+      <div class="text-[11px] text-on-surface-variant">${esc(lineSelection(l))} · ${l.qty} × ${esc(l.presentation)} a ${esc(formatPrice(l.price))} = <strong>${esc(formatPrice(l.subtotal))}</strong></div>
+    </div>
+    <div class="flex items-center gap-2" role="group" aria-label="Armado de ${esc(l.title)}">
+      <span class="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Armado</span>
+      <div class="inline-flex items-center rounded-full border border-outline-variant bg-surface-container-lowest">
+        <button type="button" data-prep-step="-1" ${l.prepared <= 0 ? 'disabled' : ''} class="w-9 h-9 inline-flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary disabled:opacity-30" aria-label="Uno menos armado">−</button>
+        <span class="min-w-[3.5rem] text-center text-sm font-bold ${done ? 'text-emerald-700' : 'text-on-surface'}" aria-live="polite">${l.prepared} de ${l.qty}</span>
+        <button type="button" data-prep-step="1" ${done ? 'disabled' : ''} class="w-9 h-9 inline-flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary disabled:opacity-30" aria-label="Uno más armado">+</button>
+      </div>
+      <button type="button" data-prep-full ${done ? 'disabled' : ''} class="px-3 py-1.5 rounded-full text-xs font-bold ${done ? 'bg-emerald-100 text-emerald-800' : 'bg-primary text-on-primary hover:bg-primary-container'} disabled:cursor-default">${done ? '✓ Completo' : '✓ Todo'}</button>
+    </div>
+  </li>`;
+}
+
 function orderCard(o) {
   const st = ORDER_STATUS[o.status] || ORDER_STATUS.nuevo;
-  const sel = (l) =>
-    [l.colors.length ? `Color: ${l.colors.join(', ')}` : 'Colores surtidos', l.sizes.length ? `Talle: ${l.sizes.join(', ')}` : 'Curva completa'].join(' · ');
-  const items = o.items
-    .map(
-      (l) => `<li class="py-2 flex justify-between gap-3">
-        <div class="min-w-0"><div class="font-semibold">${esc(l.brand)}${l.code ? ` · Art. ${esc(l.code)}` : ''} – ${esc(l.title)}</div>
-        <div class="text-[11px] text-on-surface-variant">${esc(sel(l))} · ${l.qty} × ${esc(l.presentation)} a ${esc(formatPrice(l.price))}</div></div>
-        <div class="font-bold whitespace-nowrap">${esc(formatPrice(l.subtotal))}</div>
-      </li>`
-    )
+  const prepared = o.items.reduce((n, l) => n + l.prepared, 0);
+  // Artículos agrupados por tanda: el pedido original y lo que se fue sumando después.
+  const batches = [...new Set(o.items.map((l) => l.batch))].sort((a, b) => a - b);
+  const groups = batches
+    .map((b) => {
+      const ls = o.items.filter((l) => l.batch === b);
+      const title = b === 1 ? `Pedido original · ${dateTime(ls[0].addedAt || o.createdAt)}` : `Sumado después · ${dateTime(ls[0].addedAt || o.updatedAt)}`;
+      return `${batches.length > 1 ? `<p class="mt-3 text-[11px] font-bold uppercase tracking-wider ${b === 1 ? 'text-on-surface-variant' : 'text-primary'}">${esc(title)}</p>` : ''}
+        <ul class="divide-y divide-outline-variant/20 text-sm">${ls.map(orderLine).join('')}</ul>`;
+    })
     .join('');
+  const missing = missingLines(o);
+  const missingPacks = missing.reduce((n, l) => n + l.qty - l.prepared, 0);
+  const notice =
+    o.status === 'listo'
+      ? missing.length
+        ? `<div class="mt-3 p-3 rounded-xl bg-error-container/40 border border-error/30">
+            <p class="text-sm font-bold text-on-surface">${faltaron(missingPacks)}: avisale al cliente</p>
+            <textarea readonly rows="7" data-missing-text class="mt-2 w-full rounded-lg bg-surface-container-lowest border-none text-sm text-on-surface focus:ring-2 focus:ring-primary">${esc(missingMessage(o))}</textarea>
+            <div class="mt-2 flex flex-wrap gap-2">
+              ${o.phone ? `<a href="${esc(`https://wa.me/${o.phone}?text=${encodeURIComponent(missingMessage(o))}`)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#25D366] text-white text-xs font-bold hover:opacity-90">Avisar por WhatsApp</a>` : ''}
+              <button type="button" data-copy-missing class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-outline-variant text-on-surface text-xs font-bold hover:bg-surface-container">Copiar mensaje</button>
+            </div>
+          </div>`
+        : '<p class="mt-3 p-3 rounded-xl bg-emerald-50 text-sm font-bold text-emerald-800">✓ Todo armado: no faltó nada.</p>'
+      : '';
   const options = Object.entries(ORDER_STATUS)
     .map(([k, v]) => `<option value="${k}"${k === o.status ? ' selected' : ''}>${v.label}</option>`)
     .join('');
+  const phone = o.info.phone || (o.phone ? `+${o.phone}` : '');
   return `<article class="rounded-2xl bg-surface-container-lowest border ${o.status === 'nuevo' ? 'border-primary/50' : 'border-outline-variant/30'} shadow-sm" data-id="${esc(o.id)}">
   <details>
     <summary class="list-none cursor-pointer p-4 flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -429,14 +488,17 @@ function orderCard(o) {
       <span class="px-2 py-0.5 rounded-md bg-surface-container-high text-xs font-bold tracking-wider" title="Código que figura en el mensaje de WhatsApp">${esc(o.code)}</span>
       <span class="min-w-0 flex-1">
         <span class="block font-semibold truncate">${esc(o.info.name || 'Sin nombre')}${o.info.city ? ` <span class="font-normal text-on-surface-variant">· ${esc(o.info.city)}</span>` : ''}</span>
-        <span class="block text-[11px] text-on-surface-variant">${esc(dateTime(o.createdAt))} · ${o.packs} ${o.packs === 1 ? 'pack' : 'packs'} · ${esc(o.info.delivery || 'A coordinar')}${o.sends > 1 ? ` · reenviado ${o.sends} veces` : ''}</span>
+        <span class="block text-[11px] text-on-surface-variant">${esc(dateTime(o.createdAt))} · ${packsWord(o.packs)} · ${esc(o.info.delivery || 'A coordinar')}${o.batches > 1 ? ` · <strong class="text-primary">sumó cosas ${o.batches - 1} ${o.batches === 2 ? 'vez' : 'veces'}</strong>` : ''}</span>
       </span>
+      <span class="text-xs font-semibold ${prepared >= o.packs ? 'text-emerald-700' : 'text-on-surface-variant'}" title="Packs armados">Armado ${prepared}/${o.packs}</span>
       <span class="font-bold whitespace-nowrap">${esc(formatPrice(o.total))}</span>
       <span class="px-2.5 py-0.5 rounded-full text-xs font-bold ${st.cls}">${st.label}</span>
     </summary>
     <div class="px-4 pb-4 border-t border-outline-variant/20">
-      <ul class="divide-y divide-outline-variant/20 text-sm">${items}</ul>
+      ${phone ? `<p class="mt-3 text-sm">WhatsApp: ${o.phone ? `<a class="font-bold text-primary hover:underline" href="https://wa.me/${esc(o.phone)}" target="_blank" rel="noopener noreferrer">${esc(phone)}</a>` : esc(phone)}</p>` : ''}
+      ${groups}
       ${o.info.notes ? `<p class="mt-2 text-sm"><strong>Aclaraciones:</strong> ${esc(o.info.notes)}</p>` : ''}
+      ${notice}
       <div class="mt-3 pt-3 border-t border-outline-variant/20 flex flex-wrap items-center justify-between gap-3">
         <label class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Estado
           <select data-order-status class="bg-surface-container-low px-3 py-1.5 pr-8 rounded-xl text-sm text-on-surface border-none focus:ring-2 focus:ring-primary font-semibold normal-case tracking-normal">${options}</select>
@@ -471,16 +533,27 @@ function renderOrders() {
 $('#ordersFilter').addEventListener('change', renderOrders);
 $('#ordersRefresh').addEventListener('click', refreshLive);
 
+/** Guarda un cambio del pedido y vuelve a dibujar la lista (manteniendo el pedido abierto). */
+async function saveOrder(id, body) {
+  const updated = await call(`orders?id=${encodeURIComponent(id)}`, { method: 'PUT', body });
+  state.orders = state.orders.map((o) => (o.id === id ? updated : o));
+  renderOrders();
+  return updated;
+}
+
 $('#ordersContainer').addEventListener('change', async (e) => {
   const select = e.target.closest('[data-order-status]');
   if (!select) return;
   const id = select.closest('article').dataset.id;
   select.disabled = true;
   try {
-    const updated = await call(`orders?id=${encodeURIComponent(id)}`, { method: 'PUT', body: { status: select.value } });
-    state.orders = state.orders.map((o) => (o.id === id ? updated : o));
-    renderOrders();
-    showToast(`Pedido #${updated.number}: ${ORDER_STATUS[updated.status].label}.`);
+    const updated = await saveOrder(id, { status: select.value });
+    const missing = missingLines(updated).reduce((n, l) => n + l.qty - l.prepared, 0);
+    showToast(
+      updated.status === 'listo' && missing
+        ? `Pedido #${updated.number} listo. ${faltaron(missing)}: abajo está el aviso para el cliente.`
+        : `Pedido #${updated.number}: ${ORDER_STATUS[updated.status].label}.`
+    );
   } catch (err) {
     select.disabled = false;
     if (err.status !== 401) showToast(err.message, 'error');
@@ -488,18 +561,54 @@ $('#ordersContainer').addEventListener('change', async (e) => {
 });
 
 $('#ordersContainer').addEventListener('click', async (e) => {
-  const btn = e.target.closest('[data-order-delete]');
-  if (!btn) return;
-  const id = btn.closest('article').dataset.id;
+  const article = e.target.closest('article[data-id]');
+  if (!article) return;
+  const id = article.dataset.id;
   const order = state.orders.find((o) => o.id === id);
-  if (!order || !window.confirm(`¿Eliminar el pedido #${order.number} (${order.code})? No se puede deshacer.`)) return;
-  try {
-    await call(`orders?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-    state.orders = state.orders.filter((o) => o.id !== id);
-    renderOrders();
-    showToast(`Pedido #${order.number} eliminado.`);
-  } catch (err) {
-    if (err.status !== 401) showToast(err.message, 'error');
+  if (!order) return;
+
+  // Armado: +1 / −1 o "todo" en un artículo.
+  const step = e.target.closest('[data-prep-step]');
+  const full = e.target.closest('[data-prep-full]');
+  if (step || full) {
+    const lineId = e.target.closest('[data-line]').dataset.line;
+    const line = order.items.find((l) => l.lineId === lineId);
+    const prepared = full ? line.qty : Math.max(0, Math.min(line.qty, line.prepared + Number(step.dataset.prepStep)));
+    (step || full).disabled = true;
+    try {
+      // Pedido nuevo que se empieza a armar: pasa solo a "En preparación".
+      if (order.status === 'nuevo') await saveOrder(id, { status: 'en_preparacion' });
+      await saveOrder(id, { line: lineId, prepared });
+    } catch (err) {
+      if (err.status !== 401) showToast(err.message, 'error');
+      renderOrders();
+    }
+    return;
+  }
+
+  if (e.target.closest('[data-copy-missing]')) {
+    const text = article.querySelector('[data-missing-text]').value;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const area = article.querySelector('[data-missing-text]');
+      area.select();
+      document.execCommand('copy');
+    }
+    showToast('Mensaje copiado: pegalo en el chat del cliente.');
+    return;
+  }
+
+  if (e.target.closest('[data-order-delete]')) {
+    if (!window.confirm(`¿Eliminar el pedido #${order.number} (${order.code})? No se puede deshacer.`)) return;
+    try {
+      await call(`orders?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      state.orders = state.orders.filter((o) => o.id !== id);
+      renderOrders();
+      showToast(`Pedido #${order.number} eliminado.`);
+    } catch (err) {
+      if (err.status !== 401) showToast(err.message, 'error');
+    }
   }
 });
 
