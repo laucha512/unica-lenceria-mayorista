@@ -516,12 +516,17 @@ function renderBrandOptions() {
 }
 
 function filteredArticles() {
-  const q = $('#articleSearchInput').value.toLowerCase().trim();
+  // Busca en título, marca, código, descripción, categoría y subcategoría; sin importar tildes
+  // ni mayúsculas, y cada palabra por separado ("bikinis kaury" encuentra bikinis de Kaury).
+  const plain = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const words = plain($('#articleSearchInput').value).split(/\s+/).filter(Boolean);
+  // "bikinis" también encuentra "Bikini"; "corpiños" encuentra "Corpiño".
+  const matches = (hay, w) => hay.includes(w) || (w.length > 3 && w.endsWith('s') && hay.includes(w.slice(0, w.endsWith('es') ? -2 : -1)));
   const brand = $('#articleBrandFilter').value;
   const onlyNew = $('#articleNewFilter').value === 'new';
   return state.articles.filter((a) => {
-    const hay = `${a.title} ${a.brand} ${a.code} ${a.description}`.toLowerCase();
-    return (!q || hay.includes(q)) && (brand === 'all' || a.brand === brand) && (!onlyNew || a.isNew);
+    const hay = plain(`${a.title} ${a.brand} ${a.code} ${a.description} ${a.saleType} ${subcategoryPath(a.subcategoryId)}`);
+    return words.every((w) => matches(hay, w)) && (brand === 'all' || a.brand === brand) && (!onlyNew || a.isNew);
   });
 }
 
