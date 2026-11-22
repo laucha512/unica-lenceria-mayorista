@@ -1,6 +1,7 @@
 // Datos iniciales extraídos del diseño de Stitch.
 // Los usan las Netlify Functions para sembrar Blobs la primera vez
 // y la tienda como respaldo si la API no responde.
+import { WHATSAPP_DISPLAY, WHATSAPP_NUMBER } from '../config.js';
 import { slugify } from '../shared/tree.js';
 
 const daysAgo = (now, d) => new Date(now - d * 86400000).toISOString();
@@ -223,21 +224,10 @@ export function seedBanners(now = Date.now()) {
       format: 'Se muestra vertical 4:5 (recomendado 1200×1500 px)',
       image: '/img/hero-coleccion-saten-encaje.webp', active: true, updatedAt: daysAgo(now, 2),
     },
-    {
-      id: 'banner-promo', type: 'promo', label: 'Banner Promocional',
-      title: 'Curvas & Packs por Mayorista x12',
-      description: 'Banner intermedio en sección marcas líderes con descuento escalonado.',
-      alt: 'Banner curvas y packs mayoristas',
-      format: 'Formato: 1200x400px',
-      image: '/img/banner-curvas-packs-mayorista.webp', active: true, updatedAt: daysAgo(now, 7),
-    },
-    {
-      id: 'banner-categoria', type: 'category', label: 'Portada Categoría',
-      title: 'Especial Corsetería & Encaje',
-      description: 'Encabezado de categoría Brillite y lencería fina para revendedoras.',
-      alt: 'Banner corsetería y encaje',
-      format: 'Formato: 1400x500px',
-      image: '/img/banner-corseteria-encaje.webp', active: true, updatedAt: daysAgo(now, 21),
-    },
   ];
+}
+
+/** Datos de contacto editables desde el admin (una sola fila). */
+export function seedSettings() {
+  return [{ id: 'contact', whatsappNumber: WHATSAPP_NUMBER, whatsappDisplay: WHATSAPP_DISPLAY }];
 }

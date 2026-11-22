@@ -14,10 +14,22 @@ function enforceSingleHero(list, keepId) {
   return list.map((b) => (b.id !== keepId && b.type === 'hero' && b.active ? { ...b, active: false } : b));
 }
 
+/** Quita (una sola vez) los banners promocional y de categoría, que la tienda no usa. */
+async function readHeroBanners() {
+  const list = await readCollection('banners');
+  if (list.every((b) => b.type === 'hero')) return list;
+  const removed = await updateCollection('banners', (current) => ({
+    list: current.filter((b) => b.type === 'hero'),
+    result: current.filter((b) => b.type !== 'hero'),
+  }));
+  await deleteUploadedImages(removed.map((b) => b.image));
+  return list.filter((b) => b.type === 'hero');
+}
+
 export default handle(async (req) => {
   switch (req.method) {
     case 'GET': {
-      const list = await readCollection('banners');
+      const list = await readHeroBanners();
       return json(isAuthed(req) ? list : list.filter((b) => b.active));
     }
 

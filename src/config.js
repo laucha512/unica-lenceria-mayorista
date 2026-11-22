@@ -1,6 +1,7 @@
-// Datos de contacto y condiciones comerciales: única fuente de verdad.
+// Datos de contacto y condiciones comerciales.
 // Se usan en el JS del sitio y, en build, se reemplazan en el HTML
 // mediante los marcadores {{WA_NUMBER}}, {{IG_USER}}, etc. (ver vite.config.js).
+// El WhatsApp se edita desde el admin (Contacto & WhatsApp); estos valores son el respaldo inicial.
 
 export const SITE_URL = 'https://unicamayoristalenceria.com.ar';
 
@@ -15,5 +16,16 @@ export const INSTAGRAM_URL = `https://instagram.com/${INSTAGRAM_USER}`;
 
 export const formatPrice = (n) => '$' + Number(n || 0).toLocaleString('es-AR');
 
+// Número vigente: arranca con el de arriba y se reemplaza por el guardado en el admin.
+const whatsapp = { number: WHATSAPP_NUMBER, display: WHATSAPP_DISPLAY };
+
+export function setWhatsapp({ whatsappNumber, whatsappDisplay } = {}) {
+  if (/^\d{11,15}$/.test(String(whatsappNumber || ''))) whatsapp.number = whatsappNumber;
+  if (whatsappDisplay) whatsapp.display = whatsappDisplay;
+}
+
+export const whatsappNumber = () => whatsapp.number;
+export const whatsappDisplay = () => whatsapp.display;
+
 export const whatsappLink = (text) =>
-  `https://wa.me/${WHATSAPP_NUMBER}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
+  `https://wa.me/${whatsapp.number}${text ? `?text=${encodeURIComponent(text)}` : ''}`;

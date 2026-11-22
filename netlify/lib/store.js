@@ -1,5 +1,5 @@
 // Persistencia en Netlify Blobs. Cada colección es un array JSON bajo una clave del store "catalog".
-// Colecciones: articles, brands, banners, branches, categories, subcategories.
+// Colecciones: articles, brands, banners, branches, categories, settings, subcategories.
 import { getStore } from '@netlify/blobs';
 import {
   seedArticles,
@@ -7,6 +7,7 @@ import {
   seedBranches,
   seedBrands,
   seedCategories,
+  seedSettings,
   seedSubcategories,
   SEED_ARTICLE_SUBCATEGORY,
 } from '../../src/data/seed.js';
@@ -18,8 +19,16 @@ const SEEDS = {
   banners: seedBanners,
   branches: seedBranches,
   categories: seedCategories,
+  settings: seedSettings,
   subcategories: seedSubcategories,
 };
+
+/** Datos de contacto vigentes (WhatsApp), con los de config.js como respaldo. */
+export async function readContact() {
+  const [row] = await readCollection('settings');
+  const fallback = seedSettings()[0];
+  return { whatsappNumber: row?.whatsappNumber || fallback.whatsappNumber, whatsappDisplay: row?.whatsappDisplay || fallback.whatsappDisplay };
+}
 
 export const dataStore = () => getStore({ name: 'catalog', consistency: 'strong' });
 export const imageStore = () => getStore({ name: 'images', consistency: 'strong' });

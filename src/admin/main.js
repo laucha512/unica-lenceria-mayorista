@@ -2,6 +2,7 @@ import { api, ApiError, esc, safeImg, initials as autoInitials } from '../shared
 import { formatPrice } from '../config.js';
 import { validateFile, resizeImage, uploadBlob } from './images.js';
 import { swatchOf } from '../shared/colors.js';
+import { normalizeWhatsapp } from '../shared/phone.js';
 import { initCategories, renderCategories, subcategoryOptions, subcategoryPath } from './categories.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -262,15 +263,16 @@ async function startApp() {
 
 async function loadAll() {
   try {
-    const [articles, brands, banners, branches, categories, subcategories] = await Promise.all([
+    const [articles, brands, banners, branches, categories, subcategories, contact] = await Promise.all([
       call('articles'),
       call('brands'),
       call('banners'),
       call('branches'),
       call('categories'),
       call('subcategories'),
+      call('settings'),
     ]);
-    Object.assign(state, { articles, brands, banners, branches, categories, subcategories });
+    Object.assign(state, { articles, brands, banners, branches, categories, subcategories, contact });
     renderAll();
   } catch (err) {
     if (err.status !== 401) showToast(`No se pudieron cargar los datos: ${err.message}`, 'error');
@@ -285,11 +287,12 @@ function renderAll() {
   renderBranches();
   renderBrands();
   renderCategories();
+  renderContact();
 }
 
 /* ================================================================ Navegación */
 
-const TABS = ['publicaciones', 'categorias', 'portadas', 'marcas', 'sucursales', 'pedidos'];
+const TABS = ['publicaciones', 'categorias', 'portadas', 'marcas', 'sucursales', 'contacto', 'pedidos'];
 
 function switchTab(tab, focus = true) {
   if (!TABS.includes(tab)) tab = 'publicaciones';
@@ -368,9 +371,10 @@ function renderBrandOptions() {
 function filteredArticles() {
   const q = $('#articleSearchInput').value.toLowerCase().trim();
   const brand = $('#articleBrandFilter').value;
+  const onlyNew = $('#articleNewFilter').value === 'new';
   return state.articles.filter((a) => {
     const hay = `${a.title} ${a.brand} ${a.code} ${a.description}`.toLowerCase();
-    return (!q || hay.includes(q)) && (brand === 'all' || a.brand === brand);
+    return (!q || hay.includes(q)) && (brand === 'all' || a.brand === brand) && (!onlyNew || a.isNew);
   });
 }
 
@@ -434,13 +438,18 @@ function renderArticles() {
   $('#articlesContainer').innerHTML = list.length
     ? list.map(articleCard).join('')
     : `<div class="col-span-full p-10 rounded-2xl border border-dashed border-outline-variant text-center text-sm text-on-surface-variant">${
-        state.articles.length ? 'Ningún artículo coincide con la búsqueda.' : 'Todavía no hay artículos. Creá el primero con “Nueva Publicación Mayorista”.'
+        !state.articles.length
+          ? 'Todavía no hay artículos. Creá el primero con “Nueva Publicación Mayorista”.'
+          : $('#articleNewFilter').value === 'new' && !state.articles.some((a) => a.isNew)
+            ? 'No hay artículos marcados como novedad.'
+            : 'Ningún artículo coincide con la búsqueda.'
       }</div>`;
   $('#articlesCountBadge').textContent = `Mostrando ${list.length} de ${state.articles.length} artículos`;
 }
 
 $('#articleSearchInput').addEventListener('input', renderArticles);
 $('#articleBrandFilter').addEventListener('change', renderArticles);
+$('#articleNewFilter').addEventListener('change', renderArticles);
 
 function replaceArticle(updated) {
   const i = state.articles.findIndex((a) => a.id === updated.id);
@@ -482,7 +491,8 @@ $('#articlesContainer').addEventListener('click', async (e) => {
     replaceArticle(updated);
     renderKpis();
     renderArticles();
-    $(`#articlesContainer article[data-id="${CSS.escape(id)}"] button[data-action="${action}"]`)?.focus();
+    // Con "Solo novedades", al quitar una la tarjeta desaparece: el foco vuelve al filtro.
+    ($(`#articlesContainer article[data-id="${CSS.escape(id)}"] button[data-action="${action}"]`) || $('#articleNewFilter')).focus();
     if (field === 'isNew') showToast(updated.isNew ? `"${updated.title}" marcado como NOVEDAD.` : `"${updated.title}" quitado de novedades.`);
     else showToast(`Stock de "${updated.title}" ${updated.inStock ? 'activado' : 'pausado temporalmente'}.`);
   } catch (err) {
@@ -863,16 +873,58 @@ $('#articleForm').addEventListener('submit', async (e) => {
   }
 });
 
+/* ================================================================ Contacto & WhatsApp */
+
+/** Muestra cómo queda el número para los links y habilita "Probar en WhatsApp". */
+function updateContactPreview() {
+  const number = normalizeWhatsapp($('#contactWhatsapp').value);
+  const test = $('#contactTest');
+  test.classList.toggle('hidden', !number);
+  test.classList.toggle('inline-flex', !!number);
+  if (number) test.href = `https://wa.me/${number}`;
+  $('#contactPreview').textContent = number
+    ? `Los botones de la web van a abrir el chat con +${number}.`
+    : $('#contactWhatsapp').value.trim()
+      ? 'Revisá el número: escribilo con código de área, sin 0 ni 15.'
+      : '';
+}
+
+function renderContact() {
+  $('#contactWhatsapp').value = state.contact?.whatsappDisplay || '';
+  showFormError($('#contactFormError'), '');
+  updateContactPreview();
+}
+
+$('#contactWhatsapp').addEventListener('input', updateContactPreview);
+
+$('#contactForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errEl = $('#contactFormError');
+  showFormError(errEl, '');
+  const whatsappDisplay = $('#contactWhatsapp').value.trim();
+  if (!normalizeWhatsapp(whatsappDisplay)) {
+    return showFormError(errEl, 'Número inválido. Escribilo con código de área, sin 0 ni 15 (ej. 341 259-1367), o completo (ej. +54 9 341 259-1367).');
+  }
+  const btn = $('#contactSubmit');
+  setBusy(btn, true, 'Guardando…');
+  try {
+    state.contact = await call('settings', { method: 'PUT', body: { whatsappDisplay } });
+    renderContact();
+    showToast('Número guardado: ya se ve en toda la web.');
+  } catch (err) {
+    if (err.status !== 401) showFormError(errEl, err.message);
+  } finally {
+    setBusy(btn, false);
+  }
+});
+
 /* ================================================================ Portadas */
 
-const BANNER_TYPE = {
-  hero: { cls: 'bg-primary text-on-primary', name: 'Portada Inicio' },
-  promo: { cls: 'bg-secondary-container text-on-secondary-container', name: 'Banner Promocional' },
-  category: { cls: 'bg-surface-container text-on-surface', name: 'Portada Categoría' },
-};
+// Solo existe la Portada de Inicio (la foto grande de la tienda).
+const BANNER_TYPE = { hero: { cls: 'bg-primary text-on-primary', name: 'Portada Inicio' } };
 
 function bannerCard(b) {
-  const t = BANNER_TYPE[b.type] || BANNER_TYPE.promo;
+  const t = BANNER_TYPE.hero;
   return `
 <article class="rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm overflow-hidden flex flex-col group" data-id="${esc(b.id)}">
   <div class="relative h-48 bg-surface-container-high overflow-hidden">
@@ -923,7 +975,6 @@ function openBannerModal(banner = null) {
   $('#bannerModalTitle').textContent = banner ? 'Editar Portada' : 'Nueva Portada';
   showFormError($('#bannerFormError'), '');
   $('#bannerForm').reset();
-  $('#bannerType').value = banner?.type || 'promo';
   $('#bannerLabel').value = banner?.label || '';
   $('#bannerTitle').value = banner?.title || '';
   $('#bannerDescription').value = banner?.description || '';
@@ -961,7 +1012,7 @@ $('#bannerForm').addEventListener('submit', async (e) => {
   const errEl = $('#bannerFormError');
   showFormError(errEl, '');
   const title = $('#bannerTitle').value.trim();
-  const label = $('#bannerLabel').value.trim() || BANNER_TYPE[$('#bannerType').value].name;
+  const label = $('#bannerLabel').value.trim() || BANNER_TYPE.hero.name;
   const problems = [];
   if (!bannerForm.blob && !bannerForm.image) problems.push('la imagen');
   if (title.length < 3) problems.push('el título (mínimo 3 caracteres)');
@@ -975,7 +1026,7 @@ $('#bannerForm').addEventListener('submit', async (e) => {
       $('#bannerSubmit span:last-child').textContent = 'Subiendo imagen…';
       image = await uploadBlob(bannerForm.blob, state.token);
     }
-    const type = $('#bannerType').value;
+    const type = 'hero';
     const body = {
       type,
       label,
@@ -985,7 +1036,7 @@ $('#bannerForm').addEventListener('submit', async (e) => {
       image,
       active: $('#bannerActive').checked,
     };
-    if (!bannerForm.editingId) body.format = type === 'hero' ? 'Se muestra vertical 4:5 (recomendado 1200×1500 px)' : '';
+    if (!bannerForm.editingId) body.format = 'Se muestra vertical 4:5 (recomendado 1200×1500 px)';
     if (bannerForm.editingId) await call(`banners?id=${encodeURIComponent(bannerForm.editingId)}`, { method: 'PUT', body });
     else await call('banners', { method: 'POST', body });
     // Recarga: activar una portada inicio puede desactivar otra.

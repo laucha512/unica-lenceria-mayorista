@@ -1,4 +1,5 @@
 // Validación de inputs del admin. Todo lo que llega del cliente pasa por acá.
+import { normalizeWhatsapp } from '../../src/shared/phone.js';
 import { HttpError } from './http.js';
 
 const IMAGE_URL_RE = /^(\/img\/[\w.-]+|\/api\/images\?key=[\w.-]+)$/;
@@ -237,8 +238,9 @@ export function validateBanner(body, { partial = false } = {}) {
   return pick(
     body,
     {
+      // Solo existe la Portada de Inicio (los banners promocional y de categoría se quitaron).
       type: (b) => {
-        if (!['hero', 'promo', 'category'].includes(b.type)) throw new HttpError('Tipo de portada inválido.');
+        if (b.type !== 'hero') throw new HttpError('Tipo de portada inválido.');
         return b.type;
       },
       label: (b) => text(b, 'label', { label: 'La etiqueta', max: 40, required: true }),
@@ -251,4 +253,14 @@ export function validateBanner(body, { partial = false } = {}) {
     },
     { partial }
   );
+}
+
+/** Contacto: el WhatsApp tal como se muestra en la web y su número para los links de wa.me. */
+export function validateContact(body) {
+  const display = text(body, 'whatsappDisplay', { label: 'El número de WhatsApp', min: 8, max: 30, required: true });
+  const number = normalizeWhatsapp(display);
+  if (!number) {
+    throw new HttpError('Número de WhatsApp inválido. Escribilo con código de área, sin 0 ni 15 (ej. 341 259-1367), o completo (ej. +54 9 341 259-1367).');
+  }
+  return { whatsappNumber: number, whatsappDisplay: display };
 }

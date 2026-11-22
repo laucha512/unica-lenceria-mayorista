@@ -7,7 +7,7 @@ import '@fontsource/plus-jakarta-sans/latin-400.css';
 import '@fontsource/plus-jakarta-sans/latin-500.css';
 import '@fontsource/plus-jakarta-sans/latin-600.css';
 import '@fontsource/plus-jakarta-sans/latin-700.css';
-import { formatPrice } from '../config.js';
+import { formatPrice, setWhatsapp, whatsappDisplay, whatsappNumber } from '../config.js';
 import { CARD_SIZES, imageSrcset, imageUrl } from '../shared/images.js';
 import { esc, safeImg, formatSizes, api, initials } from '../shared/utils.js';
 import { initCart, qtyOf, setArticles, packPrice, refresh as refreshCart } from './cart.js';
@@ -575,6 +575,19 @@ $('#catalogMore').addEventListener('click', () => {
   $$('#catalogGrid article')[before]?.querySelector('h4 a')?.focus({ preventScroll: false });
 });
 
+/** WhatsApp guardado en el admin: actualiza links, textos y datos para Google de toda la página. */
+function applyContact(contact) {
+  setWhatsapp(contact);
+  const number = whatsappNumber();
+  $$('a[href*="wa.me/"]').forEach((a) => {
+    a.href = a.getAttribute('href').replace(/wa\.me\/\d+/, `wa.me/${number}`);
+  });
+  $$('[data-wa-display]').forEach((el) => (el.textContent = whatsappDisplay()));
+  const ld = $('#ldBusiness');
+  ld.textContent = ld.textContent.replace(/"telephone":\s*"\+\d+"/g, `"telephone":"+${number}"`);
+  refreshCart(); // el botón de enviar pedido arma su link con el número vigente
+}
+
 function applyHero(banners) {
   const hero = banners.find((b) => b.type === 'hero' && b.active);
   if (!hero) return;
@@ -592,6 +605,9 @@ function applyHero(banners) {
 
 async function load() {
   // Aparte del catálogo: si falla, quedan las sucursales que trae el HTML.
+  api('settings')
+    .then(applyContact)
+    .catch((err) => console.warn('No se pudo cargar el WhatsApp.', err.message));
   api('branches')
     .then(renderBranches)
     .catch((err) => console.warn('No se pudieron cargar las sucursales.', err.message));
