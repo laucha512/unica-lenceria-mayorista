@@ -20,6 +20,7 @@ const state = {
   branches: [],
   categories: [],
   subcategories: [],
+  orders: [],
   tab: 'publicaciones',
 };
 
@@ -205,7 +206,8 @@ function showLogin(message) {
 function logout(message) {
   clearSession();
   modalStack.slice().forEach((m) => closeModal(m.el));
-  state.articles = state.brands = state.banners = state.branches = [];
+  state.articles = state.brands = state.banners = state.branches = state.orders = [];
+  clearInterval(liveTimer);
   showLogin(message);
 }
 
@@ -274,6 +276,7 @@ async function loadAll() {
     ]);
     Object.assign(state, { articles, brands, banners, branches, categories, subcategories, contact });
     renderAll();
+    startLive(); // visitas en vivo y pedidos, cada 30 segundos
   } catch (err) {
     if (err.status !== 401) showToast(`No se pudieron cargar los datos: ${err.message}`, 'error');
   }
@@ -341,7 +344,7 @@ matchMedia('(min-width: 1024px)').addEventListener('change', (e) => e.matches &&
 /* ================================================================ KPIs */
 
 function renderKpis() {
-  const { articles, brands, banners } = state;
+  const { articles, brands } = state;
   const active = articles.filter((a) => a.inStock).length;
   $('#kpiActive').textContent = active;
   $('#kpiActiveOf').textContent = `de ${articles.length} en catálogo mayorista`;
@@ -351,10 +354,154 @@ function renderKpis() {
   $('#kpiBrands').textContent = brands.length;
   const names = brands.slice(0, 5).map((b) => b.name).join(', ');
   $('#kpiBrandNames').textContent = brands.length > 5 ? `${names}…` : names || 'Sin marcas cargadas';
-  const activeBanners = banners.filter((b) => b.active).length;
-  $('#kpiBanners').textContent = activeBanners;
-  $('#kpiBannersOf').textContent = `de ${banners.length} cargadas`;
 }
+
+/* ================================================================ En vivo: visitas y pedidos */
+
+const LIVE_MS = 30 * 1000;
+let liveTimer = null;
+
+function renderLive(p) {
+  $('#kpiLive').textContent = p.total;
+  $('#kpiLiveUnit').textContent = p.total === 1 ? 'persona' : 'personas';
+  const parts = [
+    p.views.producto && `${p.views.producto} viendo ${p.views.producto === 1 ? 'un artículo' : 'artículos'}`,
+    p.views.pedido && `${p.views.pedido} armando el pedido`,
+    p.views.tienda && `${p.views.tienda} recorriendo la tienda`,
+  ].filter(Boolean);
+  const detail = $('#kpiLiveDetail');
+  detail.textContent = p.total ? parts.join(' · ') : 'Nadie en este momento';
+  // Al pasar el mouse: qué artículos están mirando.
+  detail.title = p.products.length ? p.products.map((x) => `${x.count} × ${x.title}`).join('\n') : '';
+}
+
+async function refreshLive() {
+  if (!state.token || document.visibilityState !== 'visible') return;
+  try {
+    const [presence, orders] = await Promise.all([call('presence'), call('orders')]);
+    renderLive(presence);
+    state.orders = orders;
+    renderOrders();
+  } catch (err) {
+    if (err.status !== 401) $('#kpiLiveDetail').textContent = 'No se pudo actualizar';
+  }
+}
+
+function startLive() {
+  clearInterval(liveTimer);
+  refreshLive();
+  liveTimer = setInterval(refreshLive, LIVE_MS);
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && state.token) refreshLive();
+});
+
+const ORDER_STATUS = {
+  nuevo: { label: 'Nuevo', cls: 'bg-primary text-on-primary' },
+  confirmado: { label: 'Confirmado', cls: 'bg-secondary-container text-on-secondary-container' },
+  entregado: { label: 'Entregado', cls: 'bg-surface-container-high text-on-surface' },
+  cancelado: { label: 'Cancelado', cls: 'bg-error-container text-error' },
+};
+
+const dateTime = (iso) =>
+  new Date(iso).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+
+function orderCard(o) {
+  const st = ORDER_STATUS[o.status] || ORDER_STATUS.nuevo;
+  const sel = (l) =>
+    [l.colors.length ? `Color: ${l.colors.join(', ')}` : 'Colores surtidos', l.sizes.length ? `Talle: ${l.sizes.join(', ')}` : 'Curva completa'].join(' · ');
+  const items = o.items
+    .map(
+      (l) => `<li class="py-2 flex justify-between gap-3">
+        <div class="min-w-0"><div class="font-semibold">${esc(l.brand)}${l.code ? ` · Art. ${esc(l.code)}` : ''} – ${esc(l.title)}</div>
+        <div class="text-[11px] text-on-surface-variant">${esc(sel(l))} · ${l.qty} × ${esc(l.presentation)} a ${esc(formatPrice(l.price))}</div></div>
+        <div class="font-bold whitespace-nowrap">${esc(formatPrice(l.subtotal))}</div>
+      </li>`
+    )
+    .join('');
+  const options = Object.entries(ORDER_STATUS)
+    .map(([k, v]) => `<option value="${k}"${k === o.status ? ' selected' : ''}>${v.label}</option>`)
+    .join('');
+  return `<article class="rounded-2xl bg-surface-container-lowest border ${o.status === 'nuevo' ? 'border-primary/50' : 'border-outline-variant/30'} shadow-sm" data-id="${esc(o.id)}">
+  <details>
+    <summary class="list-none cursor-pointer p-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+      <span class="font-bold text-primary">#${o.number}</span>
+      <span class="px-2 py-0.5 rounded-md bg-surface-container-high text-xs font-bold tracking-wider" title="Código que figura en el mensaje de WhatsApp">${esc(o.code)}</span>
+      <span class="min-w-0 flex-1">
+        <span class="block font-semibold truncate">${esc(o.info.name || 'Sin nombre')}${o.info.city ? ` <span class="font-normal text-on-surface-variant">· ${esc(o.info.city)}</span>` : ''}</span>
+        <span class="block text-[11px] text-on-surface-variant">${esc(dateTime(o.createdAt))} · ${o.packs} ${o.packs === 1 ? 'pack' : 'packs'} · ${esc(o.info.delivery || 'A coordinar')}${o.sends > 1 ? ` · reenviado ${o.sends} veces` : ''}</span>
+      </span>
+      <span class="font-bold whitespace-nowrap">${esc(formatPrice(o.total))}</span>
+      <span class="px-2.5 py-0.5 rounded-full text-xs font-bold ${st.cls}">${st.label}</span>
+    </summary>
+    <div class="px-4 pb-4 border-t border-outline-variant/20">
+      <ul class="divide-y divide-outline-variant/20 text-sm">${items}</ul>
+      ${o.info.notes ? `<p class="mt-2 text-sm"><strong>Aclaraciones:</strong> ${esc(o.info.notes)}</p>` : ''}
+      <div class="mt-3 pt-3 border-t border-outline-variant/20 flex flex-wrap items-center justify-between gap-3">
+        <label class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Estado
+          <select data-order-status class="bg-surface-container-low px-3 py-1.5 pr-8 rounded-xl text-sm text-on-surface border-none focus:ring-2 focus:ring-primary font-semibold normal-case tracking-normal">${options}</select>
+        </label>
+        <button type="button" data-order-delete class="flex items-center gap-1 text-xs font-bold text-on-surface-variant hover:text-error"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">delete</span> Eliminar</button>
+      </div>
+    </div>
+  </details>
+</article>`;
+}
+
+function renderOrders() {
+  const orders = state.orders || [];
+  const fresh = orders.filter((o) => o.status === 'nuevo').length;
+  const badge = $('#ordersBadge');
+  badge.textContent = fresh > 99 ? '99+' : String(fresh);
+  badge.classList.toggle('hidden', !fresh);
+  const filter = $('#ordersFilter').value;
+  const list = filter === 'all' ? orders : orders.filter((o) => o.status === filter);
+  $('#ordersCount').textContent = `${list.length} ${list.length === 1 ? 'pedido' : 'pedidos'}${fresh ? ` · ${fresh} ${fresh === 1 ? 'nuevo' : 'nuevos'}` : ''}`;
+  // Conserva abiertos los pedidos que se estaban mirando.
+  const open = new Set($$('#ordersContainer details[open]').map((d) => d.closest('article').dataset.id));
+  const container = $('#ordersContainer');
+  container.innerHTML = list.length
+    ? list.map(orderCard).join('')
+    : `<div class="p-10 rounded-2xl border border-dashed border-outline-variant text-center text-sm text-on-surface-variant">${
+        orders.length ? 'No hay pedidos con ese estado.' : 'Todavía no llegó ningún pedido. Aparecen acá cuando alguien envía su pedido por WhatsApp desde la web.'
+      }</div>`;
+  open.forEach((id) => container.querySelector(`article[data-id="${CSS.escape(id)}"] details`)?.setAttribute('open', ''));
+}
+
+$('#ordersFilter').addEventListener('change', renderOrders);
+$('#ordersRefresh').addEventListener('click', refreshLive);
+
+$('#ordersContainer').addEventListener('change', async (e) => {
+  const select = e.target.closest('[data-order-status]');
+  if (!select) return;
+  const id = select.closest('article').dataset.id;
+  select.disabled = true;
+  try {
+    const updated = await call(`orders?id=${encodeURIComponent(id)}`, { method: 'PUT', body: { status: select.value } });
+    state.orders = state.orders.map((o) => (o.id === id ? updated : o));
+    renderOrders();
+    showToast(`Pedido #${updated.number}: ${ORDER_STATUS[updated.status].label}.`);
+  } catch (err) {
+    select.disabled = false;
+    if (err.status !== 401) showToast(err.message, 'error');
+  }
+});
+
+$('#ordersContainer').addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-order-delete]');
+  if (!btn) return;
+  const id = btn.closest('article').dataset.id;
+  const order = state.orders.find((o) => o.id === id);
+  if (!order || !window.confirm(`¿Eliminar el pedido #${order.number} (${order.code})? No se puede deshacer.`)) return;
+  try {
+    await call(`orders?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    state.orders = state.orders.filter((o) => o.id !== id);
+    renderOrders();
+    showToast(`Pedido #${order.number} eliminado.`);
+  } catch (err) {
+    if (err.status !== 401) showToast(err.message, 'error');
+  }
+});
 
 /* ================================================================ Artículos */
 

@@ -10,10 +10,11 @@ import '@fontsource/plus-jakarta-sans/latin-700.css';
 import { formatPrice, setWhatsapp, whatsappDisplay, whatsappNumber } from '../config.js';
 import { CARD_SIZES, imageSrcset, imageUrl } from '../shared/images.js';
 import { esc, safeImg, formatSizes, api, initials } from '../shared/utils.js';
-import { initCart, qtyOf, setArticles, packPrice, refresh as refreshCart } from './cart.js';
+import { initCart, qtyOf, setArticles, packPrice, refresh as refreshCart, totals } from './cart.js';
 import { initProduct, openProduct, setProducts } from './product.js';
 import { initMenu, setTree } from './menu.js';
 import { renderBranches } from './branches.js';
+import { initPresence } from './presence.js';
 import { buildTreeFrom, slugify, normalizeName } from '../shared/tree.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -656,6 +657,7 @@ window.addEventListener('resize', () => {
 });
 
 initCart({ onUpdate: syncAddButtons });
+initPresence({ cartCount: () => totals().count });
 initProduct({ onChange: refreshCart });
 initMenu({ onSelect: (f) => applyFilter(f) });
 load();

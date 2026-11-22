@@ -12,8 +12,19 @@ const $ = (sel) => document.querySelector(sel);
 const state = {
   items: [], // [{ key, id, qty, colors: [], sizes: [] }]
   info: { name: '', city: '', delivery: '', notes: '' },
+  code: '', // código del pedido: va en el mensaje y en el admin, para reconocerlo
   articles: new Map(), // id -> artículo (datos actuales de la API)
 };
+
+const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sin 0/O ni 1/I, que se confunden
+const CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/;
+function orderCode() {
+  if (!CODE_RE.test(state.code)) {
+    state.code = Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => CODE_CHARS[b % CODE_CHARS.length]).join('');
+    save();
+  }
+  return state.code;
+}
 
 const cleanList = (v) =>
   Array.isArray(v) ? v.filter((x) => typeof x === 'string').map((x) => x.slice(0, 40)).slice(0, 30) : [];
@@ -31,6 +42,7 @@ function load() {
           return { key: keyOf(i.id, colors, sizes), id: i.id, qty: Math.min(i.qty, MAX_QTY), colors, sizes };
         });
     }
+    if (CODE_RE.test(data?.code || '')) state.code = data.code;
     if (data?.info && typeof data.info === 'object') {
       for (const k of Object.keys(state.info)) state.info[k] = String(data.info[k] || '').slice(0, 400);
     }
@@ -41,7 +53,7 @@ function load() {
 
 function save() {
   try {
-    localStorage.setItem(STORE_KEY, JSON.stringify({ items: state.items, info: state.info }));
+    localStorage.setItem(STORE_KEY, JSON.stringify({ items: state.items, info: state.info, code: state.code }));
   } catch {
     /* ignore */
   }
@@ -89,6 +101,7 @@ function setQty(key, qty) {
 
 function clear() {
   state.items = [];
+  state.code = ''; // el próximo pedido lleva un código nuevo
   save();
   render();
 }
@@ -100,7 +113,7 @@ const selectionText = (l) => [
 
 export function buildMessage() {
   const { lines: ls, total, count } = totals();
-  const out = ['¡Hola ÚNICA LENCERÍA! Quiero hacer este pedido mayorista:', ''];
+  const out = ['¡Hola ÚNICA LENCERÍA! Quiero hacer este pedido mayorista:', `Código de pedido: ${orderCode()}`, ''];
   ls.forEach((l, n) => {
     const a = l.article;
     const price = packPrice(a);
@@ -280,6 +293,22 @@ export function initCart({ onUpdate } = {}) {
     });
   }
   form.addEventListener('submit', (e) => e.preventDefault());
+
+  // Al enviar por WhatsApp, el pedido también queda guardado en el admin (Pedidos Mayoristas).
+  // No frena la apertura de WhatsApp: se manda en segundo plano y, si falla, el mensaje igual sale.
+  $('#cartSend').addEventListener('click', () => {
+    if (!lines().length) return;
+    fetch('/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code: orderCode(),
+        items: state.items.map(({ id, qty, colors, sizes }) => ({ id, qty, colors, sizes })),
+        info: state.info,
+      }),
+      keepalive: true,
+    }).catch(() => {});
+  });
 
   $('#cartClear').addEventListener('click', () => {
     if (window.confirm('¿Vaciar todo el pedido?')) {

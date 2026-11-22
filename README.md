@@ -112,6 +112,10 @@ Las rutas `/api/*` se reescriben a `/.netlify/functions/*`.
 | POST/PUT/DELETE | `/api/banners[?id=]` | ✔ | Alta / edición / baja             |
 | GET    | `/api/branches`         | –    | Sucursales activas (todas con token) |
 | POST/PUT/DELETE | `/api/branches[?id=]` | ✔ | Alta / edición parcial, activar o desactivar / baja |
+| POST   | `/api/orders`           | –    | Guarda el pedido al enviarlo por WhatsApp (precios del catálogo) |
+| GET/PUT/DELETE | `/api/orders[?id=]` | ✔ | Lista, cambia estado o elimina pedidos |
+| POST   | `/api/presence`         | –    | Aviso anónimo "sigo en la web" (cada minuto) |
+| GET    | `/api/presence`         | ✔    | Personas en la web ahora y qué miran |
 | GET    | `/api/settings`         | –    | WhatsApp vigente (número y cómo se muestra) |
 | PUT    | `/api/settings`         | ✔    | Cambia el WhatsApp de toda la web   |
 | GET    | `/catalogo`, `/marca/:slug`, `/producto/:id`, `/sucursales`, `/como-comprar`, `/sitemap.xml` | – | Páginas para buscadores con datos del admin (caché de 10 minutos) |

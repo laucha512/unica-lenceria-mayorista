@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&icon_names=add,add_box,add_circle,add_photo_alternate,arrow_downward,arrow_upward,aspect_ratio,auto_awesome,call,category,check_circle,checkroom,chevron_right,close,cloud_upload,delete,description,edit,error,inventory_2,lock,logout,menu,open_in_new,pause_circle,play_circle,progress_activity,publish,receipt_long,schedule,search,star,storefront,subdirectory_arrow_right,verified,view_carousel,visibility,visibility_off,wallpaper,warning&display=block">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&icon_names=add,add_box,add_circle,add_photo_alternate,arrow_downward,arrow_upward,aspect_ratio,auto_awesome,call,category,check_circle,checkroom,chevron_right,close,cloud_upload,delete,description,edit,error,inventory_2,lock,logout,menu,open_in_new,pause_circle,play_circle,progress_activity,publish,receipt_long,refresh,schedule,search,star,storefront,subdirectory_arrow_right,verified,view_carousel,visibility,visibility_off,wallpaper,warning&display=block">
 <link rel="stylesheet" href="/src/admin/admin.css">
 </head>
 <body class="bg-surface font-body-md text-body-md text-on-surface antialiased selection:bg-primary-fixed selection:text-primary">
@@ -89,7 +89,7 @@
     <button type="button" class="nav-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 text-left text-on-surface-variant" data-tab="pedidos">
       <span class="material-symbols-outlined text-[20px]" aria-hidden="true">receipt_long</span>
       <span class="text-sm tracking-wide flex-1">Pedidos Mayoristas</span>
-      <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container">Pronto</span>
+      <span id="ordersBadge" class="hidden text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary text-on-primary" aria-label="pedidos nuevos"></span>
     </button>
     <a class="mt-auto flex items-center gap-3 px-3.5 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors text-left border-t border-outline-variant/30 pt-4" href="/" target="_blank" rel="noopener">
       <span class="material-symbols-outlined text-[20px]" aria-hidden="true">storefront</span>
@@ -177,14 +177,14 @@
     </div>
     <div class="p-4 sm:p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm flex flex-col justify-between min-w-0">
       <div class="flex items-center justify-between">
-        <span class="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-on-surface-variant">Portadas Activas</span>
-        <div class="w-9 h-9 rounded-xl bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center"><span class="material-symbols-outlined text-[20px]" aria-hidden="true">wallpaper</span></div>
+        <span class="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-on-surface-variant">En la web ahora</span>
+        <div class="w-9 h-9 rounded-xl bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center"><span class="material-symbols-outlined text-[20px]" aria-hidden="true">visibility</span></div>
       </div>
       <div class="mt-4 flex items-baseline gap-2">
-        <span class="font-headline-xl text-3xl font-bold text-on-surface" id="kpiBanners">–</span>
-        <span class="text-xs text-on-surface-variant">portadas y banners</span>
+        <span class="font-headline-xl text-3xl font-bold text-on-surface" id="kpiLive" aria-live="polite">–</span>
+        <span class="text-xs text-on-surface-variant" id="kpiLiveUnit">personas</span>
       </div>
-      <span class="mt-2 text-xs text-on-surface-variant" id="kpiBannersOf">–</span>
+      <span class="mt-2 text-xs text-on-surface-variant" id="kpiLiveDetail" title="">Se actualiza cada 30 segundos</span>
     </div>
   </div>
 
@@ -384,64 +384,24 @@
   <section class="tab-section hidden" id="section-pedidos" aria-labelledby="h-pedidos">
     <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
       <div>
-        <div class="flex items-center gap-1.5 text-xs uppercase font-bold text-primary tracking-wider mb-1">
-          <span>Operaciones B2B</span>
-          <span class="material-symbols-outlined text-[14px]" aria-hidden="true">chevron_right</span>
-          <span class="text-on-surface-variant font-semibold">Pedidos Recibidos</span>
-        </div>
-        <h1 id="h-pedidos" class="font-headline-lg text-2xl md:text-3xl text-on-surface font-semibold">Pedidos Mayoristas Rosario</h1>
-        <p class="text-sm text-on-surface-variant mt-1 max-w-2xl">Seguimiento de órdenes por bulto cerrado, curvas de talles y pedidos para retiro en sucursales o despacho a revendedoras.</p>
+        <h1 id="h-pedidos" class="font-headline-lg text-2xl md:text-3xl text-on-surface font-semibold">Pedidos Mayoristas</h1>
+        <p class="text-sm text-on-surface-variant mt-1 max-w-2xl">Cada vez que alguien toca <strong>“Enviar pedido por WhatsApp”</strong> en la web, el pedido aparece acá con su código. El mismo código va en el mensaje de WhatsApp: comparalos para saber si cambiaron algo antes de enviarlo.</p>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <select id="ordersFilter" aria-label="Filtrar pedidos por estado" class="bg-surface-container-low px-3 py-2 pr-8 rounded-xl text-xs sm:text-sm text-on-surface border-none focus:ring-2 focus:ring-primary font-medium">
+          <option value="all">Todos los pedidos</option>
+          <option value="nuevo">Nuevos</option>
+          <option value="confirmado">Confirmados</option>
+          <option value="entregado">Entregados</option>
+          <option value="cancelado">Cancelados</option>
+        </select>
+        <button type="button" id="ordersRefresh" class="p-2 rounded-xl bg-surface-container-low text-on-surface-variant hover:text-primary" aria-label="Actualizar pedidos" title="Actualizar">
+          <span class="material-symbols-outlined text-[20px]" aria-hidden="true">refresh</span>
+        </button>
       </div>
     </div>
-    <div class="mb-5 p-4 rounded-2xl bg-secondary-container/50 border border-outline-variant/40 flex items-start gap-3">
-      <span class="material-symbols-outlined text-primary text-[22px]" aria-hidden="true">auto_awesome</span>
-      <div>
-        <p class="text-sm font-bold text-on-surface">Próximamente</p>
-        <p class="text-xs text-on-surface-variant">Hoy los pedidos llegan por WhatsApp. Esta sección muestra <strong>datos de ejemplo</strong> de cómo se verá el seguimiento de pedidos cuando se habilite.</p>
-      </div>
-    </div>
-    <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl overflow-hidden shadow-sm opacity-80" aria-describedby="h-pedidos">
-      <div class="p-4 bg-surface-container-low flex flex-wrap gap-2 items-center justify-between">
-        <span class="text-xs font-bold uppercase tracking-wider text-on-surface">2 Pedidos de ejemplo</span>
-        <span class="text-xs text-on-surface-variant">Datos ficticios</span>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm border-collapse min-w-[760px]">
-          <caption class="sr-only">Pedidos de ejemplo (función próximamente)</caption>
-          <thead class="bg-surface-container-high/40 text-on-surface-variant text-xs uppercase font-semibold">
-            <tr>
-              <th scope="col" class="py-3 px-4">N° Pedido</th>
-              <th scope="col" class="py-3 px-4">Cliente / Revendedora</th>
-              <th scope="col" class="py-3 px-4">Curvas &amp; Packs</th>
-              <th scope="col" class="py-3 px-4">Total Mayorista</th>
-              <th scope="col" class="py-3 px-4">Destino / Sucursal</th>
-              <th scope="col" class="py-3 px-4">Estado</th>
-              <th scope="col" class="py-3 px-4 text-right">Acción</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-outline-variant/20 text-on-surface">
-            <tr>
-              <td class="py-3 px-4 font-bold text-primary">#MAY-8942</td>
-              <td class="py-3 px-4"><div class="font-semibold">Lencería Romina</div><div class="text-[11px] text-on-surface-variant">Rosario Centro</div></td>
-              <td class="py-3 px-4">4 Packs x12 Brillite + 2 Packs Kaury</td>
-              <td class="py-3 px-4 font-bold">$ 284.500</td>
-              <td class="py-3 px-4">Retiro Sucursal San Luis</td>
-              <td class="py-3 px-4"><span class="px-2.5 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-xs font-bold whitespace-nowrap">En Preparación</span></td>
-              <td class="py-3 px-4 text-right"><button type="button" disabled class="text-xs font-bold text-on-surface-variant cursor-not-allowed" title="Disponible próximamente">Ver Detalle</button></td>
-            </tr>
-            <tr>
-              <td class="py-3 px-4 font-bold text-primary">#MAY-8941</td>
-              <td class="py-3 px-4"><div class="font-semibold">Valeria Distribuciones</div><div class="text-[11px] text-on-surface-variant">San Lorenzo / Santa Fe</div></td>
-              <td class="py-3 px-4">8 Packs x6 Lody Corsetería</td>
-              <td class="py-3 px-4 font-bold">$ 342.000</td>
-              <td class="py-3 px-4">Envío Transporte Rosario</td>
-              <td class="py-3 px-4"><span class="px-2.5 py-0.5 rounded-full bg-primary-fixed text-primary text-xs font-bold whitespace-nowrap">Listo Despacho</span></td>
-              <td class="py-3 px-4 text-right"><button type="button" disabled class="text-xs font-bold text-on-surface-variant cursor-not-allowed" title="Disponible próximamente">Ver Detalle</button></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <p class="mb-4 text-xs text-on-surface-variant" id="ordersCount" aria-live="polite"></p>
+    <div class="space-y-3" id="ordersContainer"></div>
   </section>
 </main>
 </div>

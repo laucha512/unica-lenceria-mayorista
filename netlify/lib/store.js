@@ -1,5 +1,6 @@
 // Persistencia en Netlify Blobs. Cada colección es un array JSON bajo una clave del store "catalog".
-// Colecciones: articles, brands, banners, branches, categories, settings, subcategories.
+// Colecciones: articles, brands, banners, branches, categories, orders, settings, subcategories.
+// Las visitas en vivo usan su propio store ("presence"), ver netlify/functions/presence.js.
 import { getStore } from '@netlify/blobs';
 import {
   seedArticles,
@@ -19,6 +20,7 @@ const SEEDS = {
   banners: seedBanners,
   branches: seedBranches,
   categories: seedCategories,
+  orders: () => [],
   settings: seedSettings,
   subcategories: seedSubcategories,
 };
