@@ -46,9 +46,8 @@ export async function downloadBackup({ call, subcategoryPath, buildClients }) {
     {
       name: 'Artículos',
       intro: [`ÚNICA LENCERÍA – Copia de seguridad del ${dateTime(new Date().toISOString())}`, `${articles.length} artículos`],
-      header: ['ID', 'Marca', 'Código', 'Título', 'Descripción', 'Categoría', 'Presentación', 'Tipo de venta', 'Talles', 'Colores', 'Colores por talle', 'Agotados', 'Precio pack', 'Precio unidad', 'Novedad', 'Con stock', 'Fotos', 'Creado', 'Actualizado'],
+      header: ['Marca', 'Código', 'Título', 'Descripción', 'Categoría', 'Presentación', 'Tipo de venta', 'Talles', 'Colores', 'Colores por talle', 'Agotados', 'Precio pack', 'Precio unidad', 'Novedad', 'Con stock', 'Fotos', 'Creado', 'Actualizado'],
       rows: articles.map((a) => [
-        a.id,
         a.brand,
         a.code || '',
         a.title,
@@ -68,8 +67,8 @@ export async function downloadBackup({ call, subcategoryPath, buildClients }) {
         dateTime(a.createdAt),
         dateTime(a.updatedAt),
       ]),
-      widths: [40, 14, 10, 44, 40, 28, 16, 18, 22, 30, 30, 24, 12, 12, 9, 9, 60, 17, 17],
-      money: [12, 13],
+      widths: [14, 10, 44, 40, 28, 16, 18, 22, 30, 30, 24, 12, 12, 9, 9, 60, 17, 17],
+      money: [11, 12],
     },
     {
       name: 'Pedidos',
