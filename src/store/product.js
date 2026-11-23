@@ -544,7 +544,27 @@ function setActivePhoto(i, scroll = true) {
 
 let savedScroll = null; // posición de la página al abrir la ficha
 
+/** Cuenta una vista de la ficha (una por artículo y por visita), para las estadísticas del admin. */
+function countView(id) {
+  try {
+    const key = 'unica_fichas_vistas';
+    const seen = new Set(JSON.parse(sessionStorage.getItem(key) || '[]'));
+    if (seen.has(id)) return;
+    seen.add(id);
+    sessionStorage.setItem(key, JSON.stringify([...seen].slice(-300)));
+  } catch {
+    /* sin almacenamiento: se cuenta igual */
+  }
+  fetch('/api/stats', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id }),
+    keepalive: true,
+  }).catch(() => {});
+}
+
 function show(article) {
+  countView(article.id);
   if (!isOpen()) {
     lastFocus = document.activeElement;
     savedScroll = window.scrollY;

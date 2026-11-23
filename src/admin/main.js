@@ -300,11 +300,12 @@ function renderAll() {
 
 /* ================================================================ Navegación */
 
-const TABS = ['publicaciones', 'categorias', 'portadas', 'marcas', 'sucursales', 'contacto', 'pedidos'];
+const TABS = ['publicaciones', 'categorias', 'portadas', 'marcas', 'sucursales', 'contacto', 'pedidos', 'clientes', 'estadisticas'];
 
 function switchTab(tab, focus = true) {
   if (!TABS.includes(tab)) tab = 'publicaciones';
   state.tab = tab;
+  if (tab === 'estadisticas' && state.token && !stats.views) loadStatsViews();
   $$('.tab-section').forEach((s) => s.classList.toggle('hidden', s.id !== `section-${tab}`));
   $$('.nav-btn').forEach((btn) => {
     const on = btn.dataset.tab === tab;
@@ -533,7 +534,250 @@ function renderOrders() {
         orders.length ? 'No hay pedidos con ese estado.' : 'Todavía no llegó ningún pedido. Aparecen acá cuando alguien envía su pedido por WhatsApp desde la web.'
       }</div>`;
   open.forEach((id) => container.querySelector(`article[data-id="${CSS.escape(id)}"] details`)?.setAttribute('open', ''));
+  // Clientes y estadísticas salen de los mismos pedidos.
+  renderClients();
+  renderStats();
 }
+
+/* ================================================================ Clientes */
+// Cada WhatsApp de los pedidos es un cliente. Los pedidos viejos sin WhatsApp no se cuentan.
+
+const DAY_MS = 86400000;
+const INACTIVE_DAYS = 60;
+const daysSince = (iso) => Math.floor((Date.now() - Date.parse(iso)) / DAY_MS);
+const sinceText = (d) => (d <= 0 ? 'hoy' : d === 1 ? 'ayer' : `hace ${d} días`);
+const firstName = (name) => (name || '').split(/[\s–-]+/)[0];
+
+function buildClients() {
+  const map = new Map();
+  for (const o of state.orders || []) {
+    if (!o.phone) continue;
+    const c = map.get(o.phone) || { phone: o.phone, phoneDisplay: '', name: '', city: '', orders: [], total: 0, packs: 0, first: o.createdAt, last: o.createdAt };
+    c.orders.push(o);
+    if (o.status !== 'cancelado') {
+      c.total += o.total;
+      c.packs += o.packs;
+    }
+    if (o.createdAt >= c.last || !c.name) {
+      c.name = o.info.name || c.name;
+      c.city = o.info.city || c.city;
+      c.phoneDisplay = o.info.phone || c.phoneDisplay;
+    }
+    if (o.createdAt > c.last) c.last = o.createdAt;
+    if (o.createdAt < c.first) c.first = o.createdAt;
+    map.set(o.phone, c);
+  }
+  return [...map.values()];
+}
+
+function clientCard(c) {
+  const days = daysSince(c.last);
+  const inactive = days > INACTIVE_DAYS;
+  const greeting = inactive
+    ? `¡Hola${firstName(c.name) ? ` ${firstName(c.name)}` : ''}! Te escribimos de ÚNICA LENCERÍA. Hace un tiempo que no te vemos y queríamos contarte que ingresaron novedades. Mirá el catálogo actualizado en la web y cualquier consulta, escribinos.`
+    : `¡Hola${firstName(c.name) ? ` ${firstName(c.name)}` : ''}! Te escribimos de ÚNICA LENCERÍA.`;
+  const orders = [...c.orders]
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+    .map((o) => {
+      const st = ORDER_STATUS[o.status] || ORDER_STATUS.nuevo;
+      return `<li class="py-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+        <span class="font-bold text-primary">#${o.number}</span>
+        <span class="px-2 py-0.5 rounded-md bg-surface-container-high text-xs font-bold">${esc(o.code)}</span>
+        <span class="text-on-surface-variant text-xs">${esc(dateTime(o.createdAt))} · ${packsWord(o.packs)} · ${esc(o.info.delivery || 'A coordinar')}</span>
+        <span class="ml-auto font-bold">${esc(formatPrice(o.total))}</span>
+        <span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${st.cls}">${st.label}</span>
+      </li>`;
+    })
+    .join('');
+  return `<article class="rounded-2xl bg-surface-container-lowest border ${inactive ? 'border-amber-300' : 'border-outline-variant/30'} shadow-sm">
+  <details>
+    <summary class="list-none cursor-pointer p-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+      <span class="min-w-0 flex-1 basis-52">
+        <span class="block font-semibold truncate">${esc(c.name || 'Sin nombre')}${c.city ? ` <span class="font-normal text-on-surface-variant">· ${esc(c.city)}</span>` : ''}</span>
+        <span class="block text-[11px] text-on-surface-variant">${esc(c.phoneDisplay || `+${c.phone}`)} · cliente desde ${esc(new Date(c.first).toLocaleDateString('es-AR'))}</span>
+      </span>
+      <span class="text-xs text-on-surface-variant">${c.orders.length} ${c.orders.length === 1 ? 'pedido' : 'pedidos'} · ${packsWord(c.packs)}</span>
+      <span class="text-xs ${inactive ? 'font-bold text-amber-800' : 'text-on-surface-variant'}">Último: ${sinceText(days)}</span>
+      ${inactive ? '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[11px] font-bold">Hace tiempo que no compra</span>' : ''}
+      <span class="font-bold whitespace-nowrap">${esc(formatPrice(c.total))}</span>
+    </summary>
+    <div class="px-4 pb-4 border-t border-outline-variant/20">
+      <ul class="divide-y divide-outline-variant/20">${orders}</ul>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <a href="${esc(`https://wa.me/${c.phone}?text=${encodeURIComponent(greeting)}`)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#25D366] text-white text-xs font-bold hover:opacity-90">${inactive ? 'Escribirle para que vuelva' : 'Escribirle por WhatsApp'}</a>
+      </div>
+    </div>
+  </details>
+</article>`;
+}
+
+function renderClients() {
+  const container = $('#clientsContainer');
+  if (!container) return;
+  const all = buildClients();
+  const plainText = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const q = plainText($('#clientsSearch').value).trim();
+  const list = all.filter((c) => !q || plainText(`${c.name} ${c.city} ${c.phone} ${c.phoneDisplay}`).includes(q.replace(/[^a-z0-9 ]/g, '') || q));
+  const sort = $('#clientsSort').value;
+  const cmp = {
+    total: (a, b) => b.total - a.total,
+    orders: (a, b) => b.orders.length - a.orders.length || b.total - a.total,
+    recent: (a, b) => String(b.last).localeCompare(String(a.last)),
+    inactive: (a, b) => String(a.last).localeCompare(String(b.last)),
+  }[sort];
+  list.sort(cmp);
+  const inactive = all.filter((c) => daysSince(c.last) > INACTIVE_DAYS).length;
+  $('#clientsCount').textContent = `${list.length} ${list.length === 1 ? 'cliente' : 'clientes'}${inactive ? ` · ${inactive} hace tiempo que no compran` : ''}`;
+  const open = new Set($$('#clientsContainer details[open]').map((d) => d.closest('article').dataset.phone));
+  container.innerHTML = list.length
+    ? list.map((c) => clientCard(c).replace('<article ', `<article data-phone="${esc(c.phone)}" `)).join('')
+    : `<div class="p-10 rounded-2xl border border-dashed border-outline-variant text-center text-sm text-on-surface-variant">${
+        all.length ? 'Ningún cliente coincide con la búsqueda.' : 'Todavía no hay clientes: aparecen acá a medida que llegan pedidos con WhatsApp.'
+      }</div>`;
+  open.forEach((p) => container.querySelector(`article[data-phone="${CSS.escape(p)}"] details`)?.setAttribute('open', ''));
+}
+
+$('#clientsSearch').addEventListener('input', renderClients);
+$('#clientsSort').addEventListener('change', renderClients);
+
+/* ================================================================ Estadísticas */
+
+const stats = { views: null, loading: false };
+
+async function loadStatsViews() {
+  if (stats.loading) return;
+  stats.loading = true;
+  try {
+    stats.views = await call('stats');
+  } catch (err) {
+    if (err.status !== 401) showToast(`No se pudieron cargar las visitas: ${err.message}`, 'error');
+  } finally {
+    stats.loading = false;
+    renderStats();
+  }
+}
+
+/** Lunes de la semana de una fecha (hora local), para agrupar pedidos por semana. */
+function weekStart(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d;
+}
+
+function statTile(label, value, note = '') {
+  return `<div class="p-4 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm min-w-0">
+    <p class="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-on-surface-variant">${esc(label)}</p>
+    <p class="mt-2 font-headline-xl text-2xl sm:text-3xl font-bold text-on-surface">${esc(value)}</p>
+    ${note ? `<p class="mt-1 text-xs text-on-surface-variant">${esc(note)}</p>` : ''}
+  </div>`;
+}
+
+function weeksChart(orders) {
+  const start = weekStart(Date.now());
+  const weeks = Array.from({ length: 8 }, (_, i) => {
+    const from = new Date(start);
+    from.setDate(from.getDate() - (7 - i) * 7);
+    const to = new Date(from);
+    to.setDate(to.getDate() + 7);
+    const list = orders.filter((o) => {
+      const t = Date.parse(o.createdAt);
+      return t >= from.getTime() && t < to.getTime();
+    });
+    return { from, count: list.length, total: list.reduce((n, o) => n + o.total, 0) };
+  });
+  const max = Math.max(1, ...weeks.map((w) => w.count));
+  const best = weeks.reduce((b, w) => (w.count > b.count ? w : b), weeks[0]);
+  const label = (d) => d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
+  const H = 160;
+  const bars = weeks
+    .map((w, i) => {
+      const h = w.count ? Math.max(4, Math.round((w.count / max) * H)) : 0;
+      const desc = `Semana del ${label(w.from)}: ${w.count} ${w.count === 1 ? 'pedido' : 'pedidos'} · ${formatPrice(w.total)}`;
+      return `<div class="relative flex-1 flex flex-col items-center justify-end h-full group" tabindex="0" role="img" aria-label="${esc(desc)}">
+        <span class="pointer-events-none absolute bottom-full mb-1 hidden group-hover:block group-focus:block z-10 whitespace-nowrap px-2.5 py-1.5 rounded-lg bg-inverse-surface text-inverse-on-surface text-[11px] font-semibold shadow-lg">${esc(desc)}</span>
+        ${w === best && w.count ? `<span class="mb-1 text-[11px] font-bold text-on-surface">${w.count}</span>` : ''}
+        <span class="block w-full max-w-[24px] rounded-t bg-[#be185d] group-hover:opacity-80" style="height:${h}px"></span>
+        <span class="absolute -bottom-6 text-[10px] text-on-surface-variant ${i === weeks.length - 1 ? 'font-bold' : ''}">${i === weeks.length - 1 ? 'Esta' : label(w.from)}</span>
+      </div>`;
+    })
+    .join('');
+  const table = weeks
+    .map((w) => `<tr><td class="pr-4">${esc(label(w.from))}</td><td class="pr-4 text-right">${w.count}</td><td class="text-right">${esc(formatPrice(w.total))}</td></tr>`)
+    .join('');
+  return `<div class="relative h-[${H}px] flex items-end gap-1 sm:gap-3 border-b border-outline-variant/40 mb-8" style="height:${H}px">${bars}</div>
+    <details class="text-xs text-on-surface-variant"><summary class="cursor-pointer font-semibold">Ver como tabla</summary>
+      <table class="mt-2"><thead><tr><th class="text-left pr-4">Semana del</th><th class="text-right pr-4">Pedidos</th><th class="text-right">Total</th></tr></thead><tbody>${table}</tbody></table>
+    </details>`;
+}
+
+function rankRow(i, title, sub, value) {
+  return `<li class="flex items-center gap-3 text-sm">
+    <span class="w-6 h-6 shrink-0 rounded-full bg-surface-container-high text-xs font-bold flex items-center justify-center">${i + 1}</span>
+    <span class="min-w-0 flex-1"><span class="block font-semibold truncate">${esc(title)}</span><span class="block text-[11px] text-on-surface-variant">${esc(sub)}</span></span>
+    <span class="text-xs font-bold whitespace-nowrap">${esc(value)}</span>
+  </li>`;
+}
+
+function renderStats() {
+  if (!$('#statsKpis')) return;
+  const orders = (state.orders || []).filter((o) => o.status !== 'cancelado');
+  const now = Date.now();
+  const last30 = orders.filter((o) => now - Date.parse(o.createdAt) <= 30 * DAY_MS);
+  const total30 = last30.reduce((n, o) => n + o.total, 0);
+  const newClients = buildClients().filter((c) => now - Date.parse(c.first) <= 30 * DAY_MS).length;
+  $('#statsKpis').innerHTML = [
+    statTile('Pedidos (30 días)', String(last30.length)),
+    statTile('Total pedido (30 días)', formatPrice(total30), 'Estimado, según precios de lista'),
+    statTile('Pedido promedio', last30.length ? formatPrice(Math.round(total30 / last30.length)) : '–'),
+    statTile('Clientes nuevos (30 días)', String(newClients)),
+  ].join('');
+  $('#statsWeeks').innerHTML = weeksChart(orders);
+
+  // Más pedidos (90 días)
+  const packsById = new Map();
+  for (const o of orders.filter((x) => now - Date.parse(x.createdAt) <= 90 * DAY_MS)) {
+    for (const l of o.items) {
+      const e = packsById.get(l.id) || { title: l.title, brand: l.brand, code: l.code, packs: 0, total: 0 };
+      e.packs += l.qty;
+      e.total += l.subtotal;
+      packsById.set(l.id, e);
+    }
+  }
+  const top = [...packsById.values()].sort((a, b) => b.packs - a.packs).slice(0, 10);
+  $('#statsTop').innerHTML = top.length
+    ? top.map((e, i) => rankRow(i, e.title, `${e.brand}${e.code ? ` · Art. ${e.code}` : ''} · ${formatPrice(e.total)}`, packsWord(e.packs))).join('')
+    : '<li class="text-sm text-on-surface-variant">Todavía no hay pedidos en los últimos 90 días.</li>';
+
+  // Muy mirados, poco pedidos (30 días)
+  const looked = $('#statsLooked');
+  if (!stats.views) {
+    looked.innerHTML = '<li class="text-sm text-on-surface-variant">Cargando visitas…</li>';
+    if (state.tab === 'estadisticas') loadStatsViews();
+    return;
+  }
+  const packs30 = new Map();
+  for (const o of last30) for (const l of o.items) packs30.set(l.id, (packs30.get(l.id) || 0) + l.qty);
+  const byId = new Map(state.articles.map((a) => [a.id, a]));
+  const rows = Object.entries(stats.views.byArticle)
+    .filter(([id, views]) => byId.has(id) && views >= 3)
+    .map(([id, views]) => ({ a: byId.get(id), views, packs: packs30.get(id) || 0 }))
+    .sort((x, y) => x.packs / x.views - y.packs / y.views || y.views - x.views)
+    .slice(0, 10);
+  const since = stats.views.since ? new Date(`${stats.views.since}T12:00:00`).toLocaleDateString('es-AR') : null;
+  $('#statsViewsNote').textContent = since
+    ? `Veces que se abrió la ficha desde el ${since} (hasta 30 días) contra packs pedidos. Puede ser el precio, la foto o la descripción.`
+    : 'Las visitas se cuentan desde que se agregó esta sección: en unos días vas a ver datos acá.';
+  looked.innerHTML = rows.length
+    ? rows.map((r, i) => rankRow(i, r.a.title, `${r.a.brand}${r.a.code ? ` · Art. ${r.a.code}` : ''} · ${r.packs ? packsWord(r.packs) + ' pedidos' : 'ningún pedido'}`, `${r.views} vistas`)).join('')
+    : '<li class="text-sm text-on-surface-variant">Todavía no hay suficientes visitas (se muestran artículos con 3 vistas o más).</li>';
+}
+
+$('#statsRefresh').addEventListener('click', () => {
+  stats.views = null;
+  refreshLive();
+  loadStatsViews();
+});
 
 $('#ordersFilter').addEventListener('change', renderOrders);
 $('#ordersRefresh').addEventListener('click', refreshLive);
