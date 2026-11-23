@@ -1,12 +1,14 @@
 // Lista de precios descargable (PDF y Excel), armada en el momento con el catálogo actual.
 // Solo artículos con stock, agrupados por marca. Este archivo se carga recién al tocar "Descargar".
 import { formatPrice, instagramUser, SITE_URL, whatsappDisplay } from '../config.js';
+import { availableColors, availableSizes } from '../shared/stock.js';
 
 const packPrice = (a) => a.pricePack || a.priceUnit || 0;
 const today = () => new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 const fileDate = () => new Date().toISOString().slice(0, 10);
-const sizesText = (a) => (a.sizes || []).join(' - ');
-const colorsText = (a) => (a.colors?.length ? a.colors.join(', ') : Object.keys(a.colorsBySize || {}).length ? 'Según talle' : '');
+// Solo lo que hay: los talles y colores agotados del todo no se listan.
+const sizesText = (a) => availableSizes(a).join(' - ');
+const colorsText = (a) => (a.colors?.length ? availableColors(a).join(', ') : Object.keys(a.colorsBySize || {}).length ? 'Según talle' : '');
 
 /** Artículos con stock, ordenados por marca y título. */
 function listedArticles(articles) {

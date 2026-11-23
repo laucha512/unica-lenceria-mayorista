@@ -9,6 +9,7 @@ import '@fontsource/plus-jakarta-sans/latin-600.css';
 import '@fontsource/plus-jakarta-sans/latin-700.css';
 import { formatPrice, instagramUrl, instagramUser, setContact, whatsappDisplay, whatsappNumber } from '../config.js';
 import { CARD_SIZES, imageSrcset, imageUrl } from '../shared/images.js';
+import { availableSizes, sizeAvailable } from '../shared/stock.js';
 import { esc, safeImg, formatSizes, api, initials } from '../shared/utils.js';
 import { initCart, qtyOf, setArticles, packPrice, refresh as refreshCart, totals } from './cart.js';
 import { initProduct, openProduct, setProducts } from './product.js';
@@ -174,7 +175,7 @@ function newArrivalCard(a) {
     </div>
     <h3 class="font-headline-sm ${cardTitleSize(a.title)} font-bold text-slate-900 leading-snug">${titleLink(a)}</h3>
     <dl class="mt-3 space-y-1.5 text-xs text-slate-600 bg-[#fdf2f8] p-2.5 rounded-xl border border-pink-100">
-      <div class="flex justify-between gap-3"><dt class="font-bold text-slate-800 shrink-0">Curva de Talles:</dt> <dd class="text-right">${esc(formatSizes(a.sizes))}</dd></div>
+      <div class="flex justify-between gap-3"><dt class="font-bold text-slate-800 shrink-0">Curva de Talles:</dt> <dd class="text-right">${esc(formatSizes(availableSizes(a)))}</dd></div>
       <div class="flex justify-between gap-3"><dt class="font-bold text-slate-800 shrink-0">Colores Surtidos:</dt> <dd class="text-right">${esc(a.colors.join(', ') || 'Consultar')}</dd></div>
       <div class="flex justify-between gap-3"><dt class="font-bold text-slate-800 shrink-0">Presentación:</dt> <dd class="text-right">${esc(a.saleType || a.presentation)}</dd></div>
     </dl>
@@ -208,7 +209,7 @@ function catalogCard(a) {
     </div>
     <h4 class="font-headline-sm ${cardTitleSize(a.title)} font-bold text-slate-900 leading-tight">${titleLink(a)}</h4>
     <dl class="mt-3 p-3 bg-white rounded-xl border border-pink-100 text-xs text-slate-600 space-y-1">
-      <div class="flex justify-between gap-3"><dt class="font-bold text-slate-800 shrink-0">Curva de Talles:</dt> <dd class="text-right">${esc(formatSizes(a.sizes))}</dd></div>
+      <div class="flex justify-between gap-3"><dt class="font-bold text-slate-800 shrink-0">Curva de Talles:</dt> <dd class="text-right">${esc(formatSizes(availableSizes(a)))}</dd></div>
       <div class="flex justify-between gap-3"><dt class="font-bold text-slate-800 shrink-0">Colores Disponibles:</dt> <dd class="text-right">${esc(a.colors.join(', ') || 'Consultar')}</dd></div>
       <div class="flex justify-between gap-3"><dt class="font-bold text-slate-800 shrink-0">Tipo de Venta:</dt> <dd class="text-right">${esc(a.saleType || a.presentation)}</dd></div>
     </dl>
@@ -368,12 +369,13 @@ function compareSizes(x, y) {
   if (ly !== -1) return 1;
   return x.localeCompare(y, 'es');
 }
-const hasSize = (a, size) => (a.sizes || []).some((s) => normSize(s) === size);
+// Solo cuenta si queda algún color de ese talle.
+const hasSize = (a, size) => (a.sizes || []).some((s) => normSize(s) === size && sizeAvailable(a, s));
 
 /** Desplegables de talle y precio con las opciones que existen en lo que se está mirando. */
 function renderExtraFilters() {
   const scope = articlesInScope().filter((a) => !state.filter.brand || brandSlug(a.brand) === state.filter.brand);
-  const sizes = [...new Set(scope.flatMap((a) => (a.sizes || []).map(normSize)).filter(Boolean))].sort(compareSizes);
+  const sizes = [...new Set(scope.flatMap((a) => availableSizes(a).map(normSize)).filter(Boolean))].sort(compareSizes);
   if (state.size && !sizes.includes(state.size)) sizes.push(state.size);
   $('#sizeFilter').innerHTML =
     '<option value="">Todos</option>' + sizes.map((s) => `<option value="${esc(s)}"${s === state.size ? ' selected' : ''}>${esc(s)}</option>`).join('');

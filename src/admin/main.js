@@ -5,6 +5,7 @@ import { swatchOf } from '../shared/colors.js';
 import { normalizeWhatsapp } from '../shared/phone.js';
 import { instagramUrlOf, normalizeInstagram } from '../shared/instagram.js';
 import { findDuplicates } from './duplicates.js';
+import { combos, comboKey, soldOutCount } from '../shared/stock.js';
 import { initCategories, renderCategories, subcategoryOptions, subcategoryPath } from './categories.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -135,7 +136,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 $$('[data-close-modal]').forEach((b) => b.addEventListener('click', () => closeModal(b.closest('[role="dialog"]'))));
-['#articleModal', '#bannerModal', '#branchModal', '#taxonomyModal'].forEach((id) =>
+['#articleModal', '#bannerModal', '#branchModal', '#taxonomyModal', '#stockModal'].forEach((id) =>
   $(id).addEventListener('mousedown', (e) => {
     if (e.target === e.currentTarget) closeModal(e.currentTarget);
   })
@@ -655,6 +656,7 @@ function articleCard(a) {
         <span class="px-2 py-0.5 rounded-full bg-surface-container-lowest/90 backdrop-blur-sm text-primary text-[11px] font-bold shadow-sm">${esc(a.brand)}</span>
         ${a.isNew ? '<span class="px-2 py-0.5 rounded-full bg-primary text-on-primary text-[11px] font-bold shadow-sm">NOVEDAD</span>' : ''}
         ${a.inStock ? '' : '<span class="px-2 py-0.5 rounded-full bg-inverse-surface text-inverse-on-surface text-[11px] font-bold shadow-sm">SIN STOCK</span>'}
+        ${soldOutCount(a) ? `<span class="px-2 py-0.5 rounded-full bg-error-container text-error text-[11px] font-bold shadow-sm" title="Talles o colores agotados">${soldOutCount(a)} agotado${soldOutCount(a) === 1 ? '' : 's'}</span>` : ''}
         ${dup.ids.has(a.id) ? '<span class="px-2 py-0.5 rounded-full bg-amber-400 text-amber-950 text-[11px] font-bold shadow-sm" title="Hay otra publicación muy parecida: revisala en el aviso amarillo">⚠ Posible repetida</span>' : ''}
       </div>
       <span class="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-full bg-surface/90 text-on-surface text-[11px] font-semibold">${esc(a.presentation)}</span>
@@ -692,6 +694,7 @@ function articleCard(a) {
     </button>
     <div class="flex items-center gap-1">
       <button type="button" data-action="edit" class="p-2 sm:p-1 text-on-surface-variant hover:text-primary rounded" title="Editar" aria-label="Editar ${esc(a.title)}"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">edit</span></button>
+      ${combos(a).length > 1 ? `<button type="button" data-action="stock" class="p-2 sm:p-1 text-on-surface-variant hover:text-primary rounded" title="Talles y colores agotados" aria-label="Talles y colores agotados de ${esc(a.title)}"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">inventory_2</span></button>` : ''}
       <button type="button" data-action="toggle-stock" class="p-2 sm:p-1 text-on-surface-variant hover:text-primary rounded" title="${a.inStock ? 'Pausar stock' : 'Reactivar stock'}" aria-label="${a.inStock ? 'Pausar stock de' : 'Reactivar stock de'} ${esc(a.title)}"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">${a.inStock ? 'pause_circle' : 'play_circle'}</span></button>
       <button type="button" data-action="delete" class="p-2 sm:p-1 text-on-surface-variant hover:text-error rounded" title="Eliminar" aria-label="Eliminar ${esc(a.title)}"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">delete</span></button>
     </div>
@@ -713,6 +716,112 @@ function renderArticles() {
   $('#articlesCountBadge').textContent = `Mostrando ${list.length} de ${state.articles.length} artículos`;
   scheduleDuplicateCheck();
 }
+
+/* ================================================================ Talles y colores agotados */
+// Grilla talle × color: cada combinación se marca agotada o disponible. Se guarda en `soldOut`.
+
+const stock = { article: null, out: new Set() };
+
+function stockCell(key, label, extra = '') {
+  const out = stock.out.has(key);
+  return `<button type="button" data-combo="${esc(key)}" aria-pressed="${out}" ${extra} class="min-w-[4.5rem] px-2.5 py-1.5 rounded-lg border text-xs font-bold transition-colors ${
+    out ? 'bg-error-container border-error/40 text-error line-through' : 'bg-emerald-50 border-emerald-200 text-emerald-900 hover:border-emerald-500'
+  }">${esc(label)}</button>`;
+}
+
+function renderStockGrid() {
+  const a = stock.article;
+  const sizes = a.sizes || [];
+  const colors = a.colors || [];
+  const perSize = Object.keys(a.colorsBySize || {}).length > 0;
+  const groupBtn = (attr, value, label) =>
+    `<button type="button" ${attr}="${esc(value)}" class="text-left font-bold text-on-surface hover:text-primary underline decoration-dotted" title="Marcar o desmarcar todo">${esc(label)}</button>`;
+  let html;
+  if (perSize || (sizes.length && !colors.length) || (!sizes.length && colors.length)) {
+    // Colores distintos por talle, o solo talles, o solo colores: una fila por talle (o una sola fila).
+    const rows = sizes.length ? sizes : [''];
+    html = `<div class="space-y-3">${rows
+      .map((size) => {
+        const rowColors = perSize ? a.colorsBySize[size] || [] : colors;
+        const cells = rowColors.length
+          ? rowColors.map((c) => stockCell(comboKey(size, c), c)).join('')
+          : stockCell(comboKey(size, ''), 'Disponible');
+        return `<div class="flex flex-wrap items-center gap-2">
+          ${size ? `<span class="w-24 shrink-0">${groupBtn('data-stock-row', size, `Talle ${size}`)}</span>` : ''}
+          ${cells}
+        </div>`;
+      })
+      .join('')}</div>`;
+    if (!perSize && !sizes.length) html = `<div class="flex flex-wrap gap-2">${colors.map((c) => stockCell(comboKey('', c), c)).join('')}</div>`;
+    if (!perSize && !colors.length) html = `<div class="flex flex-wrap gap-2">${sizes.map((s) => stockCell(comboKey(s, ''), `Talle ${s}`)).join('')}</div>`;
+  } else {
+    // Talles × colores: tabla con filas por talle y columnas por color.
+    html = `<div class="overflow-x-auto"><table class="text-xs border-separate border-spacing-1">
+      <thead><tr><th class="text-left text-on-surface-variant font-semibold pr-2">Talle \\ Color</th>${colors
+        .map((c) => `<th class="text-left">${groupBtn('data-stock-col', c, c)}</th>`)
+        .join('')}</tr></thead>
+      <tbody>${sizes
+        .map(
+          (s) =>
+            `<tr><th scope="row" class="text-left pr-2">${groupBtn('data-stock-row', s, s)}</th>${colors
+              .map((c) => `<td>${stockCell(comboKey(s, c), stock.out.has(comboKey(s, c)) ? 'Agotado' : 'Hay', `aria-label="Talle ${esc(s)}, ${esc(c)}"`)}</td>`)
+              .join('')}</tr>`
+        )
+        .join('')}</tbody></table></div>`;
+  }
+  $('#stockGrid').innerHTML = html;
+  const total = combos(a).length;
+  const n = combos(a).filter((c) => stock.out.has(comboKey(c.size, c.color))).length;
+  $('#stockCount').textContent = n ? `${n} de ${total} combinaciones agotadas` : 'Todo disponible';
+}
+
+function openStockModal(article) {
+  stock.article = article;
+  stock.out = new Set(article.soldOut || []);
+  $('#stockModalSub').textContent = `${article.brand}${article.code ? ` · Art. ${article.code}` : ''} – ${article.title}`;
+  showFormError($('#stockError'), '');
+  renderStockGrid();
+  openModal($('#stockModal'), $('#stockGrid button'));
+}
+
+$('#stockModal').addEventListener('click', async (e) => {
+  if (e.target.closest('[data-close-stock]')) return closeModal($('#stockModal'));
+  const a = stock.article;
+  const toggleAll = (keys) => {
+    const allOut = keys.every((k) => stock.out.has(k));
+    keys.forEach((k) => (allOut ? stock.out.delete(k) : stock.out.add(k)));
+  };
+  const cell = e.target.closest('[data-combo]');
+  const row = e.target.closest('[data-stock-row]');
+  const col = e.target.closest('[data-stock-col]');
+  if (cell) {
+    const k = cell.dataset.combo;
+    stock.out.has(k) ? stock.out.delete(k) : stock.out.add(k);
+  } else if (row) toggleAll(combos(a).filter((c) => c.size === row.dataset.stockRow).map((c) => comboKey(c.size, c.color)));
+  else if (col) toggleAll(combos(a).filter((c) => c.color === col.dataset.stockCol).map((c) => comboKey(c.size, c.color)));
+  else if (e.target.closest('#stockSave')) {
+    const btn = $('#stockSave');
+    setBusy(btn, true, 'Guardando…');
+    try {
+      // Solo se guardan combinaciones que existen hoy en el artículo.
+      const valid = new Set(combos(a).map((c) => comboKey(c.size, c.color)));
+      const soldOut = [...stock.out].filter((k) => valid.has(k));
+      const updated = await call(`articles?id=${encodeURIComponent(a.id)}`, { method: 'PUT', body: { soldOut } });
+      replaceArticle(updated);
+      renderArticles();
+      closeModal($('#stockModal'));
+      showToast(soldOut.length ? `Guardado: ${soldOut.length} combinación${soldOut.length === 1 ? '' : 'es'} agotada${soldOut.length === 1 ? '' : 's'}. Ya se ve en la tienda.` : 'Guardado: todo disponible.');
+    } catch (err) {
+      if (err.status !== 401) showFormError($('#stockError'), err.message);
+    } finally {
+      setBusy(btn, false);
+    }
+    return;
+  } else return;
+  const focusKey = cell?.dataset.combo;
+  renderStockGrid();
+  if (focusKey) $(`#stockGrid [data-combo="${CSS.escape(focusKey)}"]`)?.focus();
+});
 
 /* ================================================================ Publicaciones repetidas */
 
@@ -877,6 +986,7 @@ $('#articlesContainer').addEventListener('click', async (e) => {
   const action = btn.dataset.action;
 
   if (action === 'edit') return openArticleModal(art);
+  if (action === 'stock') return openStockModal(art);
 
   if (action === 'delete') {
     const ok = await confirmDialog({

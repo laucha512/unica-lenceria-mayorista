@@ -3,6 +3,7 @@
 import { whatsappLink, formatPrice } from '../config.js';
 import { esc, safeImg, formatSizes } from '../shared/utils.js';
 import { swatchOf } from '../shared/colors.js';
+import { availableColors, availableSizes, colorAvailable, sizeAvailable, soldOutCount } from '../shared/stock.js';
 import { add as addToCart, qtyOf, packPrice } from './cart.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -40,7 +41,15 @@ function colorHint(a) {
   return colorList(a).length ? `Colores disponibles en talle ${size}.` : `El talle ${size} no tiene colores para elegir.`;
 }
 
+/** ¿Se puede elegir este talle/color con lo que ya está elegido? (lo agotado se muestra tachado) */
+function canPick(kind, value) {
+  const a = current.article;
+  if (kind === 'size') return sizeAvailable(a, value, bySize(a) ? null : current.color);
+  return colorAvailable(a, value, bySize(a) ? chosenSize() : null);
+}
+
 function chip(kind, value, on) {
+  const disabled = !on && !canPick(kind, value);
   const hex = kind === 'color' ? swatchOf(value) : null;
   const dot =
     kind === 'color'
@@ -50,9 +59,11 @@ function chip(kind, value, on) {
       : '';
   const cls = on
     ? 'bg-[#be185d] border-[#be185d] text-white'
-    : 'bg-white border-pink-200 text-slate-800 hover:border-[#be185d]';
+    : disabled
+      ? 'bg-slate-50 border-slate-200 text-slate-400 line-through cursor-not-allowed'
+      : 'bg-white border-pink-200 text-slate-800 hover:border-[#be185d]';
   const role = kind === 'size' && !bySize(current.article) ? 'checkbox' : 'radio';
-  return `<button type="button" role="${role}" data-${kind}="${esc(value)}" aria-checked="${on}" class="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-full border-2 text-sm font-semibold transition-colors ${cls}">${dot}${esc(value)}${on ? '<span class="material-symbols-outlined text-[18px]" aria-hidden="true">check</span>' : ''}</button>`;
+  return `<button type="button" role="${role}" data-${kind}="${esc(value)}" aria-checked="${on}"${disabled ? ` disabled aria-label="${esc(value)} (agotado)" title="Agotado"` : ''} class="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-full border-2 text-sm font-semibold transition-colors ${cls}">${dot}${esc(value)}${on ? '<span class="material-symbols-outlined text-[18px]" aria-hidden="true">check</span>' : ''}</button>`;
 }
 
 function galleryHtml(a) {
@@ -132,7 +143,8 @@ function infoHtml(a) {
   </div>
   ${a.description ? `<p class="mt-3 text-sm text-slate-700 leading-relaxed">${esc(a.description)}</p>` : ''}
   <dl class="mt-4 p-3 bg-[#fdf2f8] rounded-xl border border-pink-100 text-sm text-slate-700 space-y-1.5">
-    <div class="flex justify-between gap-3"><dt class="font-bold text-slate-900 shrink-0">Curva de talles</dt><dd class="text-right min-w-0 [overflow-wrap:anywhere]">${esc(formatSizes(a.sizes))}</dd></div>
+    <div class="flex justify-between gap-3"><dt class="font-bold text-slate-900 shrink-0">Curva de talles</dt><dd class="text-right min-w-0 [overflow-wrap:anywhere]">${esc(formatSizes(availableSizes(a)))}</dd></div>
+    ${soldOutCount(a) ? '<div class="text-xs text-slate-600">Lo que aparece <span class="line-through">tachado</span> está agotado por ahora.</div>' : ''}
     <div class="flex justify-between gap-3"><dt class="font-bold text-slate-900 shrink-0">Presentación</dt><dd class="text-right min-w-0 [overflow-wrap:anywhere]">${esc(a.saleType || a.presentation)}</dd></div>
   </dl>
   ${bySize(a) ? sizesBlock + colorsBlock : colorsBlock + sizesBlock}
@@ -184,11 +196,11 @@ function infoHtml(a) {
 // Comparte las fotos y un texto del artículo SIN el precio mayorista: es para mandarle a sus clientas.
 
 function shareText(a) {
-  const colors = a.colors?.length ? a.colors.join(', ') : '';
+  const colors = availableColors(a).join(', ');
   return [
     a.title,
     `${a.brand}${a.code ? ` · Art. ${a.code}` : ''}`,
-    a.sizes?.length ? `Talles: ${formatSizes(a.sizes)}` : '',
+    availableSizes(a).length ? `Talles: ${formatSizes(availableSizes(a))}` : '',
     colors ? `Colores: ${colors}` : '',
     a.presentation ? `Presentación: ${a.presentation}` : '',
     '',
@@ -650,10 +662,23 @@ export function initProduct({ onChange } = {}) {
     if (color || size) {
       const group = color ? 'color' : 'size';
       const value = (color || size).dataset[group];
-      if (color) current.color = value;
-      else if (bySize(current.article)) {
+      const a = current.article;
+      if (color) {
+        current.color = value;
+        if (!bySize(a)) {
+          // Los talles que no hay en este color se desmarcan y quedan tachados.
+          const dropped = [...current.sizes].filter((s) => !sizeAvailable(a, s, value));
+          dropped.forEach((s) => current.sizes.delete(s));
+          renderGroup('size');
+          if (dropped.length) {
+            const note = $('#productAdded');
+            note.textContent = `En ${value} no hay talle ${dropped.join(', ')}: lo sacamos de tu elección.`;
+            note.classList.remove('hidden');
+          }
+        }
+      } else if (bySize(a)) {
         current.sizes = new Set([value]);
-        if (!colorList(current.article).includes(current.color)) current.color = null;
+        if (!colorList(a).includes(current.color) || !colorAvailable(a, current.color, value)) current.color = null;
         renderGroup('color');
       } else current.sizes.has(value) ? current.sizes.delete(value) : current.sizes.add(value);
       renderGroup(group);
@@ -679,7 +704,9 @@ export function initProduct({ onChange } = {}) {
         $(`[data-group="${missing[0]}"] button`)?.focus();
         return;
       }
-      const chosenSizes = a.sizes.filter((x) => current.sizes.has(x));
+      // Última verificación: nunca se agrega una combinación agotada.
+      const chosenSizes = a.sizes.filter((x) => current.sizes.has(x) && sizeAvailable(a, x, current.color));
+      if (current.sizes.size && !chosenSizes.length) return;
       const colors = current.color ? [current.color] : [];
       if (chosenSizes.length) chosenSizes.forEach((sz) => addToCart(a.id, current.qty, { colors, sizes: [sz] }));
       else addToCart(a.id, current.qty, { colors, sizes: [] });

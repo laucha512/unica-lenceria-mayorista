@@ -2,6 +2,7 @@
 // Cada línea es un artículo + la selección de colores y talles elegida en su ficha.
 import { whatsappLink, formatPrice } from '../config.js';
 import { formatWhatsapp, normalizeWhatsapp } from '../shared/phone.js';
+import { isSoldOut } from '../shared/stock.js';
 import { esc, safeImg } from '../shared/utils.js';
 
 // v2: una línea = un color + un talle (se descartan pedidos guardados con selección múltiple).
@@ -143,6 +144,9 @@ function setSendBusy(busy) {
   btn.querySelector('[data-send-label]').textContent = busy ? 'Registrando pedido…' : 'Enviar pedido por WhatsApp';
 }
 
+/** La combinación de esta línea (un talle y un color) se agotó después de agregarla. */
+const lineSoldOut = (l) => (l.sizes.length <= 1 && l.colors.length <= 1 ? isSoldOut(l.article, l.sizes[0], l.colors[0]) : false);
+
 function lineItem(l) {
   const a = l.article;
   const price = packPrice(a);
@@ -159,6 +163,7 @@ function lineItem(l) {
     <p class="text-xs text-slate-600">${esc(sizesTxt)}</p>
     <p class="text-xs text-slate-600">${esc(a.presentation)} · ${esc(formatPrice(price))}</p>
     ${a.inStock ? '' : '<p class="text-xs font-semibold text-amber-800">Sin stock momentáneo: se consulta reposición.</p>'}
+    ${a.inStock && lineSoldOut(l) ? '<p class="text-xs font-semibold text-amber-800">Se agotó este talle o color: podés quitarlo o elegir otro en la ficha.</p>' : ''}
     <div class="mt-2 flex items-center justify-between gap-2">
       <div class="inline-flex items-center rounded-full border border-pink-200 bg-white">
         <button type="button" data-qty="-1" class="w-9 h-9 inline-flex items-center justify-center rounded-full text-slate-700 hover:text-[#be185d]" aria-label="Quitar un pack de ${esc(a.title)}"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">remove</span></button>

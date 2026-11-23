@@ -119,6 +119,15 @@ export function validateArticle(body, { partial = false } = {}) {
       inStock: (b) => bool(b, 'inStock', 'Stock'),
       images: (b) => images(b, 'images', 5),
       subcategoryId: (b) => optionalId(b, 'subcategoryId', 'La subcategoría'),
+      // Combinaciones agotadas "talle|color" (ver src/shared/stock.js).
+      soldOut: (b) => {
+        const raw = b.soldOut ?? [];
+        if (!Array.isArray(raw) || raw.length > 400) throw new HttpError('Los agotados no son válidos.');
+        return [...new Set(raw.map((k) => {
+          if (typeof k !== 'string' || k.length > 120 || (k.match(/\|/g) || []).length !== 1) throw new HttpError('Combinación agotada inválida.');
+          return k.split('|').map(clean).join('|');
+        }))];
+      },
     },
     { partial }
   );

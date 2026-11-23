@@ -3,6 +3,7 @@
 import { formatPrice, instagramUrl, instagramUser, SITE_URL, whatsappDisplay, whatsappLink, whatsappNumber } from '../../src/config.js';
 import { imageSrcset, imageUrl } from '../../src/shared/images.js';
 import { openingHours } from '../../src/shared/opening-hours.js';
+import { availableColors, availableSizes } from '../../src/shared/stock.js';
 
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -175,8 +176,8 @@ export function productPage({ article: a, brand }) {
   const facts = [
     a.code && ['Artículo', a.code],
     a.presentation && ['Presentación', a.presentation],
-    a.sizes?.length && ['Talles', a.sizes.join(', ')],
-    a.colors?.length && ['Colores', a.colors.join(', ')],
+    availableSizes(a).length && ['Talles', availableSizes(a).join(', ')],
+    availableColors(a).length && ['Colores', availableColors(a).join(', ')],
   ].filter(Boolean);
   const summary = a.description || `${a.title} de ${brand.name} por mayor.`;
   return layout({
