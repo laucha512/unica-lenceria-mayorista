@@ -757,7 +757,7 @@ function renderStockGrid() {
   } else {
     // Talles × colores: tabla con filas por talle y columnas por color.
     html = `<div class="overflow-x-auto"><table class="text-xs border-separate border-spacing-1">
-      <thead><tr><th class="text-left text-on-surface-variant font-semibold pr-2">Talle \\ Color</th>${colors
+      <thead><tr><th class="text-left text-on-surface-variant font-semibold pr-2">Talle</th>${colors
         .map((c) => `<th class="text-left">${groupBtn('data-stock-col', c, c)}</th>`)
         .join('')}</tr></thead>
       <tbody>${sizes
