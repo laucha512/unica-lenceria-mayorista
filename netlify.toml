@@ -49,6 +49,12 @@
     X-Robots-Tag = "noindex, nofollow"
     Cache-Control = "no-cache"
 
+# Admin instalable como app: tipo correcto para el manifiesto
+[[headers]]
+  for = "/admin/manifest.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json"
+
 [[headers]]
   for = "/assets/*"
   [headers.values]
