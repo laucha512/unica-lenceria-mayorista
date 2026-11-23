@@ -6,7 +6,7 @@ import { error, handle, json, readJson, requireAuth } from '../lib/http.js';
 import { readCollection } from '../lib/store.js';
 import { validatePresence } from '../lib/validate.js';
 
-const ACTIVE_MS = 150 * 1000; // sin aviso en 2,5 minutos = ya no está
+const ACTIVE_MS = 7 * 60 * 1000; // sin aviso en 7 minutos = ya no está (la tienda avisa cada 3)
 const presenceStore = () => getStore({ name: 'presence', consistency: 'strong' });
 
 export default handle(async (req) => {

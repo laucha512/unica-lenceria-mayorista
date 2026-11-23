@@ -1,7 +1,8 @@
 // Avisa al servidor que esta pestaña sigue en la tienda y qué está mirando (para "En la web ahora" del admin).
 // Es anónimo: un id al azar por pestaña, sin datos personales. Si la pestaña queda en segundo plano, deja de contar.
 
-const PING_MS = 60 * 1000;
+// Cada 3 minutos (antes 1): menos pedidos al servidor y menos créditos de Netlify.
+const PING_MS = 3 * 60 * 1000;
 
 function sessionId() {
   try {

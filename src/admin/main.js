@@ -284,7 +284,7 @@ async function loadAll() {
     ]);
     Object.assign(state, { articles, brands, banners, branches, categories, subcategories, contact });
     renderAll();
-    startLive(); // visitas en vivo y pedidos, cada 30 segundos
+    startLive(); // visitas en vivo y pedidos, cada 2 minutos
     loadPriceHistory();
     updatePushUI();
   } catch (err) {
@@ -369,7 +369,8 @@ function renderKpis() {
 
 /* ================================================================ En vivo: visitas y pedidos */
 
-const LIVE_MS = 30 * 1000;
+// Cada 2 minutos (antes 30 segundos): con el admin abierto todo el día es lo que más créditos de Netlify gastaba.
+const LIVE_MS = 2 * 60 * 1000;
 let liveTimer = null;
 
 function renderLive(p) {
