@@ -167,8 +167,135 @@ function infoHtml(a) {
     <a href="${esc(whatsappLink(`Hola ÚNICA LENCERÍA, quiero consultar por ${a.brand} Art. ${a.code || '-'} – ${a.title}.`))}" target="_blank" rel="noopener noreferrer" class="mt-3 w-full flex items-center justify-center gap-2 min-h-[48px] rounded-full bg-white border-2 border-pink-200 text-slate-800 hover:border-[#be185d] font-semibold text-sm">
       <span class="material-symbols-outlined text-[18px]" aria-hidden="true">chat</span> Consultar este artículo por WhatsApp
     </a>
+    <div class="mt-3 grid grid-cols-2 gap-2">
+      <button type="button" data-share class="flex items-center justify-center gap-2 min-h-[44px] rounded-full bg-pink-50 border border-pink-200 text-slate-800 hover:border-[#be185d] font-semibold text-sm">
+        <span class="material-symbols-outlined text-[18px]" aria-hidden="true">share</span> <span data-share-label>Compartir</span>
+      </button>
+      <button type="button" data-download-photos class="flex items-center justify-center gap-2 min-h-[44px] rounded-full bg-pink-50 border border-pink-200 text-slate-800 hover:border-[#be185d] font-semibold text-sm">
+        <span class="material-symbols-outlined text-[18px]" aria-hidden="true">download</span> ${a.images?.length > 1 ? 'Descargar fotos' : 'Descargar foto'}
+      </button>
+    </div>
+    <p id="productShareMsg" class="hidden mt-2 text-xs text-center font-semibold text-emerald-800" role="status"></p>
   </div>
 </div>`;
+}
+
+/* ---------------------------------------------------------------- Compartir (para revendedoras) */
+// Comparte las fotos y un texto del artículo SIN el precio mayorista: es para mandarle a sus clientas.
+
+function shareText(a) {
+  const colors = a.colors?.length ? a.colors.join(', ') : '';
+  return [
+    a.title,
+    `${a.brand}${a.code ? ` · Art. ${a.code}` : ''}`,
+    a.sizes?.length ? `Talles: ${formatSizes(a.sizes)}` : '',
+    colors ? `Colores: ${colors}` : '',
+    a.presentation ? `Presentación: ${a.presentation}` : '',
+    '',
+    '¡Consultame por disponibilidad!',
+  ]
+    .filter((l, i, all) => l || (i > 0 && all[i - 1]))
+    .join('\n');
+}
+
+// Fotos en JPG (WhatsApp e Instagram las toman mejor que WebP), hasta 5.
+const shareCache = new Map(); // id del artículo -> File[]
+async function photoFiles(a) {
+  if (shareCache.has(a.id)) return shareCache.get(a.id);
+  const srcs = (a.images || []).slice(0, 5).map((s) => safeImg(s)).filter((s) => /^\/(api\/images\?|img\/)/.test(s));
+  const base = `${a.brand}-${a.code || a.id}`.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const files = (
+    await Promise.all(
+      srcs.map(async (src, i) => {
+        try {
+          let res = await fetch(`/.netlify/images?url=${encodeURIComponent(src)}&w=1200&fm=jpg&q=85`);
+          if (!res.ok) res = await fetch(src);
+          const blob = await res.blob();
+          const ext = blob.type === 'image/jpeg' ? 'jpg' : blob.type.split('/')[1] || 'jpg';
+          return new File([blob], `${base}-${i + 1}.${ext}`, { type: blob.type || 'image/jpeg' });
+        } catch {
+          return null;
+        }
+      })
+    )
+  ).filter(Boolean);
+  shareCache.set(a.id, files);
+  return files;
+}
+
+function shareMessage(msg) {
+  const el = $('#productShareMsg');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.toggle('hidden', !msg);
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function downloadFiles(files) {
+  files.forEach((file, i) =>
+    setTimeout(() => {
+      const url = URL.createObjectURL(file);
+      const link = Object.assign(document.createElement('a'), { href: url, download: file.name });
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }, i * 400)
+  );
+}
+
+async function onShare(btn) {
+  const a = current.article;
+  const text = shareText(a);
+  const label = btn.querySelector('[data-share-label]');
+  const prepared = shareCache.has(a.id);
+  if (!prepared) label.textContent = 'Preparando…';
+  btn.disabled = true;
+  try {
+    const files = await photoFiles(a);
+    if (navigator.share && navigator.canShare?.({ files, text })) {
+      await navigator.share({ files, text, title: a.title });
+      shareMessage('');
+    } else if (navigator.share) {
+      await navigator.share({ text, title: a.title });
+    } else {
+      // Computadora sin menú de compartir: se copia el texto y se descargan las fotos.
+      const copied = await copyText(text);
+      downloadFiles(files);
+      shareMessage(`${copied ? 'Texto copiado. ' : ''}Se descargaron las fotos para que las compartas.`);
+    }
+  } catch (err) {
+    if (err?.name === 'NotAllowedError' && !prepared) {
+      // Algunos celulares piden tocar de nuevo después de preparar las fotos.
+      shareMessage('Las fotos ya están listas: tocá “Compartir” otra vez.');
+    } else if (err?.name !== 'AbortError') {
+      shareMessage('No se pudo compartir. Probá con “Descargar fotos”.');
+    }
+  } finally {
+    btn.disabled = false;
+    label.textContent = 'Compartir';
+  }
+}
+
+async function onDownloadPhotos(btn) {
+  const a = current.article;
+  btn.disabled = true;
+  try {
+    const files = await photoFiles(a);
+    if (!files.length) return shareMessage('No se pudieron descargar las fotos.');
+    downloadFiles(files);
+    shareMessage(files.length > 1 ? `Descargando ${files.length} fotos…` : 'Descargando la foto…');
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 function render() {
@@ -509,6 +636,10 @@ export function initProduct({ onChange } = {}) {
 
   $('#productContent').addEventListener('click', (e) => {
     if (!current) return;
+    const share = e.target.closest('[data-share]');
+    if (share) return onShare(share);
+    const download = e.target.closest('[data-download-photos]');
+    if (download) return onDownloadPhotos(download);
     const photo = e.target.closest('[data-photo]');
     if (photo) return setActivePhoto(Number(photo.dataset.photo));
     const step = e.target.closest('[data-photo-step]');

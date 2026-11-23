@@ -273,7 +273,7 @@ export function howToBuyPage() {
     ['¿Cómo se venden los artículos?', 'Cada artículo indica su presentación: por unidad o en packs, como packs x3, con sus talles y colores disponibles.'],
     ['¿Hacen envíos?', 'Sí. Despachamos por expresos y transporte a toda la Argentina en 24/48 hs. También podés coordinar el retiro en nuestros locales de Rosario.'],
     ['¿Cómo se paga?', 'Por transferencia o depósito.'],
-    ['¿Cómo pido la lista de precios?', 'Pedila por WhatsApp y te la enviamos en Excel o PDF con fotos.'],
+    ['¿Cómo consigo la lista de precios?', 'Descargala desde la página principal, en PDF o Excel, actualizada al día con fotos, talles, colores y precios. También podés pedirla por WhatsApp.'],
   ];
   return layout({
     path: '/como-comprar',
@@ -282,7 +282,7 @@ export function howToBuyPage() {
     body: `<h1>Cómo comprar lencería por mayor</h1>
 <p class="lead">Comprar en ÚNICA es simple, ya sea para tu comercio o para reventa.</p>
 <div class="boxes">
-  <section class="box"><h2 style="margin:0 0 .25rem;font-size:1.15rem">1. Elegí</h2><p>Mirá el <a href="/catalogo">catálogo</a> o pedí la lista de precios por WhatsApp.</p></section>
+  <section class="box"><h2 style="margin:0 0 .25rem;font-size:1.15rem">1. Elegí</h2><p>Mirá el <a href="/catalogo">catálogo</a> o descargá la lista de precios desde la <a href="/#articulos-marcas">página principal</a>.</p></section>
   <section class="box"><h2 style="margin:0 0 .25rem;font-size:1.15rem">2. Armá tu pedido</h2><p>Combiná marcas, talles y colores, sin monto mínimo.</p></section>
   <section class="box"><h2 style="margin:0 0 .25rem;font-size:1.15rem">3. Recibilo</h2><p>Abonás por transferencia o depósito y despachamos en 24/48 hs a tu localidad.</p></section>
 </div>

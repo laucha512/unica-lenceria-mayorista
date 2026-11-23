@@ -25,7 +25,7 @@ const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const iconFont = document.createElement('link');
 iconFont.rel = 'stylesheet';
 iconFont.href =
-  'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=add,add_shopping_cart,category,chat,check,chevron_left,chevron_right,close,delete,description,download,expand_more,filter_alt,inventory,inventory_2,local_shipping,location_on,menu,navigation,new_releases,open_in_new,payments,photo_camera,remove,schedule,search,shopping_bag,storefront,table_view,verified,verified_user,zoom_in&display=block';
+  'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=add,add_shopping_cart,category,chat,check,chevron_left,chevron_right,close,delete,description,download,expand_more,filter_alt,inventory,inventory_2,local_shipping,location_on,menu,navigation,new_releases,open_in_new,payments,photo_camera,remove,schedule,search,share,shopping_bag,storefront,table_view,verified,verified_user,zoom_in&display=block';
 document.head.append(iconFont);
 
 const CATALOG_PAGE = 6;
@@ -36,6 +36,8 @@ const state = {
   filter: { cat: null, sub: null, brand: null },
   catalogLimit: CATALOG_PAGE,
   search: '',
+  size: null, // talle elegido (ej. "110")
+  price: null, // rango de precio elegido (clave de PRICE_RANGES)
 };
 
 /* ---------------------------------------------------------------- Header */
@@ -335,9 +337,72 @@ $('#catalogSearchClear').addEventListener('click', () => {
   $('#catalogSearch').focus();
 });
 
+/* ---------------------------------------------------------------- Talle y precio */
+
+// Rangos de precio (por pack o unidad, lo que se cobra en el pedido).
+const PRICE_RANGES = [
+  { key: 'hasta-8000', label: 'Hasta $8.000', min: 0, max: 8000 },
+  { key: '8000-12000', label: '$8.000 a $12.000', min: 8000, max: 12000 },
+  { key: '12000-20000', label: '$12.000 a $20.000', min: 12000, max: 20000 },
+  { key: 'mas-de-20000', label: 'Más de $20.000', min: 20000, max: Infinity },
+];
+const priceRange = (key) => PRICE_RANGES.find((r) => r.key === key);
+const inPriceRange = (a, r) => {
+  const p = packPrice(a);
+  return p > r.min - (r.min ? 0 : 1) && p <= r.max;
+};
+
+const normSize = (s) => String(s || '').trim().toUpperCase();
+const LETTER_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '4XL', '5XL'];
+/** Orden de talles: números de menor a mayor, después S–XXXL, después el resto. */
+function compareSizes(x, y) {
+  const nx = Number(x.replace(',', '.'));
+  const ny = Number(y.replace(',', '.'));
+  if (!Number.isNaN(nx) && !Number.isNaN(ny)) return nx - ny;
+  if (!Number.isNaN(nx)) return -1;
+  if (!Number.isNaN(ny)) return 1;
+  const lx = LETTER_SIZES.indexOf(x);
+  const ly = LETTER_SIZES.indexOf(y);
+  if (lx !== -1 && ly !== -1) return lx - ly;
+  if (lx !== -1) return -1;
+  if (ly !== -1) return 1;
+  return x.localeCompare(y, 'es');
+}
+const hasSize = (a, size) => (a.sizes || []).some((s) => normSize(s) === size);
+
+/** Desplegables de talle y precio con las opciones que existen en lo que se está mirando. */
+function renderExtraFilters() {
+  const scope = articlesInScope().filter((a) => !state.filter.brand || brandSlug(a.brand) === state.filter.brand);
+  const sizes = [...new Set(scope.flatMap((a) => (a.sizes || []).map(normSize)).filter(Boolean))].sort(compareSizes);
+  if (state.size && !sizes.includes(state.size)) sizes.push(state.size);
+  $('#sizeFilter').innerHTML =
+    '<option value="">Todos</option>' + sizes.map((s) => `<option value="${esc(s)}"${s === state.size ? ' selected' : ''}>${esc(s)}</option>`).join('');
+  $('#priceFilter').innerHTML =
+    '<option value="">Todos</option>' +
+    PRICE_RANGES.map((r) => `<option value="${r.key}"${r.key === state.price ? ' selected' : ''}>${r.label}</option>`).join('');
+}
+
+function setExtraFilter(kind, value) {
+  if (kind === 'size') state.size = value || null;
+  else state.price = priceRange(value) ? value : null;
+  state.catalogLimit = CATALOG_PAGE;
+  writeFilterToUrl(false);
+  renderFilterBar();
+  renderCatalog();
+}
+$('#sizeFilter').addEventListener('change', (e) => setExtraFilter('size', e.target.value));
+$('#priceFilter').addEventListener('change', (e) => setExtraFilter('price', e.target.value));
+
 function filteredArticles() {
   const brand = state.filter.brand;
-  return articlesInScope().filter((a) => (!brand || brandSlug(a.brand) === brand) && matchesSearch(a));
+  const range = priceRange(state.price);
+  return articlesInScope().filter(
+    (a) =>
+      (!brand || brandSlug(a.brand) === brand) &&
+      (!state.size || hasSize(a, state.size)) &&
+      (!range || inPriceRange(a, range)) &&
+      matchesSearch(a)
+  );
 }
 
 /** Normaliza el filtro contra el árbol: descarta slugs que ya no existen. */
@@ -352,6 +417,8 @@ function readFilterFromUrl() {
   const p = new URLSearchParams(location.search);
   state.filter = { cat: p.get('categoria'), sub: p.get('subcategoria'), brand: p.get('marca') };
   state.search = (p.get('buscar') || '').slice(0, 80);
+  state.size = normSize(p.get('talle')).slice(0, 20) || null;
+  state.price = priceRange(p.get('precio')) ? p.get('precio') : null;
   const input = $('#catalogSearch');
   if (input && input.value !== state.search) {
     input.value = state.search;
@@ -369,6 +436,8 @@ function writeFilterToUrl(push = true) {
   set('subcategoria', state.filter.sub);
   set('marca', state.filter.brand);
   set('buscar', state.search);
+  set('talle', state.size);
+  set('precio', state.price);
   const qs = p.toString();
   // Al reemplazar (carga inicial) se conserva el #producto/… de un enlace directo.
   const url = `${location.pathname}${qs ? `?${qs}` : ''}${push ? '' : location.hash}`;
@@ -401,7 +470,8 @@ function renderFilterBar() {
       state.articles.find((a) => brandSlug(a.brand) === state.filter.brand)?.brand ||
       state.filter.brand
     : null;
-  if (!category && !brandName) {
+  const range = priceRange(state.price);
+  if (!category && !brandName && !state.size && !range) {
     bar.classList.add('hidden');
     bar.innerHTML = '';
     return;
@@ -414,9 +484,12 @@ function renderFilterBar() {
   if (category) parts.push(crumb(category.name, { cat: category.slug }, !subcategory && !brandName));
   if (subcategory) parts.push(crumb(subcategory.name, { cat: category.slug, sub: subcategory.slug }, !brandName));
   if (brandName) parts.push(crumb(brandName, state.filter, true));
+  const extra = [state.size && `Talle ${state.size}`, range?.label].filter(Boolean);
+  const extraChips = extra.map((t) => `<span class="px-3 py-1.5 rounded-full bg-[#be185d] text-white text-xs font-bold">${esc(t)}</span>`).join(' ');
   bar.innerHTML = `
     <span class="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-slate-600"><span class="material-symbols-outlined text-[16px]" aria-hidden="true">filter_alt</span> Filtrando:</span>
     ${parts.join('<span class="material-symbols-outlined text-[16px] text-slate-400" aria-hidden="true">chevron_right</span>')}
+    ${extraChips}
     <button type="button" data-filter='{}' class="ml-1 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold text-[#be185d] hover:bg-pink-50 underline">
       <span class="material-symbols-outlined text-[16px]" aria-hidden="true">close</span> Quitar filtros
     </button>`;
@@ -425,7 +498,10 @@ function renderFilterBar() {
 
 $('#catalogFilterBar').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-filter]');
-  if (b) applyFilter(JSON.parse(b.dataset.filter), { scroll: false });
+  if (!b) return;
+  const next = JSON.parse(b.dataset.filter);
+  if (!Object.keys(next).length) state.size = state.price = null; // "Quitar filtros"
+  applyFilter(next, { scroll: false });
 });
 
 /** Botones de marca: las marcas con artículos dentro de la categoría/subcategoría elegida. */
@@ -453,6 +529,7 @@ function renderFilters() {
     return `<button type="button" data-brand="${esc(value)}" aria-pressed="${on}" class="px-4 py-2 rounded-full font-label-sm text-xs transition-all ${cls}">${esc(label)}</button>`;
   };
   box.innerHTML = btn('all', 'Todas las Marcas') + names.map((n) => btn(n.slug, n.name)).join('');
+  renderExtraFilters();
 }
 
 /* ---------------------------------------------------------------- Orden automático por grupos */
@@ -514,11 +591,13 @@ function renderCatalog() {
     }
     html += catalogCard(x.article);
   });
-  const filtering = state.filter.cat || state.filter.brand || state.search;
+  const filtering = state.filter.cat || state.filter.brand || state.search || state.size || state.price;
   const emptyMsg = state.search
     ? `No encontramos artículos para “${esc(state.search)}”${state.filter.cat || state.filter.brand ? ' con los filtros elegidos' : ''}. Probá con otra palabra.`
     : filtering
-      ? 'Todavía no hay artículos cargados con este filtro.'
+      ? state.size || state.price
+        ? 'No hay artículos con ese talle o precio en lo que estás mirando. Probá con otro.'
+        : 'Todavía no hay artículos cargados con este filtro.'
       : 'No hay artículos cargados por el momento.';
   grid.innerHTML = shown.length
     ? html
@@ -540,6 +619,7 @@ $('#catalogGrid').addEventListener('click', (e) => {
   if (e.target.closest('[data-clear-filter]')) {
     $('#catalogSearch').value = '';
     state.search = '';
+    state.size = state.price = null;
     $('#catalogSearchClear').classList.add('hidden');
     return applyFilter({}, { scroll: false });
   }
@@ -609,6 +689,39 @@ function applyHero(banners) {
   }
   if (hero.alt || hero.title) img.alt = hero.alt || hero.title;
 }
+
+/* ---------------------------------------------------------------- Lista de precios (PDF / Excel) */
+// Se arma en el momento con el catálogo cargado; el código que la genera se baja recién al tocar el botón.
+
+let priceListBusy = false;
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-pricelist]');
+  if (!btn || priceListBusy) return;
+  const kind = btn.dataset.pricelist;
+  const label = btn.querySelector('[data-pricelist-label]');
+  const original = label.textContent;
+  const status = $('[data-pricelist-status]');
+  const say = (msg) => {
+    status.textContent = msg;
+    status.classList.toggle('hidden', !msg);
+  };
+  if (!state.articles.length) return say('El catálogo todavía está cargando. Probá en unos segundos.');
+  priceListBusy = true;
+  $$('[data-pricelist]').forEach((b) => (b.disabled = true));
+  label.textContent = kind === 'pdf' ? 'Armando la lista…' : 'Preparando…';
+  say('');
+  try {
+    const { downloadPriceList } = await import('./pricelist.js');
+    const count = await downloadPriceList(kind, state.articles, (msg) => (label.textContent = msg));
+    say(`Listo: se descargó la lista con ${count} artículos.`);
+  } catch (err) {
+    say(err.message || 'No se pudo armar la lista. Probá de nuevo o pedila por WhatsApp.');
+  } finally {
+    priceListBusy = false;
+    label.textContent = original;
+    $$('[data-pricelist]').forEach((b) => (b.disabled = false));
+  }
+});
 
 /* ---------------------------------------------------------------- Datos */
 
