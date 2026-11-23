@@ -205,6 +205,19 @@
         <span>Nueva Publicación Mayorista</span>
       </button>
     </div>
+    <!-- Aviso de publicaciones repetidas (se completa en src/admin/main.js) -->
+    <p id="dupStatus" class="hidden mb-3 text-xs text-on-surface-variant" aria-live="polite"></p>
+    <div id="dupBanner" class="hidden mb-4 rounded-2xl border border-amber-300 bg-amber-50 shadow-sm">
+      <button type="button" id="dupToggle" aria-expanded="false" aria-controls="dupList" class="w-full flex items-center gap-3 p-4 text-left rounded-2xl">
+        <span class="material-symbols-outlined icon-fill text-[26px] text-amber-500" aria-hidden="true">warning</span>
+        <span class="flex-1 min-w-0">
+          <span class="block font-bold text-amber-950" id="dupTitle"></span>
+          <span class="block text-xs text-amber-900">Revisalas: marcá si son distintas o eliminá la que sobra.</span>
+        </span>
+        <span class="shrink-0 px-3 py-1.5 rounded-full bg-amber-500 text-white text-xs font-bold" id="dupToggleText">Revisar</span>
+      </button>
+      <div id="dupList" class="hidden px-3 sm:px-4 pb-4 space-y-3"></div>
+    </div>
     <div class="p-3.5 mb-6 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm flex flex-wrap items-center justify-between gap-3">
       <div class="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto sm:flex-1 min-w-0">
         <div class="relative w-full sm:max-w-sm">

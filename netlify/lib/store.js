@@ -20,6 +20,7 @@ const SEEDS = {
   banners: seedBanners,
   branches: seedBranches,
   categories: seedCategories,
+  duplicateDismissals: () => [], // pares de publicaciones marcados como "son distintas"
   orders: () => [],
   settings: seedSettings,
   subcategories: seedSubcategories,

@@ -4,6 +4,7 @@ import { validateFile, resizeImage, uploadBlob } from './images.js';
 import { swatchOf } from '../shared/colors.js';
 import { normalizeWhatsapp } from '../shared/phone.js';
 import { instagramUrlOf, normalizeInstagram } from '../shared/instagram.js';
+import { findDuplicates } from './duplicates.js';
 import { initCategories, renderCategories, subcategoryOptions, subcategoryPath } from './categories.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -209,6 +210,8 @@ function logout(message) {
   modalStack.slice().forEach((m) => closeModal(m.el));
   state.articles = state.brands = state.banners = state.branches = state.orders = [];
   clearInterval(liveTimer);
+  Object.assign(dup, { pairs: [], ids: new Set(), dismissed: null, signature: '' });
+  $('#dupBanner').classList.add('hidden');
   showLogin(message);
 }
 
@@ -652,6 +655,7 @@ function articleCard(a) {
         <span class="px-2 py-0.5 rounded-full bg-surface-container-lowest/90 backdrop-blur-sm text-primary text-[11px] font-bold shadow-sm">${esc(a.brand)}</span>
         ${a.isNew ? '<span class="px-2 py-0.5 rounded-full bg-primary text-on-primary text-[11px] font-bold shadow-sm">NOVEDAD</span>' : ''}
         ${a.inStock ? '' : '<span class="px-2 py-0.5 rounded-full bg-inverse-surface text-inverse-on-surface text-[11px] font-bold shadow-sm">SIN STOCK</span>'}
+        ${dup.ids.has(a.id) ? '<span class="px-2 py-0.5 rounded-full bg-amber-400 text-amber-950 text-[11px] font-bold shadow-sm" title="Hay otra publicación muy parecida: revisala en el aviso amarillo">⚠ Posible repetida</span>' : ''}
       </div>
       <span class="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-full bg-surface/90 text-on-surface text-[11px] font-semibold">${esc(a.presentation)}</span>
       ${a.images?.length > 1 ? `<span class="absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded-full bg-surface/90 text-on-surface text-[11px] font-semibold">${a.images.length} fotos</span>` : ''}
@@ -707,7 +711,152 @@ function renderArticles() {
             : 'Ningún artículo coincide con la búsqueda.'
       }</div>`;
   $('#articlesCountBadge').textContent = `Mostrando ${list.length} de ${state.articles.length} artículos`;
+  scheduleDuplicateCheck();
 }
+
+/* ================================================================ Publicaciones repetidas */
+
+const dup = {
+  pairs: [], // [{ a, b, key, reasons, score }]
+  ids: new Set(), // publicaciones que aparecen en algún par (para el aviso en la tarjeta)
+  dismissed: null, // Set de pares marcados "son distintas" (se carga del servidor)
+  signature: '', // para no repetir el análisis si nada cambió
+  run: 0,
+  timer: null,
+};
+
+function scheduleDuplicateCheck() {
+  clearTimeout(dup.timer);
+  dup.timer = setTimeout(checkDuplicates, 400);
+}
+
+async function checkDuplicates() {
+  if (!state.token || !state.articles.length) return;
+  const signature = state.articles.map((a) => `${a.id}:${a.updatedAt || ''}`).join(',');
+  if (signature === dup.signature && dup.dismissed) return;
+  const run = ++dup.run;
+  const status = $('#dupStatus');
+  try {
+    if (!dup.dismissed) dup.dismissed = new Set(await call('duplicates'));
+    const pairs = await findDuplicates(state.articles, dup.dismissed, (done, total) => {
+      if (run !== dup.run || done >= total) return status.classList.add('hidden');
+      status.textContent = `Revisando fotos para detectar publicaciones repetidas… ${done} de ${total}`;
+      status.classList.remove('hidden');
+    });
+    if (run !== dup.run) return; // hubo cambios mientras se analizaba: vale el análisis nuevo
+    status.classList.add('hidden');
+    dup.signature = signature;
+    dup.pairs = pairs;
+    const before = [...dup.ids].join();
+    dup.ids = new Set(pairs.flatMap((p) => [p.a.id, p.b.id]));
+    renderDuplicates();
+    // Las tarjetas muestran "Posible repetida": se redibujan solo si eso cambió.
+    if ([...dup.ids].join() !== before) renderArticles();
+  } catch (err) {
+    status.classList.add('hidden');
+    if (err.status !== 401) console.warn('No se pudieron revisar las publicaciones repetidas.', err);
+  }
+}
+
+function dupArticle(a) {
+  const sizes = a.sizes?.length ? a.sizes.join(', ') : '—';
+  const colors = a.colors?.length ? a.colors.join(', ') : Object.keys(a.colorsBySize || {}).length ? 'por talle' : '—';
+  return `<div class="rounded-xl bg-surface-container-lowest border border-outline-variant/40 p-3 flex gap-3 min-w-0" data-dup-article="${esc(a.id)}">
+    <img src="${esc(safeImg(a.images?.[0]))}" alt="" class="w-24 h-28 sm:w-28 sm:h-32 rounded-lg object-cover bg-surface-container-high shrink-0" loading="lazy" decoding="async">
+    <div class="min-w-0 flex-1 text-xs text-on-surface-variant space-y-0.5">
+      <p class="font-bold text-primary">${esc(a.brand)}${a.code ? ` · Art. ${esc(a.code)}` : ''}</p>
+      <p class="text-sm font-bold text-on-surface">${esc(a.title)}</p>
+      <p><strong class="text-on-surface">${esc(formatPrice(a.pricePack || a.priceUnit))}</strong> · ${esc(a.presentation)}</p>
+      <p>Talles: ${esc(sizes)}</p>
+      <p>Colores: ${esc(colors)}</p>
+      ${a.description ? `<p class="line-clamp-2">${esc(a.description)}</p>` : ''}
+      <p class="text-[11px]">${a.inStock ? 'Con stock' : 'Sin stock'}${a.isNew ? ' · Novedad' : ''}${a.images?.length > 1 ? ` · ${a.images.length} fotos` : ''}</p>
+      <div class="pt-1.5 flex flex-wrap gap-1.5">
+        <button type="button" data-dup-edit="${esc(a.id)}" class="px-3 py-1.5 rounded-full border border-outline-variant text-on-surface font-bold hover:bg-surface-container">Editar</button>
+        <button type="button" data-dup-delete="${esc(a.id)}" class="px-3 py-1.5 rounded-full bg-error-container text-error font-bold hover:opacity-90">Eliminar esta</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderDuplicates() {
+  const n = dup.pairs.length;
+  $('#dupBanner').classList.toggle('hidden', !n);
+  if (!n) return;
+  $('#dupTitle').textContent =
+    n === 1 ? 'Se detectaron 2 publicaciones muy parecidas' : `Se detectaron ${n} pares de publicaciones muy parecidas`;
+  const open = $('#dupToggle').getAttribute('aria-expanded') === 'true';
+  $('#dupToggleText').textContent = open ? 'Ocultar' : 'Revisar';
+  $('#dupList').classList.toggle('hidden', !open);
+  $('#dupList').innerHTML = dup.pairs
+    .map(
+      (p) => `<article class="rounded-2xl bg-white/70 border border-amber-200 p-3" data-pair="${esc(p.key)}">
+      <div class="flex flex-wrap items-center gap-1.5 mb-2">
+        <span class="text-xs font-bold text-amber-950 mr-1">Coinciden:</span>
+        ${p.reasons.map((r) => `<span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${r.startsWith('Foto') ? 'bg-amber-400 text-amber-950' : 'bg-amber-100 text-amber-900'}">${esc(r)}</span>`).join('')}
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">${dupArticle(p.a)}${dupArticle(p.b)}</div>
+      <div class="mt-3 flex justify-end">
+        <button type="button" data-dup-dismiss class="px-4 py-2 rounded-full border border-amber-400 bg-white text-amber-950 text-xs font-bold hover:bg-amber-100">Son distintas: no avisar más</button>
+      </div>
+    </article>`
+    )
+    .join('');
+}
+
+$('#dupToggle').addEventListener('click', () => {
+  const btn = $('#dupToggle');
+  btn.setAttribute('aria-expanded', String(btn.getAttribute('aria-expanded') !== 'true'));
+  renderDuplicates();
+});
+
+$('#dupList').addEventListener('click', async (e) => {
+  const edit = e.target.closest('[data-dup-edit]');
+  if (edit) {
+    const art = state.articles.find((a) => a.id === edit.dataset.dupEdit);
+    if (art) openArticleModal(art);
+    return;
+  }
+
+  const del = e.target.closest('[data-dup-delete]');
+  if (del) {
+    const art = state.articles.find((a) => a.id === del.dataset.dupDelete);
+    if (!art) return;
+    const ok = await confirmDialog({
+      title: 'Eliminar publicación repetida',
+      message: `Se eliminará "${art.title}"${art.code ? ` (Art. ${art.code})` : ''} y sus fotos subidas. La otra publicación queda como está. Esta acción no se puede deshacer.`,
+    });
+    if (!ok) return;
+    try {
+      await call(`articles?id=${encodeURIComponent(art.id)}`, { method: 'DELETE' });
+      state.articles = state.articles.filter((a) => a.id !== art.id);
+      renderAll();
+      showToast(`Publicación "${art.title}" eliminada.`);
+    } catch (err) {
+      if (err.status !== 401) showToast(err.message, 'error');
+    }
+    return;
+  }
+
+  const dismiss = e.target.closest('[data-dup-dismiss]');
+  if (dismiss) {
+    const key = dismiss.closest('[data-pair]').dataset.pair;
+    const [a, b] = key.split('|');
+    dismiss.disabled = true;
+    try {
+      await call('duplicates', { method: 'POST', body: { a, b } });
+      dup.dismissed.add(key);
+      dup.pairs = dup.pairs.filter((p) => p.key !== key);
+      dup.ids = new Set(dup.pairs.flatMap((p) => [p.a.id, p.b.id]));
+      renderDuplicates();
+      renderArticles();
+      showToast('Listo: esas dos publicaciones no se van a marcar más como repetidas.');
+    } catch (err) {
+      dismiss.disabled = false;
+      if (err.status !== 401) showToast(err.message, 'error');
+    }
+  }
+});
 
 $('#articleSearchInput').addEventListener('input', renderArticles);
 $('#articleBrandFilter').addEventListener('change', renderArticles);
