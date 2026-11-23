@@ -25,11 +25,15 @@ const SEEDS = {
   subcategories: seedSubcategories,
 };
 
-/** Datos de contacto vigentes (WhatsApp), con los de config.js como respaldo. */
+/** Datos de contacto vigentes (WhatsApp e Instagram), con los de config.js como respaldo. */
 export async function readContact() {
   const [row] = await readCollection('settings');
   const fallback = seedSettings()[0];
-  return { whatsappNumber: row?.whatsappNumber || fallback.whatsappNumber, whatsappDisplay: row?.whatsappDisplay || fallback.whatsappDisplay };
+  return {
+    whatsappNumber: row?.whatsappNumber || fallback.whatsappNumber,
+    whatsappDisplay: row?.whatsappDisplay || fallback.whatsappDisplay,
+    instagramUser: row?.instagramUser || fallback.instagramUser,
+  };
 }
 
 export const dataStore = () => getStore({ name: 'catalog', consistency: 'strong' });

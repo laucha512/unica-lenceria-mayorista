@@ -1,6 +1,6 @@
 // Páginas livianas para buscadores: HTML completo desde el servidor, con los datos del admin.
 // La tienda (index.html) sigue siendo donde se arma el pedido; estas páginas llevan hasta ahí.
-import { formatPrice, INSTAGRAM_URL, INSTAGRAM_USER, SITE_URL, whatsappDisplay, whatsappLink, whatsappNumber } from '../../src/config.js';
+import { formatPrice, instagramUrl, instagramUser, SITE_URL, whatsappDisplay, whatsappLink, whatsappNumber } from '../../src/config.js';
 import { imageSrcset, imageUrl } from '../../src/shared/images.js';
 import { openingHours } from '../../src/shared/opening-hours.js';
 
@@ -103,7 +103,7 @@ ${body}
 </div></main>
 <footer class="foot"><div class="wrap">
   <p><strong>ÚNICA LENCERÍA</strong>: lencería y ropa interior por mayor en Rosario, Santa Fe, sin compra mínima y con envíos a toda la Argentina.</p>
-  <p>WhatsApp: <a href="${esc(whatsappLink('Hola Única Mayorista, quiero hacer una consulta'))}" rel="noopener noreferrer">${esc(whatsappDisplay())}</a> • Instagram: <a href="${esc(INSTAGRAM_URL)}" rel="noopener noreferrer">@${esc(INSTAGRAM_USER)}</a></p>
+  <p>WhatsApp: <a href="${esc(whatsappLink('Hola Única Mayorista, quiero hacer una consulta'))}" rel="noopener noreferrer">${esc(whatsappDisplay())}</a> • Instagram: <a href="${esc(instagramUrl())}" rel="noopener noreferrer">@${esc(instagramUser())}</a></p>
 </div></footer>
 </body>
 </html>`;
@@ -262,7 +262,7 @@ export function branchesPage({ branches }) {
     body: `<h1>Locales de lencería mayorista en Rosario</h1>
 <p class="lead">Visitanos o escribinos para coordinar tu pedido, retiro o envío.</p>
 <p><a class="btn" href="${esc(whatsappLink('Hola Única Mayorista, quiero hacer una consulta'))}" rel="noopener noreferrer">WhatsApp ${esc(whatsappDisplay())}</a>
-<a class="btn alt" href="${esc(INSTAGRAM_URL)}" rel="noopener noreferrer">Instagram @${esc(INSTAGRAM_USER)}</a></p>
+<a class="btn alt" href="${esc(instagramUrl())}" rel="noopener noreferrer">Instagram @${esc(instagramUser())}</a></p>
 ${n ? `<div class="boxes">${cards}</div>` : '<p>Por el momento no hay sucursales disponibles. Escribinos por WhatsApp y coordinamos tu pedido.</p>'}`,
   });
 }

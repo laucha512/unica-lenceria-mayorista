@@ -1,4 +1,5 @@
 // Validación de inputs del admin. Todo lo que llega del cliente pasa por acá.
+import { normalizeInstagram } from '../../src/shared/instagram.js';
 import { formatWhatsapp, normalizeWhatsapp } from '../../src/shared/phone.js';
 import { HttpError } from './http.js';
 
@@ -255,14 +256,16 @@ export function validateBanner(body, { partial = false } = {}) {
   );
 }
 
-/** Contacto: el WhatsApp tal como se muestra en la web y su número para los links de wa.me. */
+/** Contacto: el WhatsApp (cómo se muestra y su número para wa.me) y el usuario de Instagram. */
 export function validateContact(body) {
   const display = text(body, 'whatsappDisplay', { label: 'El número de WhatsApp', min: 8, max: 30, required: true });
   const number = normalizeWhatsapp(display);
   if (!number) {
     throw new HttpError('Número de WhatsApp inválido. Escribilo con código de área, sin 0 ni 15 (ej. 341 259-1367), o completo (ej. +54 9 341 259-1367).');
   }
-  return { whatsappNumber: number, whatsappDisplay: display };
+  const instagramUser = normalizeInstagram(text(body, 'instagramUser', { label: 'El Instagram', max: 120, required: true }));
+  if (!instagramUser) throw new HttpError('Usuario de Instagram inválido. Escribilo como @usuario o pegá el link del perfil.');
+  return { whatsappNumber: number, whatsappDisplay: display, instagramUser };
 }
 
 /* ------------------------------------------------------------ Pedidos y visitas (públicos) */

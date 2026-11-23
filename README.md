@@ -116,8 +116,8 @@ Las rutas `/api/*` se reescriben a `/.netlify/functions/*`.
 | GET/PUT/DELETE | `/api/orders[?id=]` | ✔ | Lista, estado, armado por artículo o baja |
 | POST   | `/api/presence`         | –    | Aviso anónimo "sigo en la web" (cada minuto) |
 | GET    | `/api/presence`         | ✔    | Personas en la web ahora y qué miran |
-| GET    | `/api/settings`         | –    | WhatsApp vigente (número y cómo se muestra) |
-| PUT    | `/api/settings`         | ✔    | Cambia el WhatsApp de toda la web   |
+| GET    | `/api/settings`         | –    | WhatsApp e Instagram vigentes |
+| PUT    | `/api/settings`         | ✔    | Cambia el WhatsApp y el Instagram de toda la web |
 | GET    | `/catalogo`, `/marca/:slug`, `/producto/:id`, `/sucursales`, `/como-comprar`, `/sitemap.xml` | – | Páginas para buscadores con datos del admin (caché de 10 minutos) |
 | GET    | `/api/categories/tree`  | –    | Árbol del menú con marcas derivadas (`?all=1` con token incluye lo oculto) |
 | GET    | `/api/categories`       | –    | Categorías (activas; todas con token) |

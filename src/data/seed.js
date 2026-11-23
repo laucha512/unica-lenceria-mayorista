@@ -1,7 +1,7 @@
 // Datos iniciales extraídos del diseño de Stitch.
 // Los usan las Netlify Functions para sembrar Blobs la primera vez
 // y la tienda como respaldo si la API no responde.
-import { WHATSAPP_DISPLAY, WHATSAPP_NUMBER } from '../config.js';
+import { INSTAGRAM_USER, WHATSAPP_DISPLAY, WHATSAPP_NUMBER } from '../config.js';
 import { slugify } from '../shared/tree.js';
 
 const daysAgo = (now, d) => new Date(now - d * 86400000).toISOString();
@@ -229,5 +229,5 @@ export function seedBanners(now = Date.now()) {
 
 /** Datos de contacto editables desde el admin (una sola fila). */
 export function seedSettings() {
-  return [{ id: 'contact', whatsappNumber: WHATSAPP_NUMBER, whatsappDisplay: WHATSAPP_DISPLAY }];
+  return [{ id: 'contact', whatsappNumber: WHATSAPP_NUMBER, whatsappDisplay: WHATSAPP_DISPLAY, instagramUser: INSTAGRAM_USER }];
 }

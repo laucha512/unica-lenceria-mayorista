@@ -1,5 +1,5 @@
-// GET /api/settings -> datos de contacto públicos (WhatsApp)
-// PUT /api/settings -> cambia el WhatsApp (admin); se aplica en toda la web
+// GET /api/settings -> datos de contacto públicos (WhatsApp e Instagram)
+// PUT /api/settings -> cambia el WhatsApp y el Instagram (admin); se aplica en toda la web
 import { error, handle, json, readJson, requireAuth } from '../lib/http.js';
 import { readContact, updateCollection } from '../lib/store.js';
 import { validateContact } from '../lib/validate.js';

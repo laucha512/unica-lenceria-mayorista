@@ -1,5 +1,5 @@
 // Páginas para buscadores y sitemap. Salen de los mismos datos del admin (cambios visibles en hasta 10 minutos).
-import { setWhatsapp } from '../../src/config.js';
+import { setContact } from '../../src/config.js';
 import { normalizeName, slugify } from '../../src/shared/tree.js';
 import { handle } from '../lib/http.js';
 import { brandPage, branchesPage, catalogPage, howToBuyPage, notFoundPage, productPage, sitemapXml } from '../lib/seo-pages.js';
@@ -49,7 +49,7 @@ export default handle(async (req) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') return new Response(null, { status: 405, headers: { Allow: 'GET, HEAD' } });
   const path = new URL(req.url).pathname.replace(/\/+$/, '') || '/';
   const [, section, param] = path.split('/');
-  setWhatsapp(await readContact()); // número vigente del admin en todas las páginas
+  setContact(await readContact()); // WhatsApp e Instagram vigentes del admin en todas las páginas
   const notFound = () => respond(notFoundPage(path), { status: 404 });
 
   if (path === '/como-comprar') return respond(howToBuyPage());

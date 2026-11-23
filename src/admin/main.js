@@ -3,6 +3,7 @@ import { formatPrice } from '../config.js';
 import { validateFile, resizeImage, uploadBlob } from './images.js';
 import { swatchOf } from '../shared/colors.js';
 import { normalizeWhatsapp } from '../shared/phone.js';
+import { instagramUrlOf, normalizeInstagram } from '../shared/instagram.js';
 import { initCategories, renderCategories, subcategoryOptions, subcategoryPath } from './categories.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -1150,13 +1151,30 @@ function updateContactPreview() {
       : '';
 }
 
+/** Muestra el link de Instagram que se va a usar en la web y habilita "Probar en Instagram". */
+function updateInstagramPreview() {
+  const user = normalizeInstagram($('#contactInstagram').value);
+  const test = $('#contactInstagramTest');
+  test.classList.toggle('hidden', !user);
+  test.classList.toggle('inline-flex', !!user);
+  if (user) test.href = instagramUrlOf(user);
+  $('#contactInstagramPreview').textContent = user
+    ? `Los links de la web van a llevar a ${instagramUrlOf(user)} y se va a mostrar como @${user}.`
+    : $('#contactInstagram').value.trim()
+      ? 'Revisá el Instagram: solo letras, números, puntos y guiones bajos.'
+      : '';
+}
+
 function renderContact() {
   $('#contactWhatsapp').value = state.contact?.whatsappDisplay || '';
+  $('#contactInstagram').value = state.contact?.instagramUser ? `@${state.contact.instagramUser}` : '';
   showFormError($('#contactFormError'), '');
   updateContactPreview();
+  updateInstagramPreview();
 }
 
 $('#contactWhatsapp').addEventListener('input', updateContactPreview);
+$('#contactInstagram').addEventListener('input', updateInstagramPreview);
 
 $('#contactForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -1166,12 +1184,17 @@ $('#contactForm').addEventListener('submit', async (e) => {
   if (!normalizeWhatsapp(whatsappDisplay)) {
     return showFormError(errEl, 'Número inválido. Escribilo con código de área, sin 0 ni 15 (ej. 341 259-1367), o completo (ej. +54 9 341 259-1367).');
   }
+  const instagramUser = normalizeInstagram($('#contactInstagram').value);
+  if (!instagramUser) {
+    $('#contactInstagram').focus();
+    return showFormError(errEl, 'Instagram inválido. Escribí el usuario (ej. @unicamayoristalenceria) o pegá el link del perfil.');
+  }
   const btn = $('#contactSubmit');
   setBusy(btn, true, 'Guardando…');
   try {
-    state.contact = await call('settings', { method: 'PUT', body: { whatsappDisplay } });
+    state.contact = await call('settings', { method: 'PUT', body: { whatsappDisplay, instagramUser } });
     renderContact();
-    showToast('Número guardado: ya se ve en toda la web.');
+    showToast('Cambios guardados: el WhatsApp y el Instagram ya se ven en toda la web.');
   } catch (err) {
     if (err.status !== 401) showFormError(errEl, err.message);
   } finally {

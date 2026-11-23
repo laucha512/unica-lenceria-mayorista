@@ -84,7 +84,7 @@
     </button>
     <button type="button" class="nav-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 text-left text-on-surface-variant" data-tab="contacto">
       <span class="material-symbols-outlined text-[20px]" aria-hidden="true">call</span>
-      <span class="text-sm tracking-wide">Contacto &amp; WhatsApp</span>
+      <span class="text-sm tracking-wide">WhatsApp &amp; Instagram</span>
     </button>
     <button type="button" class="nav-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 text-left text-on-surface-variant" data-tab="pedidos">
       <span class="material-symbols-outlined text-[20px]" aria-hidden="true">receipt_long</span>
@@ -358,8 +358,8 @@
   <!-- ===================== TAB: CONTACTO & WHATSAPP ===================== -->
   <section class="tab-section hidden" id="section-contacto" aria-labelledby="h-contacto">
     <div class="mb-6">
-      <h1 id="h-contacto" class="font-headline-lg text-2xl md:text-3xl text-on-surface font-semibold">Contacto &amp; WhatsApp</h1>
-      <p class="text-sm text-on-surface-variant mt-1 max-w-2xl">El número que guardes acá se usa en toda la web: botones de WhatsApp, pie de página, envío de pedidos y páginas de catálogo.</p>
+      <h1 id="h-contacto" class="font-headline-lg text-2xl md:text-3xl text-on-surface font-semibold">WhatsApp &amp; Instagram</h1>
+      <p class="text-sm text-on-surface-variant mt-1 max-w-2xl">Lo que guardes acá se usa en toda la web: botones de WhatsApp, links a Instagram, pie de página, envío de pedidos y páginas de catálogo.</p>
     </div>
     <form id="contactForm" class="max-w-xl p-6 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm space-y-4" novalidate>
       <div>
@@ -368,13 +368,22 @@
         <p id="contactWhatsappHelp" class="mt-1.5 text-xs text-on-surface-variant">Escribilo como querés que se vea en la web. Con código de área y sin 0 ni 15 (ej. 341 259-1367), o completo (ej. +54 9 341 259-1367).</p>
       </div>
       <p class="text-xs text-on-surface-variant" id="contactPreview" aria-live="polite"></p>
+      <div class="pt-2 border-t border-outline-variant/30">
+        <label for="contactInstagram" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1 mt-2">Instagram *</label>
+        <input id="contactInstagram" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="120" required placeholder="Ej. @unicamayoristalenceria" aria-describedby="contactInstagramHelp" class="w-full px-3.5 py-2.5 bg-surface-container-low rounded-xl text-base border-none focus:ring-2 focus:ring-primary font-semibold">
+        <p id="contactInstagramHelp" class="mt-1.5 text-xs text-on-surface-variant">Escribí el usuario (ej. @unicamayoristalenceria) o pegá el link del perfil.</p>
+      </div>
+      <p class="text-xs text-on-surface-variant" id="contactInstagramPreview" aria-live="polite"></p>
       <p class="hidden text-sm text-error font-semibold" id="contactFormError" role="alert"></p>
       <div class="flex flex-wrap items-center gap-3 pt-1">
         <button type="submit" id="contactSubmit" class="px-5 py-2.5 rounded-full bg-primary hover:bg-primary-container text-on-primary text-xs font-bold uppercase tracking-wider shadow-md transition-all flex items-center gap-2">
-          <span class="material-symbols-outlined text-[18px]" aria-hidden="true">check_circle</span><span>Guardar número</span>
+          <span class="material-symbols-outlined text-[18px]" aria-hidden="true">check_circle</span><span>Guardar cambios</span>
         </button>
         <a id="contactTest" href="#" target="_blank" rel="noopener noreferrer" class="hidden px-4 py-2.5 rounded-full border border-outline-variant text-on-surface text-xs font-bold hover:bg-surface-container transition-colors items-center gap-2">
           <span class="material-symbols-outlined text-[18px]" aria-hidden="true">open_in_new</span><span>Probar en WhatsApp</span>
+        </a>
+        <a id="contactInstagramTest" href="#" target="_blank" rel="noopener noreferrer" class="hidden px-4 py-2.5 rounded-full border border-outline-variant text-on-surface text-xs font-bold hover:bg-surface-container transition-colors items-center gap-2">
+          <span class="material-symbols-outlined text-[18px]" aria-hidden="true">open_in_new</span><span>Probar en Instagram</span>
         </a>
       </div>
     </form>
