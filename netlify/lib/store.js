@@ -22,6 +22,7 @@ const SEEDS = {
   categories: seedCategories,
   duplicateDismissals: () => [], // pares de publicaciones marcados como "son distintas"
   orders: () => [],
+  priceHistory: () => [], // últimos cambios de precios en bloque (para deshacer)
   settings: seedSettings,
   subcategories: seedSubcategories,
 };

@@ -11,6 +11,8 @@ import { createHash, randomInt, randomUUID } from 'node:crypto';
 import { error, handle, HttpError, idParam, json, readJson, requireAuth } from '../lib/http.js';
 import { readCollection, updateCollection } from '../lib/store.js';
 import { ORDER_STATUSES, validateOrder } from '../lib/validate.js';
+import { sendPush } from '../lib/push.js';
+import { formatPrice } from '../../src/config.js';
 
 const MAX_ORDERS = 1000;
 // Pedidos nuevos por conexión cada 10 minutos (evita abusos). Es generoso porque en celulares
@@ -122,7 +124,22 @@ export default handle(async (req, context) => {
         });
         return { list: [created, ...list].slice(0, MAX_ORDERS), result: { order: created, merged: false } };
       });
-      const { order, merged } = result;
+      const { order, merged, repeated } = result;
+      if (!repeated) {
+        // Aviso al celular del admin. No frena la respuesta al cliente (que está esperando para abrir WhatsApp).
+        const added = merged ? lines.reduce((n, l) => n + l.qty, 0) : 0;
+        const who = order.info.name || order.info.phone || 'Un cliente';
+        const notice = sendPush({
+          title: merged ? `${who} sumó cosas al pedido #${order.number}` : `Nuevo pedido #${order.number}`,
+          body: merged
+            ? `+${added} ${added === 1 ? 'pack' : 'packs'} · total ${formatPrice(order.total)} · ${order.info.delivery || 'A coordinar'}`
+            : `${who} · ${order.packs} ${order.packs === 1 ? 'pack' : 'packs'} · ${formatPrice(order.total)} · ${order.info.delivery || 'A coordinar'}`,
+          url: '/admin/#pedidos',
+          tag: order.id,
+        }).catch((err) => console.warn('Aviso de pedido no enviado:', err?.message));
+        if (typeof context?.waitUntil === 'function') context.waitUntil(notice);
+        else await Promise.race([notice, new Promise((r) => setTimeout(r, 3000))]);
+      }
       return json({ ok: true, code: order.code, number: order.number, merged }, merged ? 200 : 201);
     }
 

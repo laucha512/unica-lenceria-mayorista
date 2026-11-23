@@ -6,6 +6,7 @@ import { normalizeWhatsapp } from '../shared/phone.js';
 import { instagramUrlOf, normalizeInstagram } from '../shared/instagram.js';
 import { findDuplicates } from './duplicates.js';
 import { combos, comboKey, soldOutCount } from '../shared/stock.js';
+import { applyPercent } from '../shared/prices.js';
 import { initCategories, renderCategories, subcategoryOptions, subcategoryPath } from './categories.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -136,7 +137,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 $$('[data-close-modal]').forEach((b) => b.addEventListener('click', () => closeModal(b.closest('[role="dialog"]'))));
-['#articleModal', '#bannerModal', '#branchModal', '#taxonomyModal', '#stockModal'].forEach((id) =>
+['#articleModal', '#bannerModal', '#branchModal', '#taxonomyModal', '#stockModal', '#priceModal'].forEach((id) =>
   $(id).addEventListener('mousedown', (e) => {
     if (e.target === e.currentTarget) closeModal(e.currentTarget);
   })
@@ -151,6 +152,8 @@ function confirmDialog({ title, message, okLabel = 'Eliminar', requireText = nul
   $('#confirmTitle').textContent = title;
   $('#confirmMessage').textContent = message;
   $('#confirmOkLabel').textContent = okLabel;
+  // Ícono del botón según la acción: tacho para borrar, tilde para el resto (aplicar, deshacer…).
+  $('#confirmOk .material-symbols-outlined').textContent = okLabel === 'Eliminar' ? 'delete' : 'check_circle';
   const wrap = $('#confirmTypeWrap');
   const input = $('#confirmInput');
   const ok = $('#confirmOk');
@@ -282,6 +285,8 @@ async function loadAll() {
     Object.assign(state, { articles, brands, banners, branches, categories, subcategories, contact });
     renderAll();
     startLive(); // visitas en vivo y pedidos, cada 30 segundos
+    loadPriceHistory();
+    updatePushUI();
   } catch (err) {
     if (err.status !== 401) showToast(`No se pudieron cargar los datos: ${err.message}`, 'error');
   }
@@ -771,6 +776,265 @@ function renderStats() {
   looked.innerHTML = rows.length
     ? rows.map((r, i) => rankRow(i, r.a.title, `${r.a.brand}${r.a.code ? ` · Art. ${r.a.code}` : ''} · ${r.packs ? packsWord(r.packs) + ' pedidos' : 'ningún pedido'}`, `${r.views} vistas`)).join('')
     : '<li class="text-sm text-on-surface-variant">Todavía no hay suficientes visitas (se muestran artículos con 3 vistas o más).</li>';
+}
+
+/* ================================================================ Precios en bloque */
+// Aumento (o baja) por porcentaje a todo el catálogo, una marca, una categoría o una subcategoría.
+// La vista previa usa la misma cuenta que el servidor (src/shared/prices.js). Se puede deshacer.
+
+const priceForm = { last: null };
+const plainName = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
+const brandOptions = () => [...new Set(state.articles.map((a) => a.brand).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+
+function priceScopeTest() {
+  const type = $('#priceScopeType').value;
+  const value = $('#priceScopeValue').value;
+  if (type === 'all') return () => true;
+  if (type === 'brand') return (a) => plainName(a.brand) === plainName(value);
+  if (type === 'category') {
+    const ids = new Set(state.subcategories.filter((s) => s.categoryId === value).map((s) => s.id));
+    return (a) => ids.has(a.subcategoryId);
+  }
+  return (a) => a.subcategoryId === value;
+}
+
+function fillPriceScopeValues() {
+  const type = $('#priceScopeType').value;
+  $('#priceScopeValueWrap').classList.toggle('hidden', type === 'all');
+  const sel = $('#priceScopeValue');
+  if (type === 'brand') {
+    $('#priceScopeValueLabel').textContent = 'Marca';
+    sel.innerHTML = brandOptions().map((b) => `<option value="${esc(b)}">${esc(b)}</option>`).join('');
+  } else if (type === 'category') {
+    $('#priceScopeValueLabel').textContent = 'Categoría';
+    sel.innerHTML = [...state.categories].sort((a, b) => a.order - b.order).map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+  } else if (type === 'subcategory') {
+    $('#priceScopeValueLabel').textContent = 'Subcategoría';
+    sel.innerHTML = state.subcategories
+      .map((s) => ({ s, path: subcategoryPath(s.id) }))
+      .sort((x, y) => x.path.localeCompare(y.path, 'es'))
+      .map(({ s, path }) => `<option value="${esc(s.id)}">${esc(path)}</option>`)
+      .join('');
+  }
+}
+
+function renderPricePreview() {
+  const percent = Number($('#pricePercent').value);
+  const round = Number($('#priceRound').value);
+  const list = state.articles
+    .filter(priceScopeTest())
+    .sort((a, b) => String(a.brand).localeCompare(String(b.brand), 'es') || String(a.title).localeCompare(String(b.title), 'es'));
+  const valid = $('#pricePercent').value.trim() !== '' && Number.isFinite(percent) && percent !== 0 && percent >= -90 && percent <= 300;
+  $('#priceApply').disabled = !valid || !list.length;
+  const n = `${list.length} ${list.length === 1 ? 'artículo' : 'artículos'}`;
+  $('#pricePreviewTitle').textContent = !list.length
+    ? 'No hay artículos en ese alcance.'
+    : valid
+      ? `Se van a cambiar ${n} (${percent > 0 ? '+' : ''}${percent}%):`
+      : `${n} en ese alcance. Escribí el porcentaje (entre -90 y 300) para ver los precios nuevos.`;
+  $('#pricePreview').innerHTML = list
+    .map((a) => {
+      const now = a.pricePack || a.priceUnit || 0;
+      const next = valid ? applyPercent(now, percent, round) : null;
+      return `<tr><td class="p-2"><span class="font-semibold">${esc(a.title)}</span><span class="block text-[11px] text-on-surface-variant">${esc(a.brand)}${a.code ? ` · Art. ${esc(a.code)}` : ''}</span></td>
+        <td class="p-2 text-right whitespace-nowrap text-on-surface-variant">${esc(formatPrice(now))}</td>
+        <td class="p-2 text-right whitespace-nowrap font-bold ${next == null ? '' : next > now ? 'text-primary' : 'text-emerald-700'}">${next == null ? '–' : esc(formatPrice(next))}</td></tr>`;
+    })
+    .join('');
+}
+
+function renderPriceUndo() {
+  const last = priceForm.last;
+  $('#priceUndoBar').classList.toggle('hidden', !last);
+  if (!last) return;
+  const when = new Date(last.at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+  $('#priceUndoText').textContent = `Último cambio de precios: ${last.percent > 0 ? '+' : ''}${last.percent}% a ${last.label} (${last.count} artículos, el ${when}).`;
+}
+
+async function loadPriceHistory() {
+  try {
+    priceForm.last = (await call('prices')).last;
+    renderPriceUndo();
+  } catch {
+    /* sin historial: no se muestra la barra */
+  }
+}
+
+$('#bulkPriceBtn').addEventListener('click', () => {
+  $('#priceScopeType').value = 'all';
+  $('#pricePercent').value = '';
+  $('#priceRound').value = '100';
+  showFormError($('#priceError'), '');
+  fillPriceScopeValues();
+  renderPricePreview();
+  openModal($('#priceModal'), $('#priceScopeType'));
+});
+$('#priceScopeType').addEventListener('change', () => {
+  fillPriceScopeValues();
+  renderPricePreview();
+});
+['#priceScopeValue', '#priceRound'].forEach((id) => $(id).addEventListener('change', renderPricePreview));
+$('#pricePercent').addEventListener('input', renderPricePreview);
+$('#priceModal').addEventListener('click', (e) => {
+  if (e.target.closest('[data-close-price]')) closeModal($('#priceModal'));
+});
+
+$('#priceApply').addEventListener('click', async () => {
+  const percent = Number($('#pricePercent').value);
+  const count = state.articles.filter(priceScopeTest()).length;
+  const ok = await confirmDialog({
+    title: 'Aplicar el cambio de precios',
+    message: `Se ${percent > 0 ? 'aumentan' : 'bajan'} un ${Math.abs(percent)}% los precios de ${count} ${count === 1 ? 'artículo' : 'artículos'}. Se ve en la tienda al instante. Si te equivocás, después podés deshacerlo.`,
+    okLabel: 'Aplicar',
+  });
+  if (!ok) return;
+  const btn = $('#priceApply');
+  setBusy(btn, true, 'Aplicando…');
+  try {
+    const type = $('#priceScopeType').value;
+    const r = await call('prices', { method: 'POST', body: { scope: { type, value: $('#priceScopeValue').value }, percent, round: Number($('#priceRound').value) } });
+    state.articles = await call('articles');
+    priceForm.last = r.last;
+    renderAll();
+    renderPriceUndo();
+    closeModal($('#priceModal'));
+    showToast(`Listo: ${r.changed} precios actualizados (${percent > 0 ? '+' : ''}${percent}% a ${r.label}).`);
+  } catch (err) {
+    if (err.status !== 401) showFormError($('#priceError'), err.message);
+  } finally {
+    setBusy(btn, false);
+  }
+});
+
+$('#priceUndoBtn').addEventListener('click', async () => {
+  const last = priceForm.last;
+  if (!last) return;
+  const ok = await confirmDialog({
+    title: 'Deshacer el cambio de precios',
+    message: `Los ${last.count} artículos de ${last.label} vuelven al precio que tenían antes del ${last.percent > 0 ? '+' : ''}${last.percent}%. Si después editaste a mano el precio de alguno de esos artículos, también vuelve al anterior.`,
+    okLabel: 'Deshacer',
+  });
+  if (!ok) return;
+  const btn = $('#priceUndoBtn');
+  setBusy(btn, true, 'Deshaciendo…');
+  try {
+    const r = await call('prices', { method: 'POST', body: { undo: true } });
+    state.articles = await call('articles');
+    priceForm.last = r.last;
+    renderAll();
+    renderPriceUndo();
+    showToast(`Listo: ${r.restored} precios volvieron a como estaban.`);
+  } catch (err) {
+    if (err.status !== 401) showToast(err.message, 'error');
+  } finally {
+    setBusy(btn, false);
+  }
+});
+
+/* ================================================================ App instalable y avisos de pedidos */
+
+const app = { reg: null, installPrompt: null };
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+
+function deviceName() {
+  const ua = navigator.userAgent;
+  if (/android/i.test(ua)) return 'Celular Android';
+  if (isIOS) return 'iPhone / iPad';
+  if (/windows/i.test(ua)) return 'Computadora Windows';
+  if (/mac/i.test(ua)) return 'Mac';
+  return 'Dispositivo';
+}
+
+function urlBase64ToUint8Array(base64) {
+  const padded = (base64 + '='.repeat((4 - (base64.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/');
+  return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+}
+
+function pushStatus(msg) {
+  $('#pushStatus').textContent = msg;
+  $('#pushStatus').classList.toggle('hidden', !msg);
+}
+
+async function updatePushUI() {
+  const btn = $('#pushBtn');
+  if (isIOS && !isStandalone()) {
+    $('#installHint').textContent = 'En iPhone: tocá Compartir y después “Agregar a inicio”. Desde esa app vas a poder activar los avisos de pedidos.';
+    $('#installHint').classList.remove('hidden');
+  }
+  if (!pushSupported() || !app.reg || !state.token) return btn.classList.add('hidden');
+  btn.classList.remove('hidden');
+  const sub = await app.reg.pushManager.getSubscription();
+  const on = !!sub && Notification.permission === 'granted';
+  btn.dataset.on = String(on);
+  btn.querySelector('span:last-child').textContent = on ? 'Avisos de pedidos: activados' : 'Activar avisos de pedidos';
+  btn.querySelector('.material-symbols-outlined').classList.toggle('icon-fill', on);
+  if (Notification.permission === 'denied') pushStatus('Los avisos están bloqueados en este navegador: habilitalos en la configuración del sitio.');
+  else pushStatus(on ? 'Te avisamos acá de cada pedido nuevo. Tocá para desactivarlos.' : '');
+}
+
+$('#pushBtn').addEventListener('click', async () => {
+  const btn = $('#pushBtn');
+  btn.disabled = true;
+  try {
+    const current = await app.reg.pushManager.getSubscription();
+    if (btn.dataset.on === 'true' && current) {
+      if (!window.confirm('¿Desactivar los avisos de pedidos en este dispositivo?')) return;
+      await call('push', { method: 'DELETE', body: { endpoint: current.endpoint } }).catch(() => {});
+      await current.unsubscribe();
+      showToast('Avisos desactivados en este dispositivo.');
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      pushStatus('No se activaron: hay que permitir las notificaciones cuando el navegador lo pregunta.');
+      return;
+    }
+    const { publicKey } = await call('push');
+    const sub = current || (await app.reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) }));
+    await call('push', { method: 'POST', body: { subscription: sub.toJSON(), device: deviceName() } });
+    const { sent } = await call('push', { method: 'POST', body: { test: true, endpoint: sub.endpoint } });
+    showToast(sent ? 'Avisos activados: te mandamos uno de prueba.' : 'Avisos activados.');
+  } catch (err) {
+    if (err.status !== 401) pushStatus(`No se pudieron activar los avisos: ${err.message}`);
+  } finally {
+    btn.disabled = false;
+    updatePushUI();
+  }
+});
+
+// Instalar como app (Chrome, Edge y Android). En iPhone se instala desde Compartir → Agregar a inicio.
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  app.installPrompt = e;
+  $('#installBtn').classList.remove('hidden');
+});
+window.addEventListener('appinstalled', () => {
+  app.installPrompt = null;
+  $('#installBtn').classList.add('hidden');
+  showToast('Listo: el admin quedó instalado como app.');
+});
+$('#installBtn').addEventListener('click', async () => {
+  if (!app.installPrompt) return;
+  app.installPrompt.prompt();
+  await app.installPrompt.userChoice.catch(() => null);
+  app.installPrompt = null;
+  $('#installBtn').classList.add('hidden');
+});
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker
+    .register('/admin/sw.js', { scope: '/admin/' })
+    .then((reg) => {
+      app.reg = reg;
+      updatePushUI();
+    })
+    .catch((err) => console.warn('No se pudo preparar el admin como app.', err));
+  // Al tocar un aviso con el admin abierto: ir a Pedidos.
+  navigator.serviceWorker.addEventListener('message', (e) => {
+    if (e.data?.type === 'abrir') location.href = e.data.url;
+  });
 }
 
 /* ================================================================ Copia de seguridad */

@@ -119,6 +119,8 @@ Las rutas `/api/*` se reescriben a `/.netlify/functions/*`.
 | GET/POST | `/api/duplicates`     | ✔    | Pares de publicaciones marcados como "son distintas" (la detección se hace en el admin) |
 | POST   | `/api/stats`          | –    | Suma una vista a la ficha de un artículo (una por visita) |
 | GET    | `/api/stats`          | ✔    | Vistas por artículo y por día, últimos 30 días |
+| GET/POST | `/api/prices`        | ✔    | Cambio de precios en bloque por porcentaje (con deshacer) |
+| GET/POST/DELETE | `/api/push`   | ✔    | Avisos al celular de pedidos nuevos (claves VAPID en Blobs privados) |
 | GET    | `/api/settings`         | –    | WhatsApp e Instagram vigentes |
 | PUT    | `/api/settings`         | ✔    | Cambia el WhatsApp y el Instagram de toda la web |
 | GET    | `/catalogo`, `/marca/:slug`, `/producto/:id`, `/sucursales`, `/como-comprar`, `/sitemap.xml` | – | Páginas para buscadores con datos del admin (caché de 10 minutos) |
