@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&icon_names=add,add_box,add_circle,add_photo_alternate,arrow_downward,arrow_upward,aspect_ratio,auto_awesome,bar_chart,call,category,check_circle,checkroom,chevron_right,close,cloud_upload,delete,description,edit,error,group,inventory_2,lock,logout,menu,open_in_new,pause_circle,play_circle,progress_activity,publish,receipt_long,refresh,schedule,search,star,storefront,subdirectory_arrow_right,verified,view_carousel,visibility,visibility_off,wallpaper,warning&display=block">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&icon_names=add,add_box,add_circle,add_photo_alternate,arrow_downward,arrow_upward,aspect_ratio,auto_awesome,bar_chart,call,category,check_circle,checkroom,chevron_right,close,cloud_upload,delete,description,download,edit,error,group,inventory_2,lock,logout,menu,open_in_new,pause_circle,play_circle,progress_activity,publish,receipt_long,refresh,schedule,search,star,storefront,subdirectory_arrow_right,verified,view_carousel,visibility,visibility_off,wallpaper,warning&display=block">
 <link rel="stylesheet" href="/src/admin/admin.css">
 </head>
 <body class="bg-surface font-body-md text-body-md text-on-surface antialiased selection:bg-primary-fixed selection:text-primary">
@@ -99,7 +99,11 @@
       <span class="material-symbols-outlined text-[20px]" aria-hidden="true">bar_chart</span>
       <span class="text-sm tracking-wide">Estadísticas</span>
     </button>
-    <a class="mt-auto flex items-center gap-3 px-3.5 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors text-left border-t border-outline-variant/30 pt-4" href="/" target="_blank" rel="noopener">
+    <button type="button" id="backupBtn" title="Baja un Excel con artículos, pedidos, clientes, marcas, categorías, sucursales y configuración" class="mt-auto w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors text-left border-t border-outline-variant/30 pt-4 disabled:opacity-60">
+      <span class="material-symbols-outlined text-[20px]" aria-hidden="true">download</span>
+      <span class="text-sm font-semibold">Descargar copia de seguridad (Excel)</span>
+    </button>
+    <a class="flex items-center gap-3 px-3.5 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors text-left" href="/" target="_blank" rel="noopener">
       <span class="material-symbols-outlined text-[20px]" aria-hidden="true">storefront</span>
       <span class="flex flex-col">
         <span class="text-sm font-semibold">Ver Tienda Online</span>

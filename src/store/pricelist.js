@@ -1,7 +1,9 @@
 // Lista de precios descargable (PDF y Excel), armada en el momento con el catálogo actual.
+// El Excel se arma con src/shared/xlsx.js (el mismo que usa la copia de seguridad del admin).
 // Solo artículos con stock, agrupados por marca. Este archivo se carga recién al tocar "Descargar".
 import { formatPrice, instagramUser, SITE_URL, whatsappDisplay } from '../config.js';
 import { availableColors, availableSizes } from '../shared/stock.js';
+import { buildWorkbook, saveBlob } from '../shared/xlsx.js';
 
 const packPrice = (a) => a.pricePack || a.priceUnit || 0;
 const today = () => new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -17,120 +19,22 @@ function listedArticles(articles) {
     .sort((x, y) => String(x.brand).localeCompare(String(y.brand), 'es') || String(x.title).localeCompare(String(y.title), 'es'));
 }
 
-function saveBlob(blob, name) {
-  const url = URL.createObjectURL(blob);
-  const link = Object.assign(document.createElement('a'), { href: url, download: name });
-  document.body.append(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
-}
 
 /* ================================================================ Excel (.xlsx) */
-// Archivo .xlsx armado a mano (es un .zip con XML adentro), sin librerías.
-
-const xml = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '');
-
-const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
-  let c = n;
-  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-  return c >>> 0;
-});
-function crc32(bytes) {
-  let c = 0xffffffff;
-  for (const b of bytes) c = CRC_TABLE[(c ^ b) & 0xff] ^ (c >>> 8);
-  return (c ^ 0xffffffff) >>> 0;
-}
-
-/** Zip sin compresión (suficiente para una planilla). */
-function zip(files) {
-  const enc = new TextEncoder();
-  const parts = [];
-  const central = [];
-  let offset = 0;
-  for (const [name, content] of files) {
-    const nameBytes = enc.encode(name);
-    const data = enc.encode(content);
-    const crc = crc32(data);
-    const local = new DataView(new ArrayBuffer(30));
-    local.setUint32(0, 0x04034b50, true);
-    local.setUint16(4, 20, true);
-    local.setUint16(6, 0x0800, true); // nombres en UTF-8
-    local.setUint32(14, crc, true);
-    local.setUint32(18, data.length, true);
-    local.setUint32(22, data.length, true);
-    local.setUint16(26, nameBytes.length, true);
-    parts.push(new Uint8Array(local.buffer), nameBytes, data);
-    const entry = new DataView(new ArrayBuffer(46));
-    entry.setUint32(0, 0x02014b50, true);
-    entry.setUint16(4, 20, true);
-    entry.setUint16(6, 20, true);
-    entry.setUint16(8, 0x0800, true);
-    entry.setUint32(16, crc, true);
-    entry.setUint32(20, data.length, true);
-    entry.setUint32(24, data.length, true);
-    entry.setUint16(28, nameBytes.length, true);
-    entry.setUint32(42, offset, true);
-    central.push(new Uint8Array(entry.buffer), nameBytes);
-    offset += 30 + nameBytes.length + data.length;
-  }
-  const centralSize = central.reduce((n, p) => n + p.length, 0);
-  const end = new DataView(new ArrayBuffer(22));
-  end.setUint32(0, 0x06054b50, true);
-  end.setUint16(8, files.length, true);
-  end.setUint16(10, files.length, true);
-  end.setUint32(12, centralSize, true);
-  end.setUint32(16, offset, true);
-  return new Blob([...parts, ...central, new Uint8Array(end.buffer)], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  });
-}
 
 function buildXlsx(articles) {
-  const header = ['Marca', 'Código', 'Artículo', 'Presentación', 'Talles', 'Colores', 'Precio', 'Ver en la web'];
-  const col = (i) => String.fromCharCode(65 + i);
-  const cell = (v, i, r, style = 0) =>
-    typeof v === 'number'
-      ? `<c r="${col(i)}${r}" s="${style || 2}"><v>${v}</v></c>`
-      : `<c r="${col(i)}${r}" t="inlineStr"${style ? ` s="${style}"` : ''}><is><t xml:space="preserve">${xml(v)}</t></is></c>`;
-  const rows = [
-    `<row r="1">${cell(`ÚNICA LENCERÍA – Lista de precios mayorista (${today()})`, 0, 1, 1)}</row>`,
-    `<row r="2">${cell(`WhatsApp ${whatsappDisplay()} · ${SITE_URL.replace('https://', '')} · Instagram @${instagramUser()} · Sin compra mínima`, 0, 2)}</row>`,
-    `<row r="4">${header.map((h, i) => cell(h, i, 4, 1)).join('')}</row>`,
-    ...articles.map((a, n) => {
-      const r = n + 5;
-      const values = [a.brand, a.code || '', a.title, a.presentation || '', sizesText(a), colorsText(a), packPrice(a), `${SITE_URL}/producto/${a.id}`];
-      return `<row r="${r}">${values.map((v, i) => cell(v, i, r)).join('')}</row>`;
-    }),
-  ];
-  const widths = [16, 10, 48, 16, 22, 34, 12, 46];
-  const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<sheetViews><sheetView workbookViewId="0"><pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
-<cols>${widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('')}</cols>
-<sheetData>${rows.join('')}</sheetData>
-<autoFilter ref="A4:H${articles.length + 4}"/>
-</worksheet>`;
-  const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<numFmts count="1"><numFmt numFmtId="164" formatCode="&quot;$&quot; #,##0"/></numFmts>
-<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>
-<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>
-<borders count="1"><border/></borders>
-<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>
-</styleSheet>`;
-  return zip([
-    ['[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`],
-    ['_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
-    ['xl/workbook.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Lista de precios" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">'Lista de precios'!$A$4:$H$${articles.length + 4}</definedName></definedNames></workbook>`],
-    ['xl/_rels/workbook.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
-    ['xl/worksheets/sheet1.xml', sheet],
-    ['xl/styles.xml', styles],
+  return buildWorkbook([
+    {
+      name: 'Lista de precios',
+      intro: [
+        `ÚNICA LENCERÍA – Lista de precios mayorista (${today()})`,
+        `WhatsApp ${whatsappDisplay()} · ${SITE_URL.replace('https://', '')} · Instagram @${instagramUser()} · Sin compra mínima`,
+      ],
+      header: ['Marca', 'Código', 'Artículo', 'Presentación', 'Talles', 'Colores', 'Precio', 'Ver en la web'],
+      rows: articles.map((a) => [a.brand, a.code || '', a.title, a.presentation || '', sizesText(a), colorsText(a), packPrice(a), `${SITE_URL}/producto/${a.id}`]),
+      widths: [16, 10, 48, 16, 22, 34, 12, 46],
+      money: [6],
+    },
   ]);
 }
 

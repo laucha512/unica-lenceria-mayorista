@@ -548,9 +548,9 @@ const daysSince = (iso) => Math.floor((Date.now() - Date.parse(iso)) / DAY_MS);
 const sinceText = (d) => (d <= 0 ? 'hoy' : d === 1 ? 'ayer' : `hace ${d} días`);
 const firstName = (name) => (name || '').split(/[\s–-]+/)[0];
 
-function buildClients() {
+function buildClients(orders = state.orders) {
   const map = new Map();
-  for (const o of state.orders || []) {
+  for (const o of orders || []) {
     if (!o.phone) continue;
     const c = map.get(o.phone) || { phone: o.phone, phoneDisplay: '', name: '', city: '', orders: [], total: 0, packs: 0, first: o.createdAt, last: o.createdAt };
     c.orders.push(o);
@@ -772,6 +772,22 @@ function renderStats() {
     ? rows.map((r, i) => rankRow(i, r.a.title, `${r.a.brand}${r.a.code ? ` · Art. ${r.a.code}` : ''} · ${r.packs ? packsWord(r.packs) + ' pedidos' : 'ningún pedido'}`, `${r.views} vistas`)).join('')
     : '<li class="text-sm text-on-surface-variant">Todavía no hay suficientes visitas (se muestran artículos con 3 vistas o más).</li>';
 }
+
+/* ================================================================ Copia de seguridad */
+
+$('#backupBtn').addEventListener('click', async () => {
+  const btn = $('#backupBtn');
+  setBusy(btn, true, 'Armando la copia…');
+  try {
+    const { downloadBackup } = await import('./backup.js');
+    const r = await downloadBackup({ call, subcategoryPath, buildClients });
+    showToast(`Copia descargada: ${r.articles} artículos y ${r.orders} pedidos. Guardala en un lugar seguro (por ejemplo, Google Drive).`);
+  } catch (err) {
+    if (err.status !== 401) showToast(`No se pudo armar la copia: ${err.message}`, 'error');
+  } finally {
+    setBusy(btn, false);
+  }
+});
 
 $('#statsRefresh').addEventListener('click', () => {
   stats.views = null;
