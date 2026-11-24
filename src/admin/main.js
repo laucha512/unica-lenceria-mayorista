@@ -310,6 +310,8 @@ const TABS = ['publicaciones', 'categorias', 'portadas', 'marcas', 'sucursales',
 function switchTab(tab, focus = true) {
   if (!TABS.includes(tab)) tab = 'publicaciones';
   state.tab = tab;
+  // En el celular los 4 cuadros de arriba ocupan toda la pantalla: solo se muestran en Publicaciones y Pedidos.
+  $('#kpiGrid').classList.toggle('max-sm:hidden', !['publicaciones', 'pedidos'].includes(tab));
   if (tab === 'estadisticas' && state.token && !stats.views) loadStatsViews();
   $$('.tab-section').forEach((s) => s.classList.toggle('hidden', s.id !== `section-${tab}`));
   $$('.nav-btn').forEach((btn) => {
@@ -498,7 +500,7 @@ function orderCard(o) {
     <summary class="list-none cursor-pointer p-4 flex flex-wrap items-center gap-x-4 gap-y-2">
       <span class="font-bold text-primary">#${o.number}</span>
       <span class="px-2 py-0.5 rounded-md bg-surface-container-high text-xs font-bold tracking-wider" title="Código que figura en el mensaje de WhatsApp">${esc(o.code)}</span>
-      <span class="min-w-0 flex-1">
+      <span class="min-w-0 flex-1 basis-full sm:basis-0 order-last sm:order-none">
         <span class="block font-semibold truncate">${esc(o.info.name || 'Sin nombre')}${o.info.city ? ` <span class="font-normal text-on-surface-variant">· ${esc(o.info.city)}</span>` : ''}</span>
         <span class="block text-[11px] text-on-surface-variant">${esc(dateTime(o.createdAt))} · ${packsWord(o.packs)} · ${esc(o.info.delivery || 'A coordinar')}${o.batches > 1 ? ` · <strong class="text-primary">sumó cosas ${o.batches - 1} ${o.batches === 2 ? 'vez' : 'veces'}</strong>` : ''}</span>
       </span>

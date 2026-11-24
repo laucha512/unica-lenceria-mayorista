@@ -88,3 +88,15 @@
     font-size: 16px !important;
   }
 }
+
+/* Celular / pantallas táctiles: botones de las tarjetas con tamaño cómodo para el dedo. */
+@media (pointer: coarse) {
+  #articlesContainer button,
+  #bannersContainer button,
+  #brandListContainer button,
+  #ordersContainer button,
+  #dupList button {
+    min-height: 40px;
+    min-width: 40px;
+  }
+}
