@@ -23,6 +23,7 @@ const SEEDS = {
   duplicateDismissals: () => [], // pares de publicaciones marcados como "son distintas"
   orders: () => [],
   priceHistory: () => [], // últimos cambios de precios en bloque (para deshacer)
+  staff: () => [], // personal que arma los pedidos
   settings: seedSettings,
   subcategories: seedSubcategories,
 };

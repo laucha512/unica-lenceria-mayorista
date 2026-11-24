@@ -72,7 +72,7 @@ export async function downloadBackup({ call, subcategoryPath, buildClients }) {
     },
     {
       name: 'Pedidos',
-      header: ['N°', 'Código', 'Fecha', 'Estado', 'Cliente', 'WhatsApp', 'Localidad', 'Entrega', 'Aclaraciones', 'Packs', 'Armados', 'Total'],
+      header: ['N°', 'Código', 'Fecha', 'Estado', 'Cliente', 'WhatsApp', 'Localidad', 'Entrega', 'Aclaraciones', 'Packs', 'Armados', 'Total', 'Armó'],
       rows: orders.map((o) => [
         o.number,
         o.code,
@@ -86,8 +86,9 @@ export async function downloadBackup({ call, subcategoryPath, buildClients }) {
         o.packs || 0,
         (o.items || []).reduce((n, l) => n + (l.prepared || 0), 0),
         o.total || 0,
+        o.preparedByName || '',
       ]),
-      widths: [6, 9, 17, 15, 24, 20, 18, 34, 34, 8, 9, 13],
+      widths: [6, 9, 17, 15, 24, 20, 18, 34, 34, 8, 9, 13, 18],
       money: [11],
     },
     {

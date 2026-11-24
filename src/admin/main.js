@@ -25,6 +25,7 @@ const state = {
   categories: [],
   subcategories: [],
   orders: [],
+  staff: [],
   tab: 'publicaciones',
 };
 
@@ -273,7 +274,7 @@ async function startApp() {
 
 async function loadAll() {
   try {
-    const [articles, brands, banners, branches, categories, subcategories, contact] = await Promise.all([
+    const [articles, brands, banners, branches, categories, subcategories, contact, staff] = await Promise.all([
       call('articles'),
       call('brands'),
       call('banners'),
@@ -281,8 +282,9 @@ async function loadAll() {
       call('categories'),
       call('subcategories'),
       call('settings'),
+      call('staff'),
     ]);
-    Object.assign(state, { articles, brands, banners, branches, categories, subcategories, contact });
+    Object.assign(state, { articles, brands, banners, branches, categories, subcategories, contact, staff });
     renderAll();
     startLive(); // visitas en vivo y pedidos, cada 2 minutos
     loadPriceHistory();
@@ -305,7 +307,7 @@ function renderAll() {
 
 /* ================================================================ Navegación */
 
-const TABS = ['publicaciones', 'categorias', 'portadas', 'marcas', 'sucursales', 'contacto', 'pedidos', 'clientes', 'estadisticas'];
+const TABS = ['publicaciones', 'categorias', 'portadas', 'marcas', 'sucursales', 'contacto', 'pedidos', 'clientes', 'estadisticas', 'personal'];
 
 function switchTab(tab, focus = true) {
   if (!TABS.includes(tab)) tab = 'publicaciones';
@@ -466,6 +468,20 @@ function orderLine(l) {
   </li>`;
 }
 
+/** Nombre de quien armó el pedido: el actual del personal (por si lo cambiaron) o el que quedó guardado. */
+const preparedName = (o) => (o.preparedBy ? (state.staff || []).find((p) => p.id === o.preparedBy)?.name || o.preparedByName || '' : '');
+
+/** Opciones de "Armó": el personal actual (y quien ya no está, si armó este pedido). */
+function staffOptions(o) {
+  const people = [...(state.staff || [])].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  const gone = o.preparedBy && !people.some((p) => p.id === o.preparedBy);
+  return [
+    `<option value="">${people.length ? '— Elegir —' : 'Cargá el personal primero'}</option>`,
+    ...people.map((p) => `<option value="${esc(p.id)}"${p.id === o.preparedBy ? ' selected' : ''}>${esc(p.name)}</option>`),
+    gone ? `<option value="${esc(o.preparedBy)}" selected disabled>${esc(o.preparedByName || 'Sin nombre')} (ya no está)</option>` : '',
+  ].join('');
+}
+
 function orderCard(o) {
   const st = ORDER_STATUS[o.status] || ORDER_STATUS.nuevo;
   const prepared = o.items.reduce((n, l) => n + l.prepared, 0);
@@ -505,7 +521,7 @@ function orderCard(o) {
       <span class="px-2 py-0.5 rounded-md bg-surface-container-high text-xs font-bold tracking-wider" title="Código que figura en el mensaje de WhatsApp">${esc(o.code)}</span>
       <span class="min-w-0 flex-1 basis-full sm:basis-0 order-last sm:order-none">
         <span class="block font-semibold truncate">${esc(o.info.name || 'Sin nombre')}${o.info.city ? ` <span class="font-normal text-on-surface-variant">· ${esc(o.info.city)}</span>` : ''}</span>
-        <span class="block text-[11px] text-on-surface-variant">${esc(dateTime(o.createdAt))} · ${packsWord(o.packs)} · ${esc(o.info.delivery || 'A coordinar')}${o.batches > 1 ? ` · <strong class="text-primary">sumó cosas ${o.batches - 1} ${o.batches === 2 ? 'vez' : 'veces'}</strong>` : ''}</span>
+        <span class="block text-[11px] text-on-surface-variant">${esc(dateTime(o.createdAt))} · ${packsWord(o.packs)} · ${esc(o.info.delivery || 'A coordinar')}${o.batches > 1 ? ` · <strong class="text-primary">sumó cosas ${o.batches - 1} ${o.batches === 2 ? 'vez' : 'veces'}</strong>` : ''}${preparedName(o) ? ` · Armó: <strong>${esc(preparedName(o))}</strong>` : ''}</span>
       </span>
       <span class="text-xs font-semibold ${prepared >= o.packs ? 'text-emerald-700' : 'text-on-surface-variant'}" title="Packs armados">Armado ${prepared}/${o.packs}</span>
       <span class="font-bold whitespace-nowrap">${esc(formatPrice(o.total))}</span>
@@ -519,6 +535,9 @@ function orderCard(o) {
       <div class="mt-3 pt-3 border-t border-outline-variant/20 flex flex-wrap items-center justify-between gap-3">
         <label class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Estado
           <select data-order-status class="bg-surface-container-low px-3 py-1.5 pr-8 rounded-xl text-sm text-on-surface border-none focus:ring-2 focus:ring-primary font-semibold normal-case tracking-normal">${options}</select>
+        </label>
+        <label class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Armó
+          <select data-order-staff class="max-w-[11rem] bg-surface-container-low px-3 py-1.5 pr-8 rounded-xl text-sm text-on-surface border-none focus:ring-2 focus:ring-primary font-semibold normal-case tracking-normal">${staffOptions(o)}</select>
         </label>
         <button type="button" data-order-delete class="flex items-center gap-1 text-xs font-bold text-on-surface-variant hover:text-error"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">delete</span> Eliminar</button>
       </div>
@@ -545,9 +564,10 @@ function renderOrders() {
         orders.length ? 'No hay pedidos con ese estado.' : 'Todavía no llegó ningún pedido. Aparecen acá cuando alguien envía su pedido por WhatsApp desde la web.'
       }</div>`;
   open.forEach((id) => container.querySelector(`article[data-id="${CSS.escape(id)}"] details`)?.setAttribute('open', ''));
-  // Clientes y estadísticas salen de los mismos pedidos.
+  // Clientes, estadísticas y personal salen de los mismos pedidos.
   renderClients();
   renderStats();
+  renderStaff();
 }
 
 /* ================================================================ Clientes */
@@ -783,6 +803,123 @@ function renderStats() {
     ? rows.map((r, i) => rankRow(i, r.a.title, `${r.a.brand}${r.a.code ? ` · Art. ${r.a.code}` : ''} · ${r.packs ? packsWord(r.packs) + ' pedidos' : 'ningún pedido'}`, `${r.views} vistas`)).join('')
     : '<li class="text-sm text-on-surface-variant">Todavía no hay suficientes visitas (se muestran artículos con 3 vistas o más).</li>';
 }
+
+/* ================================================================ Personal */
+// Quién arma los pedidos. Las cuentas salen de los pedidos (campo preparedBy); los cancelados no cuentan.
+
+const staffEdit = { id: null };
+
+function staffStats(id) {
+  const now = Date.now();
+  const mine = (state.orders || []).filter((o) => o.preparedBy === id && o.status !== 'cancelado');
+  return {
+    total: mine.length,
+    month: mine.filter((o) => now - Date.parse(o.createdAt) <= 30 * DAY_MS).length,
+    packs: mine.reduce((n, o) => n + (o.packs || 0), 0),
+  };
+}
+
+function staffCard(p) {
+  const st = staffStats(p.id);
+  const editing = staffEdit.id === p.id;
+  const name = editing
+    ? `<form data-staff-rename class="flex gap-2"><label class="sr-only" for="rename-${esc(p.id)}">Nuevo nombre</label>
+        <input id="rename-${esc(p.id)}" value="${esc(p.name)}" maxlength="40" class="flex-1 min-w-0 px-3 py-2 bg-surface-container-low rounded-xl text-base border-none focus:ring-2 focus:ring-primary">
+        <button type="submit" class="px-3 rounded-xl bg-primary text-on-primary text-xs font-bold">Guardar</button></form>`
+    : `<p class="font-bold text-on-surface text-lg truncate">${esc(p.name)}</p>`;
+  return `<article class="p-4 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm flex flex-col gap-3" data-staff="${esc(p.id)}">
+    ${name}
+    <div class="grid grid-cols-3 gap-2 text-center">
+      <div class="p-2 rounded-xl bg-surface-container-low"><p class="text-xl font-bold text-on-surface">${st.total}</p><p class="text-[11px] text-on-surface-variant">${st.total === 1 ? "pedido armado" : "pedidos armados"}</p></div>
+      <div class="p-2 rounded-xl bg-surface-container-low"><p class="text-xl font-bold text-on-surface">${st.month}</p><p class="text-[11px] text-on-surface-variant">últimos 30 días</p></div>
+      <div class="p-2 rounded-xl bg-surface-container-low"><p class="text-xl font-bold text-on-surface">${st.packs}</p><p class="text-[11px] text-on-surface-variant">${st.packs === 1 ? "pack" : "packs"}</p></div>
+    </div>
+    <div class="flex gap-2">
+      <button type="button" data-staff-action="${editing ? 'cancel' : 'rename'}" class="flex-1 min-h-[40px] px-3 rounded-full border border-outline-variant text-xs font-bold text-on-surface hover:bg-surface-container">${editing ? 'Cancelar' : 'Cambiar nombre'}</button>
+      <button type="button" data-staff-action="delete" class="flex-1 min-h-[40px] px-3 rounded-full border border-outline-variant text-xs font-bold text-error hover:bg-error-container">Quitar</button>
+    </div>
+  </article>`;
+}
+
+function renderStaff() {
+  const box = $('#staffContainer');
+  if (!box) return;
+  const people = [...(state.staff || [])].sort((a, b) => staffStats(b.id).total - staffStats(a.id).total || a.name.localeCompare(b.name, 'es'));
+  box.innerHTML = people.length
+    ? people.map(staffCard).join('')
+    : '<div class="col-span-full p-10 rounded-2xl border border-dashed border-outline-variant text-center text-sm text-on-surface-variant">Todavía no cargaste personal. Agregá a quienes arman los pedidos con el campo de arriba.</div>';
+}
+
+async function reloadStaff() {
+  state.staff = await call('staff');
+  renderStaff();
+  renderOrders(); // los desplegables "Armó" de cada pedido
+}
+
+$('#staffForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const input = $('#staffName');
+  const errEl = $('#staffError');
+  showFormError(errEl, '');
+  const name = input.value.trim();
+  if (name.length < 2) return showFormError(errEl, 'Escribí el nombre (mínimo 2 letras).');
+  const btn = $('#staffAdd');
+  setBusy(btn, true, 'Agregando…');
+  try {
+    await call('staff', { method: 'POST', body: { name } });
+    input.value = '';
+    await reloadStaff();
+    showToast(`${name} quedó agregada al personal.`);
+  } catch (err) {
+    if (err.status !== 401) showFormError(errEl, err.message);
+  } finally {
+    setBusy(btn, false);
+  }
+});
+
+$('#staffContainer').addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-staff-action]');
+  if (!btn) return;
+  const id = btn.closest('[data-staff]').dataset.staff;
+  const person = state.staff.find((p) => p.id === id);
+  if (!person) return;
+  const action = btn.dataset.staffAction;
+  if (action === 'rename' || action === 'cancel') {
+    staffEdit.id = action === 'rename' ? id : null;
+    renderStaff();
+    if (action === 'rename') $(`#rename-${CSS.escape(id)}`)?.select();
+    return;
+  }
+  const ok = await confirmDialog({
+    title: 'Quitar del personal',
+    message: `${person.name} deja de aparecer para elegir en los pedidos. Los pedidos que ya armó siguen mostrando su nombre.`,
+    okLabel: 'Quitar',
+  });
+  if (!ok) return;
+  try {
+    await call(`staff?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    await reloadStaff();
+    showToast(`${person.name} ya no está en el personal.`);
+  } catch (err) {
+    if (err.status !== 401) showToast(err.message, 'error');
+  }
+});
+
+$('#staffContainer').addEventListener('submit', async (e) => {
+  const form = e.target.closest('[data-staff-rename]');
+  if (!form) return;
+  e.preventDefault();
+  const id = form.closest('[data-staff]').dataset.staff;
+  const name = form.querySelector('input').value.trim();
+  try {
+    await call(`staff?id=${encodeURIComponent(id)}`, { method: 'PUT', body: { name } });
+    staffEdit.id = null;
+    await reloadStaff();
+    showToast('Nombre actualizado.');
+  } catch (err) {
+    if (err.status !== 401) showToast(err.message, 'error');
+  }
+});
 
 /* ================================================================ Precios en bloque */
 // Aumento (o baja) por porcentaje a todo el catálogo, una marca, una categoría o una subcategoría.
@@ -1077,6 +1214,19 @@ async function saveOrder(id, body) {
 }
 
 $('#ordersContainer').addEventListener('change', async (e) => {
+  const who = e.target.closest('[data-order-staff]');
+  if (who) {
+    const id = who.closest('article').dataset.id;
+    who.disabled = true;
+    try {
+      const updated = await saveOrder(id, { preparedBy: who.value });
+      showToast(preparedName(updated) ? `Pedido #${updated.number}: lo armó ${preparedName(updated)}.` : `Pedido #${updated.number}: sin asignar.`);
+    } catch (err) {
+      who.disabled = false;
+      if (err.status !== 401) showToast(err.message, 'error');
+    }
+    return;
+  }
   const select = e.target.closest('[data-order-status]');
   if (!select) return;
   const id = select.closest('article').dataset.id;

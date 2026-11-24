@@ -154,6 +154,16 @@ export default handle(async (req, context) => {
       const id = idParam(req);
       const body = await readJson(req);
       if ('status' in body && !ORDER_STATUSES.includes(body.status)) throw new HttpError('Estado inválido.');
+      // Quién armó el pedido: se guarda el id y el nombre (si después la quitan del personal, el nombre queda).
+      let preparedBy = null;
+      if ('preparedBy' in body) {
+        if (body.preparedBy === '') preparedBy = { id: '', name: '' };
+        else {
+          const person = (await readCollection('staff')).find((p) => p.id === body.preparedBy);
+          if (!person) throw new HttpError('Esa persona no está en el personal.');
+          preparedBy = { id: person.id, name: person.name };
+        }
+      }
       const order = await updateCollection('orders', (raw) => {
         const list = raw.map(normalizeOrder);
         const i = list.findIndex((o) => o.id === id);
@@ -162,6 +172,10 @@ export default handle(async (req, context) => {
         if ('status' in body) {
           o.status = body.status;
           o.statusAt = o.updatedAt;
+        }
+        if (preparedBy) {
+          o.preparedBy = preparedBy.id;
+          o.preparedByName = preparedBy.name;
         }
         if ('line' in body) {
           const line = o.items.find((l) => l.lineId === body.line);
