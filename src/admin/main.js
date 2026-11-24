@@ -344,6 +344,9 @@ function setDrawer(open) {
   $('#sidebar').classList.toggle('-translate-x-full', !open);
   $('#drawerOverlay').classList.toggle('hidden', !open);
   $('#drawerOpen').setAttribute('aria-expanded', String(open));
+  // Con el menú abierto en el celular, la página de atrás queda quieta: solo se desplaza el menú.
+  document.documentElement.classList.toggle('overflow-hidden', open);
+  document.body.classList.toggle('overflow-hidden', open);
   if (open) $('#drawerClose').focus();
 }
 $('#drawerOpen').addEventListener('click', () => setDrawer(true));

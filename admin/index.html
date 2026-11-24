@@ -52,10 +52,10 @@
 <!-- ============================ APP ============================ -->
 <div id="appView" class="hidden">
 <!-- Overlay del drawer (móvil) -->
-<div id="drawerOverlay" class="fixed inset-0 z-40 bg-on-surface/40 backdrop-blur-sm hidden lg:hidden"></div>
+<div id="drawerOverlay" class="touch-none fixed inset-0 z-40 bg-on-surface/40 backdrop-blur-sm hidden lg:hidden"></div>
 
 <!-- Sidebar -->
-<aside id="sidebar" class="fixed left-0 top-0 h-full w-72 bg-surface-container-low z-50 flex flex-col pt-5 pb-6 border-r border-outline-variant/30 shadow-[2px_0_16px_rgba(151,0,70,0.03)] -translate-x-full lg:translate-x-0 transition-transform duration-300" aria-label="Menú del panel">
+<aside id="sidebar" class="fixed left-0 top-0 h-full h-[100dvh] overflow-y-auto overscroll-contain w-72 bg-surface-container-low z-50 flex flex-col pt-5 pb-6 border-r border-outline-variant/30 shadow-[2px_0_16px_rgba(151,0,70,0.03)] -translate-x-full lg:translate-x-0 transition-transform duration-300" aria-label="Menú del panel">
   <div class="px-6 mb-6 flex items-center gap-3">
     <img alt="Logo Única Lencería" class="h-11 w-11 rounded-full object-cover shadow-sm ring-2 ring-primary/20" src="/img/logo-unica.webp" width="44" height="44">
     <div class="flex flex-col flex-1">
