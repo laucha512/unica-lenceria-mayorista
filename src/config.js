@@ -11,6 +11,12 @@ export const BUSINESS_NAME = 'ÚNICA LENCERÍA';
 export const WHATSAPP_NUMBER = '5493412591367';
 export const WHATSAPP_DISPLAY = '+54 9 341 259-1367';
 
+// Única Lencería abrió en marzo de 2013: los años de trayectoria se calculan solos.
+export const FOUNDED = { year: 2013, month: 3 };
+export function yearsActive(date = new Date()) {
+  return date.getFullYear() - FOUNDED.year - (date.getMonth() + 1 < FOUNDED.month ? 1 : 0);
+}
+
 export const INSTAGRAM_USER = 'unicamayoristalenceria';
 export const INSTAGRAM_URL = `https://instagram.com/${INSTAGRAM_USER}`;
 

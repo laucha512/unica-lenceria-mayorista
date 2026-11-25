@@ -7,7 +7,7 @@ import '@fontsource/plus-jakarta-sans/latin-400.css';
 import '@fontsource/plus-jakarta-sans/latin-500.css';
 import '@fontsource/plus-jakarta-sans/latin-600.css';
 import '@fontsource/plus-jakarta-sans/latin-700.css';
-import { formatPrice, instagramUrl, instagramUser, setContact, whatsappDisplay, whatsappNumber } from '../config.js';
+import { formatPrice, yearsActive, instagramUrl, instagramUser, setContact, whatsappDisplay, whatsappNumber } from '../config.js';
 import { CARD_SIZES, imageSrcset, imageUrl } from '../shared/images.js';
 import { availableSizes, sizeAvailable } from '../shared/stock.js';
 import { hasOffer, regularPrice } from '../shared/prices.js';
@@ -90,6 +90,7 @@ window.addEventListener('resize', () => {
 });
 
 $('#copyrightYear').textContent = new Date().getFullYear();
+$$('[data-years]').forEach((el) => (el.textContent = yearsActive())); // se actualiza solo cada marzo
 
 /* ---------------------------------------------------------------- Render */
 

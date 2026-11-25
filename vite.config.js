@@ -11,6 +11,7 @@ const tokens = {
   IG_URL: cfg.INSTAGRAM_URL,
   SITE_URL: cfg.SITE_URL,
   YEAR: String(new Date().getFullYear()),
+  YEARS: String(cfg.yearsActive()),
 };
 
 function configTokens() {
