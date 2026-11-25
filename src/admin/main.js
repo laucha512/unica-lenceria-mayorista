@@ -473,7 +473,7 @@ const preparedName = (o) => (o.preparedBy ? (state.staff || []).find((p) => p.id
 
 /** Opciones de "Armó": el personal actual (y quien ya no está, si armó este pedido). */
 function staffOptions(o) {
-  const people = [...(state.staff || [])].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  const people = [...(state.staff || [])].sort((a, b) => staffStats(b.id).total - staffStats(a.id).total || a.name.localeCompare(b.name, 'es'));
   const gone = o.preparedBy && !people.some((p) => p.id === o.preparedBy);
   return [
     `<option value="">${people.length ? '— Elegir —' : 'Cargá el personal primero'}</option>`,
@@ -815,7 +815,8 @@ function staffStats(id) {
   return {
     total: mine.length,
     month: mine.filter((o) => now - Date.parse(o.createdAt) <= 30 * DAY_MS).length,
-    packs: mine.reduce((n, o) => n + (o.packs || 0), 0),
+    // Prendas: cantidad × lo que trae cada presentación ("Pack x 3" = 3; sin número = 1).
+    units: mine.reduce((n, o) => n + (o.items || []).reduce((m, l) => m + l.qty * (Number(String(l.presentation || '').match(/xs*(d+)/i)?.[1]) || 1), 0), 0),
   };
 }
 
@@ -832,7 +833,7 @@ function staffCard(p) {
     <div class="grid grid-cols-3 gap-2 text-center">
       <div class="p-2 rounded-xl bg-surface-container-low"><p class="text-xl font-bold text-on-surface">${st.total}</p><p class="text-[11px] text-on-surface-variant">${st.total === 1 ? "pedido armado" : "pedidos armados"}</p></div>
       <div class="p-2 rounded-xl bg-surface-container-low"><p class="text-xl font-bold text-on-surface">${st.month}</p><p class="text-[11px] text-on-surface-variant">últimos 30 días</p></div>
-      <div class="p-2 rounded-xl bg-surface-container-low"><p class="text-xl font-bold text-on-surface">${st.packs}</p><p class="text-[11px] text-on-surface-variant">${st.packs === 1 ? "pack" : "packs"}</p></div>
+      <div class="p-2 rounded-xl bg-surface-container-low"><p class="text-xl font-bold text-on-surface">${st.units}</p><p class="text-[11px] text-on-surface-variant">${st.units === 1 ? "prenda" : "prendas"}</p></div>
     </div>
     <div class="flex gap-2">
       <button type="button" data-staff-action="${editing ? 'cancel' : 'rename'}" class="flex-1 min-h-[40px] px-3 rounded-full border border-outline-variant text-xs font-bold text-on-surface hover:bg-surface-container">${editing ? 'Cancelar' : 'Cambiar nombre'}</button>
