@@ -11,3 +11,8 @@ export function applyPercent(price, percent, round = 0) {
   const value = r ? Math.round(raw / r) * r : Math.round(raw);
   return Math.max(0, value);
 }
+
+/* Ofertas: un artículo puede tener "offerPrice" (más bajo que el normal). Lo que se cobra es el de oferta. */
+export const regularPrice = (a) => a.pricePack || a.priceUnit || 0;
+export const hasOffer = (a) => a.offerPrice > 0 && a.offerPrice < regularPrice(a);
+export const salePrice = (a) => (hasOffer(a) ? a.offerPrice : regularPrice(a));

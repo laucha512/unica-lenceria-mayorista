@@ -10,6 +10,7 @@ import '@fontsource/plus-jakarta-sans/latin-700.css';
 import { formatPrice, instagramUrl, instagramUser, setContact, whatsappDisplay, whatsappNumber } from '../config.js';
 import { CARD_SIZES, imageSrcset, imageUrl } from '../shared/images.js';
 import { availableSizes, sizeAvailable } from '../shared/stock.js';
+import { hasOffer, regularPrice } from '../shared/prices.js';
 import { esc, safeImg, formatSizes, api, initials } from '../shared/utils.js';
 import { initCart, qtyOf, setArticles, packPrice, refresh as refreshCart, totals } from './cart.js';
 import { initProduct, openProduct, setProducts } from './product.js';
@@ -138,8 +139,8 @@ const cardTitleSize = (t = '') => (t.length > 60 ? 'text-base' : 'text-lg');
 /** Precio único: el del pack (lo mismo que se cobra en el pedido). */
 const priceBlock = (a, big) => `
     <div>
-      <span class="text-[10px] text-slate-600 uppercase font-semibold block">Precio mayorista</span>
-      <span class="${big ? 'font-headline-sm text-lg text-[#be185d]' : 'text-base text-slate-900'} font-bold">${esc(formatPrice(packPrice(a)))}</span>
+      <span class="text-[10px] text-slate-600 uppercase font-semibold block">${hasOffer(a) ? '<span class="px-1.5 py-0.5 rounded bg-[#be185d] text-white">Oferta</span>' : 'Precio mayorista'}</span>
+      ${hasOffer(a) ? `<s class="text-xs text-slate-500 mr-1">${esc(formatPrice(regularPrice(a)))}</s>` : ''}<span class="${big || hasOffer(a) ? 'font-headline-sm text-lg text-[#be185d]' : 'text-base text-slate-900'} font-bold">${esc(formatPrice(packPrice(a)))}</span>
       <span class="block text-[11px] text-slate-600">${esc(a.presentation)}</span>
     </div>`;
 
@@ -374,6 +375,12 @@ const hasSize = (a, size) => (a.sizes || []).some((s) => normSize(s) === size &&
 
 /** Desplegables de talle y precio con las opciones que existen en lo que se está mirando. */
 function renderExtraFilters() {
+  // "Solo ofertas": aparece solo si hay alguna oferta cargada.
+  const offerBtn = $('#offerFilter');
+  const anyOffer = state.articles.some((a) => a.inStock && hasOffer(a));
+  offerBtn.classList.toggle('hidden', !anyOffer && !state.offers);
+  offerBtn.setAttribute('aria-pressed', String(!!state.offers));
+  offerBtn.className = offerBtn.className.replace(/ (bg-[#be185d] text-white border-[#be185d]|bg-white text-slate-800 border-pink-200)/g, '') + (state.offers ? ' bg-[#be185d] text-white border-[#be185d]' : ' bg-white text-slate-800 border-pink-200');
   const scope = articlesInScope().filter((a) => !state.filter.brand || brandSlug(a.brand) === state.filter.brand);
   const sizes = [...new Set(scope.flatMap((a) => availableSizes(a).map(normSize)).filter(Boolean))].sort(compareSizes);
   if (state.size && !sizes.includes(state.size)) sizes.push(state.size);
@@ -393,6 +400,14 @@ function setExtraFilter(kind, value) {
   renderCatalog();
 }
 $('#sizeFilter').addEventListener('change', (e) => setExtraFilter('size', e.target.value));
+$('#offerFilter').addEventListener('click', () => {
+  state.offers = !state.offers;
+  state.catalogLimit = CATALOG_PAGE;
+  writeFilterToUrl(false);
+  renderExtraFilters();
+  renderFilterBar();
+  renderCatalog();
+});
 $('#priceFilter').addEventListener('change', (e) => setExtraFilter('price', e.target.value));
 
 function filteredArticles() {
@@ -403,6 +418,7 @@ function filteredArticles() {
       (!brand || brandSlug(a.brand) === brand) &&
       (!state.size || hasSize(a, state.size)) &&
       (!range || inPriceRange(a, range)) &&
+      (!state.offers || hasOffer(a)) &&
       matchesSearch(a)
   );
 }
@@ -421,6 +437,7 @@ function readFilterFromUrl() {
   state.search = (p.get('buscar') || '').slice(0, 80);
   state.size = normSize(p.get('talle')).slice(0, 20) || null;
   state.price = priceRange(p.get('precio')) ? p.get('precio') : null;
+  state.offers = p.get('ofertas') === '1';
   const input = $('#catalogSearch');
   if (input && input.value !== state.search) {
     input.value = state.search;
@@ -440,6 +457,7 @@ function writeFilterToUrl(push = true) {
   set('buscar', state.search);
   set('talle', state.size);
   set('precio', state.price);
+  set('ofertas', state.offers ? '1' : '');
   const qs = p.toString();
   // Al reemplazar (carga inicial) se conserva el #producto/… de un enlace directo.
   const url = `${location.pathname}${qs ? `?${qs}` : ''}${push ? '' : location.hash}`;
@@ -473,7 +491,7 @@ function renderFilterBar() {
       state.filter.brand
     : null;
   const range = priceRange(state.price);
-  if (!category && !brandName && !state.size && !range) {
+  if (!category && !brandName && !state.size && !range && !state.offers) {
     bar.classList.add('hidden');
     bar.innerHTML = '';
     return;
@@ -486,7 +504,7 @@ function renderFilterBar() {
   if (category) parts.push(crumb(category.name, { cat: category.slug }, !subcategory && !brandName));
   if (subcategory) parts.push(crumb(subcategory.name, { cat: category.slug, sub: subcategory.slug }, !brandName));
   if (brandName) parts.push(crumb(brandName, state.filter, true));
-  const extra = [state.size && `Talle ${state.size}`, range?.label].filter(Boolean);
+  const extra = [state.size && `Talle ${state.size}`, range?.label, state.offers && 'Ofertas'].filter(Boolean);
   const extraChips = extra.map((t) => `<span class="px-3 py-1.5 rounded-full bg-[#be185d] text-white text-xs font-bold">${esc(t)}</span>`).join(' ');
   bar.innerHTML = `
     <span class="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-slate-600"><span class="material-symbols-outlined text-[16px]" aria-hidden="true">filter_alt</span> Filtrando:</span>
@@ -502,7 +520,10 @@ $('#catalogFilterBar').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-filter]');
   if (!b) return;
   const next = JSON.parse(b.dataset.filter);
-  if (!Object.keys(next).length) state.size = state.price = null; // "Quitar filtros"
+  if (!Object.keys(next).length) {
+    state.size = state.price = null; // "Quitar filtros"
+    state.offers = false;
+  }
   applyFilter(next, { scroll: false });
 });
 
@@ -593,7 +614,7 @@ function renderCatalog() {
     }
     html += catalogCard(x.article);
   });
-  const filtering = state.filter.cat || state.filter.brand || state.search || state.size || state.price;
+  const filtering = state.filter.cat || state.filter.brand || state.search || state.size || state.price || state.offers;
   const emptyMsg = state.search
     ? `No encontramos artículos para “${esc(state.search)}”${state.filter.cat || state.filter.brand ? ' con los filtros elegidos' : ''}. Probá con otra palabra.`
     : filtering
@@ -622,6 +643,7 @@ $('#catalogGrid').addEventListener('click', (e) => {
     $('#catalogSearch').value = '';
     state.search = '';
     state.size = state.price = null;
+    state.offers = false;
     $('#catalogSearchClear').classList.add('hidden');
     return applyFilter({}, { scroll: false });
   }

@@ -115,6 +115,13 @@ export function validateArticle(body, { partial = false } = {}) {
       tag: (b) => text(b, 'tag', { label: 'La etiqueta', max: 30 }),
       priceUnit: (b) => price(b, 'priceUnit', 'El precio por unidad', { optional: true }),
       pricePack: (b) => price(b, 'pricePack', 'El precio del pack'),
+      // Precio de oferta (0 = sin oferta). Tiene que ser menor al precio normal.
+      offerPrice: (b) => {
+        const offer = price(b, 'offerPrice', 'El precio de oferta', { optional: true });
+        const normal = Number(b.pricePack) || 0;
+        if (offer && normal && offer >= normal) throw new HttpError('El precio de oferta tiene que ser menor al precio normal.');
+        return offer;
+      },
       isNew: (b) => bool(b, 'isNew', 'Novedad'),
       inStock: (b) => bool(b, 'inStock', 'Stock'),
       images: (b) => images(b, 'images', 5),

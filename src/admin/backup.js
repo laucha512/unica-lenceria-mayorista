@@ -46,7 +46,7 @@ export async function downloadBackup({ call, subcategoryPath, buildClients }) {
     {
       name: 'Artículos',
       intro: [`ÚNICA LENCERÍA – Copia de seguridad del ${dateTime(new Date().toISOString())}`, `${articles.length} artículos`],
-      header: ['Marca', 'Código', 'Título', 'Descripción', 'Categoría', 'Presentación', 'Tipo de venta', 'Talles', 'Colores', 'Colores por talle', 'Agotados', 'Precio pack', 'Precio unidad', 'Novedad', 'Con stock', 'Fotos', 'Creado', 'Actualizado'],
+      header: ['Marca', 'Código', 'Título', 'Descripción', 'Categoría', 'Presentación', 'Tipo de venta', 'Talles', 'Colores', 'Colores por talle', 'Agotados', 'Precio pack', 'Precio unidad', 'Precio oferta', 'Novedad', 'Con stock', 'Fotos', 'Creado', 'Actualizado'],
       rows: articles.map((a) => [
         a.brand,
         a.code || '',
@@ -61,14 +61,15 @@ export async function downloadBackup({ call, subcategoryPath, buildClients }) {
         soldOutText(a),
         a.pricePack || 0,
         a.priceUnit || 0,
+        a.offerPrice || 0,
         yesNo(a.isNew),
         yesNo(a.inStock),
         (a.images || []).map(photoLink).join(' '),
         dateTime(a.createdAt),
         dateTime(a.updatedAt),
       ]),
-      widths: [14, 10, 44, 40, 28, 16, 18, 22, 30, 30, 24, 12, 12, 9, 9, 60, 17, 17],
-      money: [11, 12],
+      widths: [14, 10, 44, 40, 28, 16, 18, 22, 30, 30, 24, 12, 12, 12, 9, 9, 60, 17, 17],
+      money: [11, 12, 13],
     },
     {
       name: 'Pedidos',

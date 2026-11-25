@@ -5,7 +5,7 @@ import { swatchOf } from '../shared/colors.js';
 import { normalizeWhatsapp } from '../shared/phone.js';
 import { instagramUrlOf, normalizeInstagram } from '../shared/instagram.js';
 import { findDuplicates } from './duplicates.js';
-import { combos, comboKey, soldOutCount } from '../shared/stock.js';
+import { combos, comboKey, isSoldOut, soldOutCount } from '../shared/stock.js';
 import { applyPercent } from '../shared/prices.js';
 import { initCategories, renderCategories, subcategoryOptions, subcategoryPath } from './categories.js';
 
@@ -26,6 +26,7 @@ const state = {
   subcategories: [],
   orders: [],
   staff: [],
+  restock: [],
   tab: 'publicaciones',
 };
 
@@ -138,7 +139,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 $$('[data-close-modal]').forEach((b) => b.addEventListener('click', () => closeModal(b.closest('[role="dialog"]'))));
-['#articleModal', '#bannerModal', '#branchModal', '#taxonomyModal', '#stockModal', '#priceModal'].forEach((id) =>
+['#articleModal', '#bannerModal', '#branchModal', '#taxonomyModal', '#stockModal', '#priceModal', '#restoreModal'].forEach((id) =>
   $(id).addEventListener('mousedown', (e) => {
     if (e.target === e.currentTarget) closeModal(e.currentTarget);
   })
@@ -274,7 +275,7 @@ async function startApp() {
 
 async function loadAll() {
   try {
-    const [articles, brands, banners, branches, categories, subcategories, contact, staff] = await Promise.all([
+    const [articles, brands, banners, branches, categories, subcategories, contact, staff, restock] = await Promise.all([
       call('articles'),
       call('brands'),
       call('banners'),
@@ -283,8 +284,9 @@ async function loadAll() {
       call('subcategories'),
       call('settings'),
       call('staff'),
+      call('restock'),
     ]);
-    Object.assign(state, { articles, brands, banners, branches, categories, subcategories, contact, staff });
+    Object.assign(state, { articles, brands, banners, branches, categories, subcategories, contact, staff, restock });
     renderAll();
     startLive(); // visitas en vivo y pedidos, cada 2 minutos
     loadPriceHistory();
@@ -307,7 +309,7 @@ function renderAll() {
 
 /* ================================================================ Navegación */
 
-const TABS = ['publicaciones', 'categorias', 'portadas', 'marcas', 'sucursales', 'contacto', 'pedidos', 'clientes', 'estadisticas', 'personal'];
+const TABS = ['publicaciones', 'categorias', 'portadas', 'marcas', 'sucursales', 'contacto', 'pedidos', 'esperando', 'clientes', 'estadisticas', 'personal'];
 
 function switchTab(tab, focus = true) {
   if (!TABS.includes(tab)) tab = 'publicaciones';
@@ -804,6 +806,61 @@ function renderStats() {
     : '<li class="text-sm text-on-surface-variant">Todavía no hay suficientes visitas (se muestran artículos con 3 vistas o más).</li>';
 }
 
+/* ================================================================ Esperando stock */
+// "Avisame cuando vuelva": se muestra primero lo que ya volvió a estar disponible.
+
+function restockInfo(r) {
+  const a = state.articles.find((x) => x.id === r.articleId);
+  const [size, color] = r.combo ? r.combo.split('|') : ['', ''];
+  const available = !!a && a.inStock && (!r.combo || !isSoldOut(a, size, color));
+  const what = [size && `Talle ${size}`, color].filter(Boolean).join(' · ');
+  return { a, available, what };
+}
+
+function renderRestock() {
+  const box = $('#restockContainer');
+  if (!box) return;
+  const rows = (state.restock || []).map((r) => ({ r, ...restockInfo(r) })).sort((x, y) => Number(y.available) - Number(x.available) || String(y.r.createdAt).localeCompare(String(x.r.createdAt)));
+  const ready = rows.filter((x) => x.available).length;
+  const badge = $('#restockBadge');
+  badge.textContent = String(ready);
+  badge.classList.toggle('hidden', !ready);
+  $('#restockCount').textContent = rows.length ? `${rows.length} ${rows.length === 1 ? 'aviso pedido' : 'avisos pedidos'}${ready ? ` · ${ready} listo${ready === 1 ? '' : 's'} para avisar` : ''}` : '';
+  box.innerHTML = rows.length
+    ? rows
+        .map(({ r, a, available, what }) => {
+          const title = a ? `${a.brand}${a.code ? ` · Art. ${a.code}` : ''} – ${a.title}` : 'Artículo borrado';
+          const first = (r.name || '').split(/[s–-]+/)[0];
+          const text = `¡Hola${first ? ` ${first}` : ''}! Te escribimos de ÚNICA LENCERÍA: volvió ${a ? a.title : 'el artículo que esperabas'}${what ? ` (${what})` : ''}. Lo podés pedir acá: ${location.origin}/#producto/${r.articleId}`;
+          return `<article class="p-4 rounded-2xl bg-surface-container-lowest border ${available ? 'border-emerald-400' : 'border-outline-variant/30'} shadow-sm flex flex-wrap items-center gap-3" data-restock="${esc(r.id)}">
+            <div class="min-w-0 flex-1 basis-full sm:basis-0">
+              <p class="font-semibold text-on-surface">${esc(title)}</p>
+              <p class="text-xs text-on-surface-variant">${what ? `${esc(what)} · ` : ''}${esc(r.name || 'Sin nombre')} · ${esc(r.phoneDisplay || `+${r.phone}`)} · ${esc(dateTime(r.createdAt))}</p>
+            </div>
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold ${available ? 'bg-emerald-100 text-emerald-800' : 'bg-surface-container-high text-on-surface-variant'}">${available ? 'Listo para avisar' : a ? 'Sigue agotado' : 'Ya no existe'}</span>
+            ${available ? `<a href="${esc(`https://wa.me/${r.phone}?text=${encodeURIComponent(text)}`)}" target="_blank" rel="noopener noreferrer" class="min-h-[40px] inline-flex items-center px-4 rounded-full bg-[#25D366] text-white text-xs font-bold">Avisar por WhatsApp</a>` : ''}
+            <button type="button" data-restock-done class="min-h-[40px] px-4 rounded-full border border-outline-variant text-xs font-bold text-on-surface hover:bg-surface-container">${available ? 'Ya avisé' : 'Borrar'}</button>
+          </article>`;
+        })
+        .join('')
+    : '<div class="p-10 rounded-2xl border border-dashed border-outline-variant text-center text-sm text-on-surface-variant">Nadie está esperando stock por ahora. Cuando una clienta toque “Avisame cuando vuelva” en un artículo agotado, aparece acá.</div>';
+}
+
+$('#restockContainer').addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-restock-done]');
+  if (!btn) return;
+  const id = btn.closest('[data-restock]').dataset.restock;
+  btn.disabled = true;
+  try {
+    await call(`restock?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    state.restock = state.restock.filter((r) => r.id !== id);
+    renderRestock();
+  } catch (err) {
+    btn.disabled = false;
+    if (err.status !== 401) showToast(err.message, 'error');
+  }
+});
+
 /* ================================================================ Personal */
 // Quién arma los pedidos. Las cuentas salen de los pedidos (campo preparedBy); los cancelados no cuentan.
 
@@ -1197,6 +1254,89 @@ $('#backupBtn').addEventListener('click', async () => {
   }
 });
 
+/* ================================================================ Recuperar desde una copia */
+
+const restoreState = { missing: [] };
+
+$('#restoreBtn').addEventListener('click', () => {
+  $('#restoreFile').value = '';
+  $('#restoreSummary').textContent = '';
+  $('#restoreList').innerHTML = '';
+  $('#restoreAllWrap').classList.add('hidden');
+  $('#restoreApply').disabled = true;
+  showFormError($('#restoreError'), '');
+  setDrawer(false);
+  openModal($('#restoreModal'), $('#restoreFile'));
+});
+$('#restoreModal').addEventListener('click', (e) => {
+  if (e.target.closest('[data-close-restore]')) closeModal($('#restoreModal'));
+});
+
+$('#restoreFile').addEventListener('change', async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  showFormError($('#restoreError'), '');
+  $('#restoreSummary').textContent = 'Leyendo la copia…';
+  try {
+    const { findMissingArticles } = await import('./restore.js');
+    const r = await findMissingArticles(file, { current: state.articles, categories: state.categories, subcategories: state.subcategories });
+    restoreState.missing = r.missing;
+    const from = r.date ? ` del ${r.date}` : '';
+    $('#restoreSummary').textContent = r.missing.length
+      ? `La copia${from} tiene ${r.total} artículos. ${r.missing.length} ya no están en la web:`
+      : `La copia${from} tiene ${r.total} artículos y todos siguen en la web. No hay nada para recuperar.`;
+    $('#restoreList').innerHTML = r.missing
+      .map(
+        (a, i) => `<li><label class="flex items-start gap-2 p-2 rounded-xl hover:bg-surface-container-low"><input type="checkbox" data-restore-item="${i}" checked class="mt-1 rounded">
+          <span class="min-w-0"><span class="block text-sm font-semibold">${esc(a.title)}</span><span class="block text-[11px] text-on-surface-variant">${esc(a.brand)}${a.code ? ` · Art. ${esc(a.code)}` : ''} · ${esc(formatPrice(a.pricePack))} · ${a.photos.length} foto${a.photos.length === 1 ? '' : 's'} en la copia</span></span></label></li>`
+      )
+      .join('');
+    $('#restoreAllWrap').classList.toggle('hidden', !r.missing.length);
+    $('#restoreAllWrap').classList.toggle('flex', !!r.missing.length);
+    $('#restoreAll').checked = true;
+    $('#restoreApply').disabled = !r.missing.length;
+  } catch (err) {
+    $('#restoreSummary').textContent = '';
+    showFormError($('#restoreError'), err.message || 'No se pudo leer el archivo.');
+  }
+});
+
+$('#restoreAll').addEventListener('change', (e) => {
+  $$('#restoreList [data-restore-item]').forEach((c) => (c.checked = e.target.checked));
+});
+
+$('#restoreApply').addEventListener('click', async () => {
+  const chosen = $$('#restoreList [data-restore-item]:checked').map((c) => restoreState.missing[Number(c.dataset.restoreItem)]);
+  if (!chosen.length) return showFormError($('#restoreError'), 'Elegí al menos un artículo.');
+  const btn = $('#restoreApply');
+  setBusy(btn, true, 'Recuperando…');
+  const { restoreArticle } = await import('./restore.js');
+  let ok = 0;
+  let noPhotos = 0;
+  const failed = [];
+  for (const [i, item] of chosen.entries()) {
+    $('#restoreSummary').textContent = `Recuperando ${i + 1} de ${chosen.length}…`;
+    try {
+      const r = await restoreArticle(item, call);
+      ok++;
+      if (r.lostPhotos) noPhotos++;
+    } catch (err) {
+      if (err.status === 401) break;
+      failed.push(`${item.title}: ${err.message}`);
+    }
+  }
+  setBusy(btn, false);
+  state.articles = await call('articles');
+  renderAll();
+  const lost = noPhotos ? ` ${noPhotos} quedaron sin alguna foto (se borraron junto con el artículo): subíselas de nuevo editándolos.` : '';
+  $('#restoreSummary').textContent = `Listo: se recuperaron ${ok} de ${chosen.length}.${lost}`;
+  showFormError($('#restoreError'), failed.length ? `No se pudieron recuperar: ${failed.join(' · ')}` : '');
+  $('#restoreList').innerHTML = '';
+  $('#restoreAllWrap').classList.add('hidden');
+  btn.disabled = true;
+  showToast(`Se recuperaron ${ok} artículos.`);
+});
+
 $('#statsRefresh').addEventListener('click', () => {
   stats.views = null;
   refreshLive();
@@ -1364,7 +1504,7 @@ function articleCard(a) {
         .join('')}
       <div class="mt-4 pt-3 border-t border-outline-variant/20 flex items-center justify-between">
         <span class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider">Precio ${esc(a.presentation)}</span>
-        <span class="text-base font-bold text-primary">${esc(formatPrice(a.pricePack || a.priceUnit))}</span>
+        <span class="text-base font-bold text-primary">${a.offerPrice > 0 && a.offerPrice < (a.pricePack || a.priceUnit) ? `<s class="text-xs font-normal text-on-surface-variant mr-1">${esc(formatPrice(a.pricePack || a.priceUnit))}</s>${esc(formatPrice(a.offerPrice))} <span class="px-1.5 py-0.5 rounded bg-primary text-on-primary text-[10px]">OFERTA</span>` : esc(formatPrice(a.pricePack || a.priceUnit))}</span>
       </div>
     </div>
   </div>
@@ -1396,6 +1536,7 @@ function renderArticles() {
       }</div>`;
   $('#articlesCountBadge').textContent = `Mostrando ${list.length} de ${state.articles.length} artículos`;
   scheduleDuplicateCheck();
+  renderRestock(); // si cambió el stock, puede haber avisos listos
 }
 
 /* ================================================================ Talles y colores agotados */
@@ -1962,6 +2103,7 @@ function openArticleModal(article = null) {
   $('#artDescription').value = article?.description || '';
   $('#artPresentation').value = article?.presentation || 'Pack x 6 Unid.';
   $('#artPricePack').value = article ? article.pricePack || article.priceUnit || '' : '';
+  $('#artOfferPrice').value = article?.offerPrice || '';
   $('#artIsNew').checked = article ? article.isNew : false;
   $('#artInStock').checked = article ? article.inStock : true;
 
@@ -2012,6 +2154,8 @@ $('#articleForm').addEventListener('submit', async (e) => {
   if (title.length < 3) problems.push('el título (mínimo 3 caracteres)');
   if (!presentation) problems.push('la presentación mayorista');
   if ($('#artPricePack').value === '' || !(pricePack >= 0)) problems.push('el precio del pack');
+  const offerPrice = Number($('#artOfferPrice').value) || 0;
+  if (offerPrice && offerPrice >= pricePack) problems.push('un precio de oferta menor al precio normal');
   if (!$('#artSubcategory').value) problems.push('la categoría / subcategoría');
   if (!form.photos.length) problems.push('al menos una foto');
   if (form.bySize && !form.sizes.some((s) => s.on)) problems.push('al menos un talle (para los colores por talle)');
@@ -2055,6 +2199,7 @@ $('#articleForm').addEventListener('submit', async (e) => {
       colors,
       colorsBySize,
       pricePack,
+      offerPrice,
       isNew: $('#artIsNew').checked,
       inStock: $('#artInStock').checked,
       images: form.photos.map((p) => p.url),

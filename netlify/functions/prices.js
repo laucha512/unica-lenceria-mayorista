@@ -58,7 +58,7 @@ export default handle(async (req) => {
             const prev = before.get(a.id);
             if (!prev) return a;
             n++;
-            return { ...a, pricePack: prev.pricePack, priceUnit: prev.priceUnit, updatedAt: now };
+            return { ...a, pricePack: prev.pricePack, priceUnit: prev.priceUnit, offerPrice: prev.offerPrice || 0, updatedAt: now };
           });
           return { list: next, result: n };
         });
@@ -80,8 +80,8 @@ export default handle(async (req) => {
         const changed = [];
         const next = list.map((a) => {
           if (!test(a)) return a;
-          changed.push({ id: a.id, pricePack: a.pricePack || 0, priceUnit: a.priceUnit || 0 });
-          return { ...a, pricePack: applyPercent(a.pricePack, percent, round), priceUnit: applyPercent(a.priceUnit, percent, round), updatedAt: now };
+          changed.push({ id: a.id, pricePack: a.pricePack || 0, priceUnit: a.priceUnit || 0, offerPrice: a.offerPrice || 0 });
+          return { ...a, pricePack: applyPercent(a.pricePack, percent, round), priceUnit: applyPercent(a.priceUnit, percent, round), offerPrice: applyPercent(a.offerPrice, percent, round), updatedAt: now };
         });
         if (!changed.length) throw new HttpError('No hay artículos en ese alcance.');
         return { list: next, result: changed };

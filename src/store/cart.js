@@ -49,7 +49,9 @@ function save() {
   }
 }
 
-export const packPrice = (a) => a.pricePack || a.priceUnit || 0;
+// Precio que se cobra: el de oferta si tiene, si no el normal.
+export { salePrice as packPrice } from '../shared/prices.js';
+import { salePrice as packPrice } from '../shared/prices.js';
 
 /** Líneas del pedido con los datos actuales de cada artículo (ignora los que ya no existen). */
 function lines() {

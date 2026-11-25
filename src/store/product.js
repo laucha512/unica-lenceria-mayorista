@@ -3,8 +3,9 @@
 import { whatsappLink, formatPrice } from '../config.js';
 import { esc, safeImg, formatSizes } from '../shared/utils.js';
 import { swatchOf } from '../shared/colors.js';
-import { availableColors, availableSizes, colorAvailable, sizeAvailable, soldOutCount } from '../shared/stock.js';
+import { availableColors, availableSizes, colorAvailable, combos, comboKey, isSoldOut, sizeAvailable, soldOutCount } from '../shared/stock.js';
 import { add as addToCart, qtyOf, packPrice } from './cart.js';
+import { hasOffer, regularPrice } from '../shared/prices.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -138,7 +139,7 @@ function infoHtml(a) {
   </div>
   <h2 id="productTitle" class="mt-2 font-headline-sm ${titleSize(a.title)} font-bold text-slate-900 leading-tight break-words [overflow-wrap:anywhere] hyphens-auto">${esc(a.title)}</h2>
   <div class="mt-3 flex items-baseline gap-2 flex-wrap">
-    <span class="font-headline-sm text-3xl font-bold text-[#be185d]">${esc(formatPrice(price))}</span>
+    ${hasOffer(a) ? `<span class="px-2 py-0.5 rounded-full bg-[#be185d] text-white text-xs font-bold self-center">Oferta</span><s class="text-lg text-slate-500">${esc(formatPrice(regularPrice(a)))}</s>` : ''}<span class="font-headline-sm text-3xl font-bold text-[#be185d]">${esc(formatPrice(price))}</span>
     <span class="text-sm font-semibold text-slate-700">${esc(a.presentation)}</span>
   </div>
   ${a.description ? `<p class="mt-3 text-sm text-slate-700 leading-relaxed">${esc(a.description)}</p>` : ''}
@@ -179,6 +180,7 @@ function infoHtml(a) {
     <a href="${esc(whatsappLink(`Hola ÚNICA LENCERÍA, quiero consultar por ${a.brand} Art. ${a.code || '-'} – ${a.title}.`))}" target="_blank" rel="noopener noreferrer" class="mt-3 w-full flex items-center justify-center gap-2 min-h-[48px] rounded-full bg-white border-2 border-pink-200 text-slate-800 hover:border-[#be185d] font-semibold text-sm">
       <span class="material-symbols-outlined text-[18px]" aria-hidden="true">chat</span> Consultar este artículo por WhatsApp
     </a>
+    ${restockHtml(a)}
     <div class="mt-3 grid grid-cols-2 gap-2">
       <button type="button" data-share class="flex items-center justify-center gap-2 min-h-[44px] rounded-full bg-pink-50 border border-pink-200 text-slate-800 hover:border-[#be185d] font-semibold text-sm">
         <span class="material-symbols-outlined text-[18px]" aria-hidden="true">share</span> <span data-share-label>Compartir</span>
@@ -190,6 +192,68 @@ function infoHtml(a) {
     <p id="productShareMsg" class="hidden mt-2 text-xs text-center font-semibold text-emerald-800" role="status"></p>
   </div>
 </div>`;
+}
+
+/* ---------------------------------------------------------------- Avisame cuando vuelva */
+// Si el artículo no tiene stock (o tiene talles/colores agotados), la clienta deja su WhatsApp
+// y el admin le avisa cuando se repone (admin → Esperando stock).
+
+function savedCartInfo() {
+  try {
+    return JSON.parse(localStorage.getItem('unica_pedido_v2') || '{}').info || {};
+  } catch {
+    return {};
+  }
+}
+
+const comboLabel = (c) => [c.size && `Talle ${c.size}`, c.color].filter(Boolean).join(' · ');
+
+function restockHtml(a) {
+  const soldOut = a.inStock ? combos(a).filter((c) => isSoldOut(a, c.size, c.color)) : [];
+  if (a.inStock && !soldOut.length) return '';
+  const info = savedCartInfo();
+  return `<form data-restock class="mt-4 p-4 rounded-2xl bg-pink-50 border border-pink-200" novalidate>
+    <p class="text-sm font-bold text-slate-900">Avisame cuando vuelva</p>
+    <p class="text-xs text-slate-600 mt-0.5">Dejanos tu WhatsApp y te escribimos apenas haya stock.</p>
+    ${
+      soldOut.length
+        ? `<label class="block mt-3 text-xs font-semibold text-slate-700">¿Qué estás esperando?
+            <select name="combo" class="mt-1 w-full rounded-xl border-pink-200 focus:border-[#be185d] focus:ring-[#be185d] text-base">${soldOut
+              .map((c) => `<option value="${esc(comboKey(c.size, c.color))}">${esc(comboLabel(c) || 'Este artículo')}</option>`)
+              .join('')}</select></label>`
+        : ''
+    }
+    <label class="block mt-3 text-xs font-semibold text-slate-700">Tu WhatsApp
+      <input name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="30" value="${esc(info.phone || '')}" placeholder="Ej. 341 555-1234" class="mt-1 w-full rounded-xl border-pink-200 focus:border-[#be185d] focus:ring-[#be185d] text-base">
+    </label>
+    <input type="hidden" name="name" value="${esc(info.name || '')}">
+    <button type="submit" class="mt-3 w-full min-h-[44px] rounded-full bg-[#be185d] hover:bg-[#970046] text-white font-bold text-sm">Avisame</button>
+    <p data-restock-msg class="hidden mt-2 text-sm font-semibold text-center" role="status"></p>
+  </form>`;
+}
+
+async function onRestockSubmit(form) {
+  const msg = form.querySelector('[data-restock-msg]');
+  const say = (text, ok) => {
+    msg.textContent = text;
+    msg.className = `mt-2 text-sm font-semibold text-center ${ok ? 'text-emerald-800' : 'text-red-700'}`;
+  };
+  const btn = form.querySelector('button[type=submit]');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/restock', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ articleId: current.article.id, phone: form.phone.value, name: form.name.value, combo: form.combo?.value || '' }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return say(data.error || 'No se pudo guardar. Probá de nuevo.', false);
+    say('¡Listo! Te avisamos por WhatsApp cuando vuelva.', true);
+  } catch {
+    say('No se pudo guardar. Revisá tu conexión.', false);
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 /* ---------------------------------------------------------------- Compartir (para revendedoras) */
@@ -755,6 +819,13 @@ export function initProduct({ onChange } = {}) {
       }, 1600);
       updateSummary();
     }
+  });
+
+  $('#productContent').addEventListener('submit', (e) => {
+    const form = e.target.closest('[data-restock]');
+    if (!form || !current) return;
+    e.preventDefault();
+    onRestockSubmit(form);
   });
 
   $('#productContent').addEventListener('change', (e) => {

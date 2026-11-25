@@ -5,7 +5,7 @@ import { formatPrice, instagramUser, SITE_URL, whatsappDisplay } from '../config
 import { availableColors, availableSizes } from '../shared/stock.js';
 import { buildWorkbook, saveBlob } from '../shared/xlsx.js';
 
-const packPrice = (a) => a.pricePack || a.priceUnit || 0;
+import { salePrice as packPrice } from '../shared/prices.js';
 const today = () => new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 const fileDate = () => new Date().toISOString().slice(0, 10);
 // Solo lo que hay: los talles y colores agotados del todo no se listan.

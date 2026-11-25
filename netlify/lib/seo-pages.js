@@ -3,6 +3,7 @@
 import { formatPrice, instagramUrl, instagramUser, SITE_URL, whatsappDisplay, whatsappLink, whatsappNumber } from '../../src/config.js';
 import { imageSrcset, imageUrl } from '../../src/shared/images.js';
 import { openingHours } from '../../src/shared/opening-hours.js';
+import { hasOffer, regularPrice, salePrice } from '../../src/shared/prices.js';
 import { availableColors, availableSizes } from '../../src/shared/stock.js';
 
 const esc = (s) =>
@@ -125,7 +126,7 @@ const crumbs = (items) =>
 
 const productCard = (a) => `<li><a class="card" href="/producto/${esc(a.id)}">
   <img src="${esc(imageUrl(a.images[0] || '/og-image.jpg', 480))}" srcset="${esc(imageSrcset(a.images[0], [320, 480]))}" sizes="(min-width: 760px) 240px, 50vw" alt="${esc(`${a.title} ${a.brand} por mayor`)}" width="400" height="500" loading="lazy" decoding="async">
-  <div><b>${esc(a.title)}</b>${esc(a.brand)}<span>${esc(formatPrice(a.pricePack))}</span></div>
+  <div><b>${esc(a.title)}</b>${esc(a.brand)}<span>${hasOffer(a) ? `<s style="color:#64748b;font-weight:400">${esc(formatPrice(regularPrice(a)))}</s> ` : ''}${esc(formatPrice(salePrice(a)))}</span></div>
 </a></li>`;
 
 const brandChips = (brands) =>
@@ -199,7 +200,7 @@ export function productPage({ article: a, brand }) {
         offers: {
           '@type': 'Offer',
           url: abs(path),
-          price: a.pricePack,
+          price: salePrice(a),
           priceCurrency: 'ARS',
           availability: `https://schema.org/${a.inStock ? 'InStock' : 'OutOfStock'}`,
         },
@@ -211,7 +212,7 @@ export function productPage({ article: a, brand }) {
   <div>
     <h1>${esc(a.title)}</h1>
     <p><a href="/marca/${esc(brand.slug)}">${esc(brand.name)}</a></p>
-    <p class="price">${esc(formatPrice(a.pricePack))} <small>${esc(a.presentation)}</small></p>
+    <p class="price">${hasOffer(a) ? `<s style="color:#64748b;font-size:1rem;font-weight:400">${esc(formatPrice(regularPrice(a)))}</s> ` : ''}${esc(formatPrice(salePrice(a)))} <small>${esc(a.presentation)}</small></p>
     ${a.description ? `<p>${esc(a.description)}</p>` : ''}
     ${facts.length ? `<dl>${facts.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : ''}
     ${

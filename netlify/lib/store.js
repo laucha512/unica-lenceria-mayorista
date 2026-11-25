@@ -24,6 +24,7 @@ const SEEDS = {
   orders: () => [],
   priceHistory: () => [], // últimos cambios de precios en bloque (para deshacer)
   staff: () => [], // personal que arma los pedidos
+  restockRequests: () => [], // "avisame cuando vuelva" de las clientas
   settings: seedSettings,
   subcategories: seedSubcategories,
 };

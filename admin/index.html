@@ -96,6 +96,11 @@
       <span class="text-sm tracking-wide flex-1">Pedidos Mayoristas</span>
       <span id="ordersBadge" class="hidden text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary text-on-primary" aria-label="pedidos nuevos"></span>
     </button>
+    <button type="button" class="nav-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 text-left text-on-surface-variant" data-tab="esperando">
+      <span class="material-symbols-outlined text-[20px]" aria-hidden="true">notifications</span>
+      <span class="text-sm tracking-wide flex-1">Esperando stock</span>
+      <span id="restockBadge" class="hidden text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-600 text-white" title="Listos para avisar"></span>
+    </button>
     <button type="button" class="nav-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 text-left text-on-surface-variant" data-tab="clientes">
       <span class="material-symbols-outlined text-[20px]" aria-hidden="true">group</span>
       <span class="text-sm tracking-wide">Clientes</span>
@@ -123,6 +128,10 @@
     <button type="button" id="backupBtn" title="Baja un Excel con artículos, pedidos, clientes, marcas, categorías, sucursales y configuración" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors text-left border-t border-outline-variant/30 pt-4 disabled:opacity-60">
       <span class="material-symbols-outlined text-[20px]" aria-hidden="true">download</span>
       <span class="text-sm font-semibold">Descargar copia de seguridad (Excel)</span>
+    </button>
+    <button type="button" id="restoreBtn" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors text-left">
+      <span class="material-symbols-outlined text-[20px]" aria-hidden="true">undo</span>
+      <span class="text-sm font-semibold">Recuperar desde una copia</span>
     </button>
     <a class="flex items-center gap-3 px-3.5 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors text-left" href="/" target="_blank" rel="noopener">
       <span class="material-symbols-outlined text-[20px]" aria-hidden="true">storefront</span>
@@ -474,6 +483,16 @@
   </section>
 
   <!-- ===================== TAB: CLIENTES ===================== -->
+  <!-- ===================== TAB: ESPERANDO STOCK ===================== -->
+  <section class="tab-section hidden" id="section-esperando" aria-labelledby="h-esperando">
+    <div class="mb-6">
+      <h1 id="h-esperando" class="font-headline-lg text-2xl md:text-3xl text-on-surface font-semibold">Esperando stock</h1>
+      <p class="text-sm text-on-surface-variant mt-1 max-w-2xl">Clientas que tocaron “Avisame cuando vuelva” en la tienda. Cuando un artículo (o su talle/color) vuelve a estar disponible, aparece como <strong>Listo para avisar</strong>: le escribís por WhatsApp y después tocás “Ya avisé”.</p>
+    </div>
+    <p class="mb-3 text-xs text-on-surface-variant" id="restockCount" aria-live="polite"></p>
+    <div class="space-y-2" id="restockContainer"></div>
+  </section>
+
   <section class="tab-section hidden" id="section-clientes" aria-labelledby="h-clientes">
     <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
       <div>
@@ -636,6 +655,11 @@
           <label for="artPricePack" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1">Precio mayorista del pack ($) *</label>
           <input class="w-full px-3 py-2 bg-surface-container-lowest rounded-lg text-xs font-semibold border-none focus:ring-2 focus:ring-primary" id="artPricePack" placeholder="50700" required type="number" min="0" step="1" inputmode="numeric" aria-describedby="artPriceHelp">
           <p id="artPriceHelp" class="mt-1 text-[11px] text-on-surface-variant">Es el único precio que ve la clienta y el que se usa en el pedido.</p>
+        </div>
+        <div>
+          <label for="artOfferPrice" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1">Precio de oferta ($) <span class="normal-case font-semibold">(opcional)</span></label>
+          <input class="w-full px-3 py-2 bg-surface-container-lowest rounded-lg text-xs font-semibold border-none focus:ring-2 focus:ring-primary" id="artOfferPrice" placeholder="Vacío = sin oferta" type="number" min="0" step="1" inputmode="numeric">
+          <p class="mt-1 text-[11px] text-on-surface-variant">Si lo cargás, en la tienda se ve el precio normal tachado y este es el que se cobra. Para terminar la oferta, borralo.</p>
         </div>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -858,6 +882,33 @@
 </div>
 
 <!-- ===================== MODAL: CONFIRMACIÓN ===================== -->
+<!-- Recuperar artículos desde una copia de seguridad (src/admin/restore.js) -->
+<div class="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 bg-on-surface/40 backdrop-blur-sm hidden" id="restoreModal" role="dialog" aria-modal="true" aria-labelledby="restoreTitle">
+  <div class="bg-surface-container-lowest rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col border border-outline-variant/30">
+    <div class="p-5 border-b border-outline-variant/30 flex items-start justify-between gap-3">
+      <div>
+        <h2 class="font-headline-sm text-lg text-on-surface font-bold" id="restoreTitle">Recuperar desde una copia</h2>
+        <p class="text-xs text-on-surface-variant mt-1">Elegí el Excel de una copia de seguridad. Te mostramos los artículos que están en la copia pero ya no en la web, y elegís cuáles volver a cargar.</p>
+      </div>
+      <button type="button" data-close-restore class="p-1.5 rounded-lg text-on-surface-variant hover:text-primary" aria-label="Cerrar"><span class="material-symbols-outlined text-[22px]" aria-hidden="true">close</span></button>
+    </div>
+    <div class="p-5 overflow-y-auto space-y-3">
+      <label class="block">
+        <span class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1">Archivo de la copia (.xlsx)</span>
+        <input id="restoreFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="block w-full text-sm file:mr-3 file:px-4 file:py-2 file:rounded-full file:border-0 file:bg-primary file:text-on-primary file:font-bold">
+      </label>
+      <p class="text-sm font-semibold text-on-surface" id="restoreSummary" aria-live="polite"></p>
+      <label id="restoreAllWrap" class="hidden items-center gap-2 text-sm font-semibold"><input type="checkbox" id="restoreAll" checked class="rounded"> Seleccionar todos</label>
+      <ul class="space-y-1.5" id="restoreList"></ul>
+      <p class="hidden text-sm text-error font-semibold" id="restoreError" role="alert"></p>
+    </div>
+    <div class="p-4 border-t border-outline-variant/30 flex justify-end gap-2">
+      <button type="button" data-close-restore class="px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider text-on-surface-variant hover:bg-surface-container">Cerrar</button>
+      <button type="button" id="restoreApply" disabled class="px-6 py-2.5 rounded-full bg-primary hover:bg-primary-container text-on-primary text-xs font-bold uppercase tracking-wider shadow-md flex items-center gap-2 disabled:opacity-50"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">check_circle</span><span>Recuperar seleccionados</span></button>
+    </div>
+  </div>
+</div>
+
 <!-- Cambiar precios en bloque (src/admin/main.js → Precios en bloque) -->
 <div class="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 bg-on-surface/40 backdrop-blur-sm hidden" id="priceModal" role="dialog" aria-modal="true" aria-labelledby="priceModalTitle">
   <div class="bg-surface-container-lowest rounded-2xl shadow-2xl max-w-3xl w-full max-h-[92vh] flex flex-col border border-outline-variant/30">

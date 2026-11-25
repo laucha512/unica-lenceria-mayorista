@@ -22,7 +22,7 @@ const WINDOW_MS = 10 * 60 * 1000;
 const OPEN_STATUSES = ['nuevo', 'en_preparacion']; // a estos se les puede sumar
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sin 0/O ni 1/I
 
-const packPrice = (a) => a.pricePack || a.priceUnit || 0;
+import { salePrice as packPrice } from '../../src/shared/prices.js';
 const plain = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 const visitorHash = (ip) => createHash('sha256').update(`unica-pedidos:${ip || ''}`).digest('hex').slice(0, 16);
 
