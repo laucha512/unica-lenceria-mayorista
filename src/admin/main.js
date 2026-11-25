@@ -868,7 +868,8 @@ const staffEdit = { id: null };
 
 function staffStats(id) {
   const now = Date.now();
-  const mine = (state.orders || []).filter((o) => o.preparedBy === id && o.status !== 'cancelado');
+  // Cuenta solo los pedidos ya terminados (Listo o Entregado).
+  const mine = (state.orders || []).filter((o) => o.preparedBy === id && ['listo', 'entregado'].includes(o.status));
   return {
     total: mine.length,
     month: mine.filter((o) => now - Date.parse(o.createdAt) <= 30 * DAY_MS).length,
@@ -1371,6 +1372,13 @@ $('#ordersContainer').addEventListener('change', async (e) => {
   const select = e.target.closest('[data-order-status]');
   if (!select) return;
   const id = select.closest('article').dataset.id;
+  const order = state.orders.find((o) => o.id === id);
+  if (['listo', 'entregado'].includes(select.value) && !order?.preparedBy) {
+    select.value = order?.status || 'nuevo';
+    showToast('Antes de marcarlo Listo, elegí en “Armó” quién lo armó.', 'error');
+    select.closest('article').querySelector('[data-order-staff]')?.focus();
+    return;
+  }
   select.disabled = true;
   try {
     const updated = await saveOrder(id, { status: select.value });

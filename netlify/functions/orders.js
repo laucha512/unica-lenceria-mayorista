@@ -177,6 +177,10 @@ export default handle(async (req, context) => {
           o.preparedBy = preparedBy.id;
           o.preparedByName = preparedBy.name;
         }
+        // No se puede marcar Listo o Entregado sin decir quién lo armó.
+        if (['listo', 'entregado'].includes(o.status) && !o.preparedBy) {
+          throw new HttpError('Antes de marcarlo Listo, elegí quién lo armó.');
+        }
         if ('line' in body) {
           const line = o.items.find((l) => l.lineId === body.line);
           if (!line) throw new HttpError('Artículo del pedido no encontrado.', 404);
