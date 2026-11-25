@@ -281,7 +281,10 @@ export function validateContact(body) {
   }
   const instagramUser = normalizeInstagram(text(body, 'instagramUser', { label: 'El Instagram', max: 120, required: true }));
   if (!instagramUser) throw new HttpError('Usuario de Instagram inválido. Escribilo como @usuario o pegá el link del perfil.');
-  return { whatsappNumber: number, whatsappDisplay: display, instagramUser };
+  // Link para dejar reseña en Google (opcional): se manda a la clienta cuando el pedido se entrega.
+  const reviewUrl = text(body, 'reviewUrl', { label: 'El link de reseñas', max: 300 });
+  if (reviewUrl && !/^https:\/\/[^\s<>"]+$/.test(reviewUrl)) throw new HttpError('El link de reseñas tiene que empezar con https://');
+  return { whatsappNumber: number, whatsappDisplay: display, instagramUser, reviewUrl };
 }
 
 /* ------------------------------------------------------------ Pedidos y visitas (públicos) */

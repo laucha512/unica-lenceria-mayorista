@@ -37,6 +37,7 @@ export async function readContact() {
     whatsappNumber: row?.whatsappNumber || fallback.whatsappNumber,
     whatsappDisplay: row?.whatsappDisplay || fallback.whatsappDisplay,
     instagramUser: row?.instagramUser || fallback.instagramUser,
+    reviewUrl: row?.reviewUrl || '',
   };
 }
 

@@ -484,6 +484,40 @@ function staffOptions(o) {
   ].join('');
 }
 
+/** Botones con mensajes de WhatsApp ya escritos para avisarle al cliente cómo va su pedido. */
+function customerMessages(o) {
+  if (!o.phone) return '';
+  const first = (o.info.name || '').split(/[\s–-]+/)[0];
+  const hola = `¡Hola${first ? ` ${first}` : ''}!`;
+  const delivery = o.info.delivery || '';
+  const pickup = delivery.match(/^Retiro en (.+?)(?: \(Casa Central\))?$/)?.[1];
+  const ready = pickup
+    ? `${hola} Tu pedido ${o.code} de ÚNICA LENCERÍA ya está listo para retirar en ${pickup}. Total: ${formatPrice(o.total)}. ¡Te esperamos!`
+    : /env[ií]o|expreso|transporte/i.test(delivery)
+      ? `${hola} Tu pedido ${o.code} de ÚNICA LENCERÍA ya está listo y lo despachamos por expreso. Total: ${formatPrice(o.total)}. Cuando tengamos el comprobante del envío te lo pasamos.`
+      : `${hola} Tu pedido ${o.code} de ÚNICA LENCERÍA ya está listo. Total: ${formatPrice(o.total)}. ¿Cómo preferís recibirlo o retirarlo?`;
+  const review = state.contact?.reviewUrl;
+  const buttons = [
+    ['Recibimos tu pedido', `${hola} Recibimos tu pedido ${o.code} en ÚNICA LENCERÍA. Ya lo estamos preparando y te avisamos cuando esté listo. ¡Gracias!`, true],
+    [pickup ? 'Listo para retirar' : 'Está listo', ready, ['listo', 'entregado'].includes(o.status)],
+    [
+      'Pedir reseña',
+      review ? `${hola} Gracias por tu compra en ÚNICA LENCERÍA. ¿Nos ayudás dejando tu opinión en Google? Nos sirve muchísimo: ${review}` : '',
+      o.status === 'entregado',
+    ],
+  ].filter(([, , show]) => show);
+  return `<div class="mt-3 pt-3 border-t border-outline-variant/20">
+    <p class="text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-2">Avisar al cliente</p>
+    <div class="flex flex-wrap gap-2">${buttons
+      .map(([label, text]) =>
+        text
+          ? `<a href="${esc(`https://wa.me/${o.phone}?text=${encodeURIComponent(text)}`)}" target="_blank" rel="noopener noreferrer" class="min-h-[40px] inline-flex items-center gap-1.5 px-4 rounded-full bg-[#25D366] text-white text-xs font-bold hover:opacity-90">${esc(label)}</a>`
+          : `<span class="min-h-[40px] inline-flex items-center px-4 rounded-full border border-dashed border-outline-variant text-xs text-on-surface-variant">${esc(label)}: cargá el link de reseñas en WhatsApp & Instagram</span>`
+      )
+      .join('')}</div>
+  </div>`;
+}
+
 function orderCard(o) {
   const st = ORDER_STATUS[o.status] || ORDER_STATUS.nuevo;
   const prepared = o.items.reduce((n, l) => n + l.prepared, 0);
@@ -534,6 +568,7 @@ function orderCard(o) {
       ${groups}
       ${o.info.notes ? `<p class="mt-2 text-sm"><strong>Aclaraciones:</strong> ${esc(o.info.notes)}</p>` : ''}
       ${notice}
+      ${customerMessages(o)}
       <div class="mt-3 pt-3 border-t border-outline-variant/20 flex flex-wrap items-center justify-between gap-3">
         <label class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Estado
           <select data-order-status class="bg-surface-container-low px-3 py-1.5 pr-8 rounded-xl text-sm text-on-surface border-none focus:ring-2 focus:ring-primary font-semibold normal-case tracking-normal">${options}</select>
@@ -2261,6 +2296,7 @@ function updateInstagramPreview() {
 function renderContact() {
   $('#contactWhatsapp').value = state.contact?.whatsappDisplay || '';
   $('#contactInstagram').value = state.contact?.instagramUser ? `@${state.contact.instagramUser}` : '';
+  $('#contactReview').value = state.contact?.reviewUrl || '';
   showFormError($('#contactFormError'), '');
   updateContactPreview();
   updateInstagramPreview();
@@ -2285,7 +2321,7 @@ $('#contactForm').addEventListener('submit', async (e) => {
   const btn = $('#contactSubmit');
   setBusy(btn, true, 'Guardando…');
   try {
-    state.contact = await call('settings', { method: 'PUT', body: { whatsappDisplay, instagramUser } });
+    state.contact = await call('settings', { method: 'PUT', body: { whatsappDisplay, instagramUser, reviewUrl: $('#contactReview').value.trim() } });
     renderContact();
     showToast('Cambios guardados: el WhatsApp y el Instagram ya se ven en toda la web.');
   } catch (err) {
