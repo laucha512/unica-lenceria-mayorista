@@ -725,9 +725,25 @@ document.addEventListener('click', async (e) => {
   const kind = btn.dataset.pricelist;
   const label = btn.querySelector('[data-pricelist-label]');
   const original = label.textContent;
-  const status = $('[data-pricelist-status]');
-  const say = (msg) => {
+  const status = btn.closest('[data-pricelist-box]')?.querySelector('[data-pricelist-status]') || $('[data-pricelist-status]');
+  const say = (msg, retry) => {
     status.textContent = msg;
+    if (retry) {
+      const again = Object.assign(document.createElement('button'), {
+        type: 'button',
+        className: 'mt-2 block mx-auto px-5 py-2.5 rounded-full bg-[#be185d] text-white font-bold text-sm',
+        textContent: 'Guardar la lista',
+      });
+      again.addEventListener('click', async () => {
+        try {
+          await retry();
+          say('Listo: ya se guardó la lista.');
+        } catch {
+          say('No se pudo guardar. Probá de nuevo o pedila por WhatsApp.');
+        }
+      });
+      status.append(again);
+    }
     status.classList.toggle('hidden', !msg);
   };
   if (!state.articles.length) return say('El catálogo todavía está cargando. Probá en unos segundos.');
@@ -736,9 +752,15 @@ document.addEventListener('click', async (e) => {
   label.textContent = kind === 'pdf' ? 'Armando la lista…' : 'Preparando…';
   say('');
   try {
-    const { downloadPriceList } = await import('./pricelist.js');
-    const count = await downloadPriceList(kind, state.articles, (msg) => (label.textContent = msg));
-    say(`Listo: se descargó la lista con ${count} artículos.`);
+    const { buildPriceList, deliverFile } = await import('./pricelist.js');
+    const { count, file } = await buildPriceList(kind, state.articles, (msg) => (label.textContent = msg));
+    try {
+      await deliverFile(file);
+      say(`Listo: se descargó la lista con ${count} artículos.`);
+    } catch (err) {
+      if (err.code !== 'tap') throw err;
+      say(`La lista con ${count} artículos está lista:`, () => deliverFile(file));
+    }
   } catch (err) {
     say(err.message || 'No se pudo armar la lista. Probá de nuevo o pedila por WhatsApp.');
   } finally {

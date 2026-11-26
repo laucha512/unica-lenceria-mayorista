@@ -172,15 +172,32 @@ async function buildPdf(articles, onProgress) {
 
 /* ================================================================ Entrada */
 
-/** kind: "pdf" | "excel". onProgress(texto) para mostrar el avance en el botón. */
-export async function downloadPriceList(kind, articles, onProgress = () => {}) {
+/** kind: "pdf" | "excel". onProgress(texto) para mostrar el avance en el botón. Devuelve el archivo listo. */
+export async function buildPriceList(kind, articles, onProgress = () => {}) {
   const list = listedArticles(articles);
   if (!list.length) throw new Error('Todavía no hay artículos con stock para armar la lista.');
   if (kind === 'excel') {
-    saveBlob(buildXlsx(list), `lista-de-precios-unica-${fileDate()}.xlsx`);
-    return list.length;
+    const blob = buildXlsx(list);
+    return { count: list.length, file: new File([blob], `lista-de-precios-unica-${fileDate()}.xlsx`, { type: blob.type ||'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }) };
   }
   const blob = await buildPdf(list, (done, total) => onProgress(`Armando la lista… ${Math.round((done / total) * 100)}%`));
-  saveBlob(blob, `lista-de-precios-unica-${fileDate()}.pdf`);
-  return list.length;
+  return { count: list.length, file: new File([blob], `lista-de-precios-unica-${fileDate()}.pdf`, { type: 'application/pdf' }) };
+}
+
+// iPhone/iPad: la descarga directa falla seguido (sobre todo abriendo desde WhatsApp o Instagram),
+// así que se abre el menú de compartir, que tiene "Guardar en Archivos" y WhatsApp.
+const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+/** Guarda el archivo. Si el teléfono pide otro toque (tardó mucho en armarse), tira un error con code "tap". */
+export async function deliverFile(file) {
+  if (isIOS() && navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: 'Lista de precios Única' });
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      if (err.name === 'NotAllowedError') throw Object.assign(new Error('Tocá de nuevo para guardar'), { code: 'tap' });
+    }
+  }
+  saveBlob(file, file.name);
 }
