@@ -318,8 +318,8 @@ export function validateOrder(body) {
     phone,
     info: {
       phone: formatWhatsapp(phoneDisplay), // siempre igual: +54 9 341 720-3083
-      name: text(info, 'name', { label: 'El nombre', max: 80 }),
-      city: text(info, 'city', { label: 'La localidad', max: 80 }),
+      name: text(info, 'name', { label: 'El nombre y comercio', min: 2, max: 80, required: true }),
+      city: text(info, 'city', { label: 'La localidad', min: 2, max: 80, required: true }),
       delivery: text(info, 'delivery', { label: 'La entrega', max: 120 }),
       notes: text(info, 'notes', { label: 'Las aclaraciones', max: 400 }),
     },

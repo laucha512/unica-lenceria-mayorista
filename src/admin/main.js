@@ -26,6 +26,7 @@ const state = {
   subcategories: [],
   orders: [],
   staff: [],
+  clientInfo: [],
   restock: [],
   tab: 'publicaciones',
 };
@@ -275,7 +276,7 @@ async function startApp() {
 
 async function loadAll() {
   try {
-    const [articles, brands, banners, branches, categories, subcategories, contact, staff, restock] = await Promise.all([
+    const [articles, brands, banners, branches, categories, subcategories, contact, staff, restock, clientInfo] = await Promise.all([
       call('articles'),
       call('brands'),
       call('banners'),
@@ -285,8 +286,9 @@ async function loadAll() {
       call('settings'),
       call('staff'),
       call('restock'),
+      call('clients').catch(() => []),
     ]);
-    Object.assign(state, { articles, brands, banners, branches, categories, subcategories, contact, staff, restock });
+    Object.assign(state, { articles, brands, banners, branches, categories, subcategories, contact, staff, restock, clientInfo });
     renderAll();
     startLive(); // visitas en vivo y pedidos, cada 2 minutos
     loadPriceHistory();
@@ -437,7 +439,7 @@ const faltaron = (n) => `${n === 1 ? "Faltó" : "Faltaron"} ${packsWord(n)}`;
 
 /** Aviso para el cliente con lo que no se pudo armar (listo para enviar o copiar). */
 function missingMessage(o) {
-  const first = (o.info.name || '').split(/[\s–-]+/)[0];
+  const first = (who(o).name || '').split(/[\s–-]+/)[0];
   const list = missingLines(o).map(
     (l) => `• ${l.qty - l.prepared} × ${l.brand}${l.code ? ` Art. ${l.code}` : ''} – ${l.title} (${lineSelection(l)})`
   );
@@ -487,7 +489,7 @@ function staffOptions(o) {
 /** Botones con mensajes de WhatsApp ya escritos para avisarle al cliente cómo va su pedido. */
 function customerMessages(o) {
   if (!o.phone) return '';
-  const first = (o.info.name || '').split(/[\s–-]+/)[0];
+  const first = (who(o).name || '').split(/[\s–-]+/)[0];
   const hola = `¡Hola${first ? ` ${first}` : ''}!`;
   const delivery = o.info.delivery || '';
   const pickup = delivery.match(/^Retiro en (.+?)(?: \(Casa Central\))?$/)?.[1];
@@ -556,7 +558,7 @@ function orderCard(o) {
       <span class="font-bold text-primary">#${o.number}</span>
       <span class="px-2 py-0.5 rounded-md bg-surface-container-high text-xs font-bold tracking-wider" title="Código que figura en el mensaje de WhatsApp">${esc(o.code)}</span>
       <span class="min-w-0 flex-1 basis-full sm:basis-0 order-last sm:order-none">
-        <span class="block font-semibold truncate">${esc(o.info.name || 'Sin nombre')}${o.info.city ? ` <span class="font-normal text-on-surface-variant">· ${esc(o.info.city)}</span>` : ''}</span>
+        <span class="block font-semibold truncate">${esc(who(o).name || 'Sin nombre')}${who(o).city ? ` <span class="font-normal text-on-surface-variant">· ${esc(who(o).city)}</span>` : ''}</span>
         <span class="block text-[11px] text-on-surface-variant">${esc(dateTime(o.createdAt))} · ${packsWord(o.packs)} · ${esc(o.info.delivery || 'A coordinar')}${o.batches > 1 ? ` · <strong class="text-primary">sumó cosas ${o.batches - 1} ${o.batches === 2 ? 'vez' : 'veces'}</strong>` : ''}${preparedName(o) ? ` · Armó: <strong>${esc(preparedName(o))}</strong>` : ''}</span>
       </span>
       <span class="text-xs font-semibold ${prepared >= o.packs ? 'text-emerald-700' : 'text-on-surface-variant'}" title="Packs armados">Armado ${prepared}/${o.packs}</span>
@@ -616,6 +618,12 @@ const daysSince = (iso) => Math.floor((Date.now() - Date.parse(iso)) / DAY_MS);
 const sinceText = (d) => (d <= 0 ? 'hoy' : d === 1 ? 'ayer' : `hace ${d} días`);
 const firstName = (name) => (name || '').split(/[\s–-]+/)[0];
 
+/** Nombre y localidad del pedido, con lo cargado a mano en Clientes por encima. */
+function who(o) {
+  const info = (state.clientInfo || []).find((c) => c.phone === o.phone);
+  return { name: info?.name || o.info.name || '', city: info?.city || o.info.city || '' };
+}
+
 function buildClients(orders = state.orders) {
   const map = new Map();
   for (const o of orders || []) {
@@ -634,6 +642,14 @@ function buildClients(orders = state.orders) {
     if (o.createdAt > c.last) c.last = o.createdAt;
     if (o.createdAt < c.first) c.first = o.createdAt;
     map.set(o.phone, c);
+  }
+  // Lo cargado a mano en Clientes manda sobre lo que escribieron en el pedido.
+  for (const info of state.clientInfo || []) {
+    const c = map.get(info.phone);
+    if (!c) continue;
+    if (info.name) c.name = info.name;
+    if (info.city) c.city = info.city;
+    c.notes = info.notes || '';
   }
   return [...map.values()];
 }
@@ -671,7 +687,15 @@ function clientCard(c) {
     </summary>
     <div class="px-4 pb-4 border-t border-outline-variant/20">
       <ul class="divide-y divide-outline-variant/20">${orders}</ul>
+      ${c.notes ? `<p class="mt-3 p-3 rounded-xl bg-amber-50 text-sm whitespace-pre-line"><b>Notas:</b> ${esc(c.notes)}</p>` : ''}
+      <form data-client-form class="hidden mt-3 grid gap-2 sm:grid-cols-2">
+        <label class="text-xs font-semibold">Nombre y apellido / comercio<input name="name" maxlength="80" value="${esc(c.name)}" class="mt-1 w-full rounded-xl bg-surface-container-low border-none text-sm"></label>
+        <label class="text-xs font-semibold">Localidad<input name="city" maxlength="80" value="${esc(c.city)}" class="mt-1 w-full rounded-xl bg-surface-container-low border-none text-sm"></label>
+        <label class="text-xs font-semibold sm:col-span-2">Notas<textarea name="notes" rows="3" maxlength="1000" class="mt-1 w-full rounded-xl bg-surface-container-low border-none text-sm">${esc(c.notes || '')}</textarea></label>
+        <div class="sm:col-span-2 flex gap-2"><button class="px-4 py-2 rounded-full bg-primary text-on-primary text-xs font-bold">Guardar</button><button type="button" data-client-cancel class="px-4 py-2 rounded-full bg-surface-container-high text-xs font-bold">Cancelar</button></div>
+      </form>
       <div class="mt-3 flex flex-wrap gap-2">
+        <button type="button" data-client-edit class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-surface-container-high text-xs font-bold hover:opacity-90">Editar datos</button>
         <a href="${esc(`https://wa.me/${c.phone}?text=${encodeURIComponent(greeting)}`)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#25D366] text-white text-xs font-bold hover:opacity-90">${inactive ? 'Escribirle para que vuelva' : 'Escribirle por WhatsApp'}</a>
       </div>
     </div>
@@ -705,6 +729,28 @@ function renderClients() {
   open.forEach((p) => container.querySelector(`article[data-phone="${CSS.escape(p)}"] details`)?.setAttribute('open', ''));
 }
 
+$('#clientsContainer').addEventListener('click', (e) => {
+  const form = e.target.closest('article')?.querySelector('[data-client-form]');
+  if (!form) return;
+  if (e.target.closest('[data-client-edit]')) form.classList.remove('hidden');
+  if (e.target.closest('[data-client-cancel]')) form.classList.add('hidden');
+});
+$('#clientsContainer').addEventListener('submit', async (e) => {
+  const form = e.target.closest('[data-client-form]');
+  if (!form) return;
+  e.preventDefault();
+  const phone = form.closest('article').dataset.phone;
+  const body = Object.fromEntries(new FormData(form));
+  try {
+    const saved = await call(`clients?phone=${encodeURIComponent(phone)}`, { method: 'PUT', body });
+    state.clientInfo = [...state.clientInfo.filter((c) => c.phone !== phone), saved];
+    renderClients();
+    renderOrders();
+    showToast('Datos del cliente guardados.');
+  } catch (err) {
+    showToast(`No se pudo guardar: ${err.message}`, 'error');
+  }
+});
 $('#clientsSearch').addEventListener('input', renderClients);
 $('#clientsSort').addEventListener('change', renderClients);
 

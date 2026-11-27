@@ -334,6 +334,13 @@ export function initCart({ onUpdate } = {}) {
       $('#cartPhone').focus();
       return;
     }
+    for (const [k, label] of [['name', 'tu nombre y/o comercio'], ['city', 'tu localidad']]) {
+      if (String(state.info[k] || '').trim().length < 2) {
+        showSendError(`Completá ${label} para enviar el pedido.`);
+        $(fields[k]).focus();
+        return;
+      }
+    }
     tidyPhone();
     showSendError('');
     // La pestaña se abre ya, dentro del toque, para que el navegador no la bloquee; después se le pone el link.
