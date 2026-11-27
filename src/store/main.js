@@ -572,9 +572,15 @@ function subcategoryIndex() {
 
 function sortByGroup(list) {
   const idx = subcategoryIndex();
-  const groupOf = (a) => idx.get(a.subcategoryId) || NO_GROUP;
+  const { category, subcategory } = scopeNodes();
+  const fits = (g) => (subcategory ? g.sub.id === subcategory.id : !category || g.cat.id === category.id);
+  // Un artículo en varias subcategorías (ej. unisex) aparece en cada una de las que se están mirando.
+  const groupsOf = (a) => {
+    const groups = subIdsOf(a).map((id) => idx.get(id)).filter((g) => g && fits(g));
+    return groups.length ? groups : [idx.get(a.subcategoryId) || NO_GROUP];
+  };
   return list
-    .map((a) => ({ article: a, group: groupOf(a) }))
+    .flatMap((a) => groupsOf(a).map((group) => ({ article: a, group })))
     .sort(
       (x, y) =>
         x.group.rank - y.group.rank ||

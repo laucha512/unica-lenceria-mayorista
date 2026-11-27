@@ -10,22 +10,25 @@ import { applyPercent } from '../shared/prices.js';
 import { initCategories, renderCategories, subcategoryOptions, subcategoryPath } from './categories.js';
 import { subIdsOf, inSubs } from '../shared/tree.js';
 
-/* Artículo en varias categorías (ej. unisex): la del desplegable es la principal y acá se tildan las demás. */
+/* Artículo en varias categorías (ej. unisex): se oculta el desplegable y se tildan todas las que correspondan.
+   La primera tildada queda como principal (la que se muestra en la ficha). */
 function renderExtraCats(checked = $$('#artExtraCats input:checked').map((i) => i.value)) {
   const box = $('#artExtraCats');
-  const primary = $('#artSubcategory').value;
+  const multi = $('#artMultiCat').checked;
   const on = new Set(checked);
   const cats = [...state.categories].sort((a, b) => a.order - b.order);
   box.innerHTML = cats
     .map((c) => {
-      const subs = state.subcategories.filter((x) => x.categoryId === c.id && x.id !== primary).sort((a, b) => a.order - b.order);
+      const subs = state.subcategories.filter((x) => x.categoryId === c.id).sort((a, b) => a.order - b.order);
       if (!subs.length) return '';
       return `<div class="sm:col-span-2 mt-1 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">${esc(c.name)}</div>${subs
         .map((x) => `<label class="flex items-center gap-2 text-sm py-1"><input type="checkbox" value="${esc(x.id)}" class="rounded text-primary focus:ring-primary"${on.has(x.id) ? ' checked' : ''}> ${esc(x.name)}</label>`)
         .join('')}`;
     })
     .join('');
-  box.classList.toggle('hidden', !$('#artMultiCat').checked);
+  box.classList.toggle('hidden', !multi);
+  $('#artSubcategory').classList.toggle('hidden', multi);
+  $('#artSubcategory').required = !multi;
 }
 
 
@@ -2207,7 +2210,7 @@ function openArticleModal(article = null) {
   $('#artSubcategory').innerHTML = subcategoryOptions(article?.subcategoryId || '');
   const extras = article?.extraSubcategoryIds || [];
   $('#artMultiCat').checked = extras.length > 0;
-  renderExtraCats(extras);
+  renderExtraCats(extras.length ? [article.subcategoryId, ...extras] : []);
   $('#artTitle').value = article?.title || '';
   $('#artCode').value = article?.code || '';
   $('#artTag').value = article?.tag || '';
@@ -2268,7 +2271,7 @@ $('#articleForm').addEventListener('submit', async (e) => {
   if ($('#artPricePack').value === '' || !(pricePack >= 0)) problems.push('el precio del pack');
   const offerPrice = Number($('#artOfferPrice').value) || 0;
   if (offerPrice && offerPrice >= pricePack) problems.push('un precio de oferta menor al precio normal');
-  if (!$('#artSubcategory').value) problems.push('la categoría / subcategoría');
+  if ($('#artMultiCat').checked ? !$$('#artExtraCats input:checked').length : !$('#artSubcategory').value) problems.push('la categoría / subcategoría');
   if (!form.photos.length) problems.push('al menos una foto');
   if (form.bySize && !form.sizes.some((s) => s.on)) problems.push('al menos un talle (para los colores por talle)');
   if (problems.length) return showFormError(errEl, `Completá: ${problems.join(', ')}.`);
@@ -2315,10 +2318,11 @@ $('#articleForm').addEventListener('submit', async (e) => {
       isNew: $('#artIsNew').checked,
       inStock: $('#artInStock').checked,
       images: form.photos.map((p) => p.url),
-      subcategoryId: $('#artSubcategory').value,
-      extraSubcategoryIds: $('#artMultiCat').checked
-        ? $$('#artExtraCats input:checked').map((i) => i.value).filter((id) => id !== $('#artSubcategory').value)
-        : [],
+      ...(() => {
+        if (!$('#artMultiCat').checked) return { subcategoryId: $('#artSubcategory').value, extraSubcategoryIds: [] };
+        const [first, ...rest] = $$('#artExtraCats input:checked').map((i) => i.value);
+        return { subcategoryId: first, extraSubcategoryIds: rest };
+      })(),
     };
     const saved = form.editingId
       ? await call(`articles?id=${encodeURIComponent(form.editingId)}`, { method: 'PUT', body })
@@ -2910,5 +2914,4 @@ window.addEventListener('hashchange', () => {
   }
 })();
 
-$('#artMultiCat').addEventListener('change', () => renderExtraCats());
-$('#artSubcategory').addEventListener('change', () => renderExtraCats());
+$('#artMultiCat').addEventListener('change', () => renderExtraCats([]));
