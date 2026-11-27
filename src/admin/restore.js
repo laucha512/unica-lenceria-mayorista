@@ -134,6 +134,7 @@ export async function findMissingArticles(file, { current, categories, subcatego
         inStock: plain(get(r, 'Con stock')) !== 'no',
         photos: String(get(r, 'Fotos')).split(/\s+/).map(ownPhoto).filter(Boolean).slice(0, 5),
         subcategoryId: subByPath.get(plain(get(r, 'Categoría'))) || '',
+        extraSubcategoryIds: String(get(r, 'Otras categorías') || '').split('+').map((p) => subByPath.get(plain(p.trim()))).filter(Boolean),
       };
     });
   return { date, total: rows.length - h - 1, missing };

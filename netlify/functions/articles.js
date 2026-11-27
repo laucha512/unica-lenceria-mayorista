@@ -18,6 +18,10 @@ async function resolveRelations(data) {
     const subs = await readCollection('subcategories');
     if (!subs.some((s) => s.id === data.subcategoryId)) throw new HttpError('La subcategoría elegida no existe.', 400);
   }
+  if (data.extraSubcategoryIds?.length) {
+    const subs = new Set((await readCollection('subcategories')).map((s) => s.id));
+    data.extraSubcategoryIds = data.extraSubcategoryIds.filter((id) => subs.has(id));
+  }
   if ('brand' in data) {
     const brands = await readCollection('brands');
     out.brandId = brands.find((b) => normalizeName(b.name) === normalizeName(data.brand))?.id || '';

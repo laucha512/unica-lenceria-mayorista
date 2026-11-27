@@ -126,6 +126,12 @@ export function validateArticle(body, { partial = false } = {}) {
       inStock: (b) => bool(b, 'inStock', 'Stock'),
       images: (b) => images(b, 'images', 5),
       subcategoryId: (b) => optionalId(b, 'subcategoryId', 'La subcategoría'),
+      // Otras subcategorías donde también aparece (ej. unisex). Sin repetir la principal.
+      extraSubcategoryIds: (b) => {
+        const raw = b.extraSubcategoryIds ?? [];
+        if (!Array.isArray(raw) || raw.length > 20) throw new HttpError('Las otras categorías no son válidas.');
+        return [...new Set(raw.map((x, i) => optionalId({ x }, 'x', 'La categoría extra')).filter((x) => x && x !== b.subcategoryId))];
+      },
       // Combinaciones agotadas "talle|color" (ver src/shared/stock.js).
       soldOut: (b) => {
         const raw = b.soldOut ?? [];

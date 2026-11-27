@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { applyPercent, ROUND_OPTIONS } from '../../src/shared/prices.js';
 import { error, handle, HttpError, json, readJson, requireAuth } from '../lib/http.js';
 import { normalizeName, readCollection, updateCollection } from '../lib/store.js';
+import { inSubs, subIdsOf } from '../../src/shared/tree.js';
 
 const MAX_HISTORY = 10;
 
@@ -23,12 +24,12 @@ async function matcher(scope) {
     const cat = cats.find((c) => c.id === value);
     if (!cat) throw new HttpError('La categoría no existe.');
     const ids = new Set(subs.filter((s) => s.categoryId === value).map((s) => s.id));
-    return { test: (a) => ids.has(a.subcategoryId), label: `la categoría ${cat.name}` };
+    return { test: (a) => inSubs(a, ids), label: `la categoría ${cat.name}` };
   }
   if (type === 'subcategory') {
     const sub = (await readCollection('subcategories')).find((s) => s.id === value);
     if (!sub) throw new HttpError('La subcategoría no existe.');
-    return { test: (a) => a.subcategoryId === value, label: `la subcategoría ${sub.name}` };
+    return { test: (a) => subIdsOf(a).includes(value), label: `la subcategoría ${sub.name}` };
   }
   throw new HttpError('Alcance inválido.');
 }

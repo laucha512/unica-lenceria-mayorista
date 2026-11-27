@@ -8,7 +8,7 @@ let d; // dependencias del panel: { state, call, confirmDialog, openModal, close
 const byOrder = (a, b) => a.order - b.order || a.name.localeCompare(b.name, 'es');
 const catsSorted = () => [...d.state.categories].sort(byOrder);
 const subsOf = (catId) => d.state.subcategories.filter((s) => s.categoryId === catId).sort(byOrder);
-const productsIn = (subId) => d.state.articles.filter((a) => a.subcategoryId === subId);
+const productsIn = (subId) => d.state.articles.filter((a) => a.subcategoryId === subId || (a.extraSubcategoryIds || []).includes(subId));
 
 /** Texto "Mujeres › Conjuntos" para un subcategoryId (o '' si no tiene). */
 export function subcategoryPath(subId) {

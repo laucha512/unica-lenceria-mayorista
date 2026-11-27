@@ -17,7 +17,7 @@ import { initProduct, openProduct, setProducts } from './product.js';
 import { initMenu, setTree } from './menu.js';
 import { renderBranches } from './branches.js';
 import { initPresence } from './presence.js';
-import { buildTreeFrom, slugify, normalizeName } from '../shared/tree.js';
+import { buildTreeFrom, slugify, normalizeName, subIdsOf, inSubs } from '../shared/tree.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -283,10 +283,10 @@ function scopeNodes() {
 /** Artículos dentro de la categoría/subcategoría elegida (sin aplicar la marca). */
 function articlesInScope() {
   const { category, subcategory } = scopeNodes();
-  if (subcategory) return state.articles.filter((a) => a.subcategoryId === subcategory.id);
+  if (subcategory) return state.articles.filter((a) => subIdsOf(a).includes(subcategory.id));
   if (category) {
     const ids = new Set(category.subcategories.map((s) => s.id));
-    return state.articles.filter((a) => ids.has(a.subcategoryId));
+    return state.articles.filter((a) => inSubs(a, ids));
   }
   return state.articles;
 }
@@ -296,9 +296,10 @@ function articlesInScope() {
 // Sin distinguir mayúsculas ni acentos; todas las palabras tienen que aparecer.
 
 function searchText(a) {
-  const sub = state.tree.categories.flatMap((c) => c.subcategories.map((s) => ({ c, s }))).find((x) => x.s.id === a.subcategoryId);
+  const ids = subIdsOf(a);
+  const subs = state.tree.categories.flatMap((c) => c.subcategories.map((s) => ({ c, s }))).filter((x) => ids.includes(x.s.id));
   return normalizeName(
-    [a.title, a.code, a.brand, a.description, a.saleType, a.presentation, a.tag, ...(a.colors || []), ...(a.sizes || []), sub?.c.name, sub?.s.name].join(' ')
+    [a.title, a.code, a.brand, a.description, a.saleType, a.presentation, a.tag, ...(a.colors || []), ...(a.sizes || []), ...subs.flatMap((x) => [x.c.name, x.s.name])].join(' ')
   );
 }
 

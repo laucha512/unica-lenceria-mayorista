@@ -101,7 +101,11 @@ export default handle(async (req) => {
       });
       const unassigned = await updateCollection('articles', (arts) => {
         let n = 0;
-        const next = arts.map((a) => (a.subcategoryId === id ? (n++, { ...a, subcategoryId: '' }) : a));
+        const next = arts.map((a) => {
+          const extra = (a.extraSubcategoryIds || []).filter((x) => x !== id);
+          if (a.subcategoryId === id) return n++, { ...a, subcategoryId: '', extraSubcategoryIds: extra };
+          return extra.length !== (a.extraSubcategoryIds || []).length ? { ...a, extraSubcategoryIds: extra } : a;
+        });
         return { list: next, result: n };
       });
       return json({ ok: true, removed: removed.name, productsUnassigned: unassigned });

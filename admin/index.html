@@ -594,7 +594,9 @@
       </div>
       <div>
         <label for="artSubcategory" class="block text-xs uppercase tracking-wider font-bold text-on-surface-variant mb-1">Categoría / Subcategoría *</label>
+        <label class="mb-2 inline-flex items-center gap-2 text-sm font-semibold text-on-surface cursor-pointer"><input type="checkbox" id="artMultiCat" class="rounded text-primary focus:ring-primary"> Va en varias categorías (ej. unisex)</label>
         <select class="w-full px-3.5 py-2.5 bg-surface-container-low rounded-xl text-sm border-none focus:ring-2 focus:ring-primary text-on-surface font-semibold" id="artSubcategory" required></select>
+        <div id="artExtraCats" class="hidden mt-2 max-h-60 overflow-y-auto p-3 rounded-xl bg-surface-container-low grid sm:grid-cols-2 gap-x-4" aria-label="Otras categorías donde también aparece"></div>
         <p class="mt-1 text-[11px] text-on-surface-variant">Define dónde aparece en el menú de la tienda. La marca se suma sola a esa subcategoría.</p>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">

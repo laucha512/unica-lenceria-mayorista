@@ -1,6 +1,11 @@
 // Árbol de navegación: categorías → subcategorías → marcas derivadas de los productos.
 // Función pura: la usa la API (/api/categories/tree) y la tienda como respaldo sin conexión.
 
+/** Todas las subcategorías de un artículo: la principal y las extra (ej. unisex en Mujeres y Hombre). */
+export const subIdsOf = (a) => [a.subcategoryId, ...(a.extraSubcategoryIds || [])].filter(Boolean);
+/** ¿El artículo está en alguna de estas subcategorías? */
+export const inSubs = (a, ids) => subIdsOf(a).some((id) => ids.has(id));
+
 export const slugify = (s) =>
   String(s || '')
     .normalize('NFD')
@@ -50,7 +55,7 @@ export function buildTreeFrom({ categories = [], subcategories = [], articles = 
     .map((cat) => {
       const subs = subcategories.filter((s) => s.categoryId === cat.id && visible(s)).sort(byOrder);
       const subIds = new Set(subs.map((s) => s.id));
-      const catProducts = articles.filter((a) => subIds.has(a.subcategoryId));
+      const catProducts = articles.filter((a) => inSubs(a, subIds));
       return {
         id: cat.id,
         name: cat.name,
@@ -60,7 +65,7 @@ export function buildTreeFrom({ categories = [], subcategories = [], articles = 
         productCount: catProducts.filter((p) => p.inStock).length,
         brands: brandsOf(catProducts, brandIndex),
         subcategories: subs.map((s) => {
-          const products = articles.filter((a) => a.subcategoryId === s.id);
+          const products = articles.filter((a) => subIdsOf(a).includes(s.id));
           return {
             id: s.id,
             categoryId: s.categoryId,

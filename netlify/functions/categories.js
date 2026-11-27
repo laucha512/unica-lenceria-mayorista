@@ -92,7 +92,11 @@ export default handle(async (req) => {
       if (subIds.length) {
         unassigned = await updateCollection('articles', (arts) => {
           let n = 0;
-          const next = arts.map((a) => (subIds.includes(a.subcategoryId) ? (n++, { ...a, subcategoryId: '' }) : a));
+          const next = arts.map((a) => {
+            const extra = (a.extraSubcategoryIds || []).filter((x) => !subIds.includes(x));
+            if (subIds.includes(a.subcategoryId)) return n++, { ...a, subcategoryId: '', extraSubcategoryIds: extra };
+            return extra.length !== (a.extraSubcategoryIds || []).length ? { ...a, extraSubcategoryIds: extra } : a;
+          });
           return { list: next, result: n };
         });
       }

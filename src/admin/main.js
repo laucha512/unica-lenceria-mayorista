@@ -8,6 +8,26 @@ import { findDuplicates } from './duplicates.js';
 import { combos, comboKey, isSoldOut, soldOutCount } from '../shared/stock.js';
 import { applyPercent } from '../shared/prices.js';
 import { initCategories, renderCategories, subcategoryOptions, subcategoryPath } from './categories.js';
+import { subIdsOf, inSubs } from '../shared/tree.js';
+
+/* Artículo en varias categorías (ej. unisex): la del desplegable es la principal y acá se tildan las demás. */
+function renderExtraCats(checked = $$('#artExtraCats input:checked').map((i) => i.value)) {
+  const box = $('#artExtraCats');
+  const primary = $('#artSubcategory').value;
+  const on = new Set(checked);
+  const cats = [...state.categories].sort((a, b) => a.order - b.order);
+  box.innerHTML = cats
+    .map((c) => {
+      const subs = state.subcategories.filter((x) => x.categoryId === c.id && x.id !== primary).sort((a, b) => a.order - b.order);
+      if (!subs.length) return '';
+      return `<div class="sm:col-span-2 mt-1 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">${esc(c.name)}</div>${subs
+        .map((x) => `<label class="flex items-center gap-2 text-sm py-1"><input type="checkbox" value="${esc(x.id)}" class="rounded text-primary focus:ring-primary"${on.has(x.id) ? ' checked' : ''}> ${esc(x.name)}</label>`)
+        .join('')}`;
+    })
+    .join('');
+  box.classList.toggle('hidden', !$('#artMultiCat').checked);
+}
+
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -1076,9 +1096,9 @@ function priceScopeTest() {
   if (type === 'brand') return (a) => plainName(a.brand) === plainName(value);
   if (type === 'category') {
     const ids = new Set(state.subcategories.filter((s) => s.categoryId === value).map((s) => s.id));
-    return (a) => ids.has(a.subcategoryId);
+    return (a) => inSubs(a, ids);
   }
-  return (a) => a.subcategoryId === value;
+  return (a) => subIdsOf(a).includes(value);
 }
 
 function fillPriceScopeValues() {
@@ -1549,7 +1569,7 @@ function filteredArticles() {
   const brand = $('#articleBrandFilter').value;
   const onlyNew = $('#articleNewFilter').value === 'new';
   return state.articles.filter((a) => {
-    const hay = plain(`${a.title} ${a.brand} ${a.code} ${a.description} ${a.saleType} ${subcategoryPath(a.subcategoryId)}`);
+    const hay = plain(`${a.title} ${a.brand} ${a.code} ${a.description} ${a.saleType} ${subIdsOf(a).map(subcategoryPath).join(' ')}`);
     return words.every((w) => matches(hay, w)) && (brand === 'all' || a.brand === brand) && (!onlyNew || a.isNew);
   });
 }
@@ -1574,7 +1594,7 @@ function articleCard(a) {
     </div>
     <div class="p-4">
       <h3 class="font-headline-sm text-base font-bold text-on-surface line-clamp-1" title="${esc(a.title)}">${esc(a.title)}${a.code ? ` <span class="font-body-md text-xs text-on-surface-variant font-semibold">Art. ${esc(a.code)}</span>` : ''}</h3>
-      <p class="text-[11px] font-semibold mt-1 ${a.subcategoryId ? 'text-primary' : 'text-error'}">${esc(subcategoryPath(a.subcategoryId) || 'Sin categoría asignada')}</p>
+      <p class="text-[11px] font-semibold mt-1 ${a.subcategoryId ? 'text-primary' : 'text-error'}">${esc(subIdsOf(a).map(subcategoryPath).filter(Boolean).join(' + ') || 'Sin categoría asignada')}</p>
       <p class="text-xs text-on-surface-variant mt-1 line-clamp-2">${esc(a.description || a.saleType || '')}</p>
       <div class="mt-3 flex items-center gap-1.5 flex-wrap">
         <span class="text-[11px] text-on-surface-variant font-medium">Talles:</span>
@@ -2185,6 +2205,9 @@ function openArticleModal(article = null) {
   $('#artNewBrand').value = '';
   fillBrandSelect(article?.brand);
   $('#artSubcategory').innerHTML = subcategoryOptions(article?.subcategoryId || '');
+  const extras = article?.extraSubcategoryIds || [];
+  $('#artMultiCat').checked = extras.length > 0;
+  renderExtraCats(extras);
   $('#artTitle').value = article?.title || '';
   $('#artCode').value = article?.code || '';
   $('#artTag').value = article?.tag || '';
@@ -2293,6 +2316,9 @@ $('#articleForm').addEventListener('submit', async (e) => {
       inStock: $('#artInStock').checked,
       images: form.photos.map((p) => p.url),
       subcategoryId: $('#artSubcategory').value,
+      extraSubcategoryIds: $('#artMultiCat').checked
+        ? $$('#artExtraCats input:checked').map((i) => i.value).filter((id) => id !== $('#artSubcategory').value)
+        : [],
     };
     const saved = form.editingId
       ? await call(`articles?id=${encodeURIComponent(form.editingId)}`, { method: 'PUT', body })
@@ -2883,3 +2909,6 @@ window.addEventListener('hashchange', () => {
     showLogin('Tu sesión venció. Ingresá nuevamente.');
   }
 })();
+
+$('#artMultiCat').addEventListener('change', () => renderExtraCats());
+$('#artSubcategory').addEventListener('change', () => renderExtraCats());
