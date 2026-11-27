@@ -1,4 +1,5 @@
 // GET /api/clients               -> datos cargados a mano para cada cliente (admin)
+// GET /api/clients?phone=549...  -> { name, city } de ese cliente, si el admin los cargó (público, para la tienda)
 // PUT /api/clients?phone=549...  -> { name, city, notes }: los guarda (admin). Tienen prioridad sobre lo que escribió en el pedido.
 import { error, handle, HttpError, json, readJson, requireAuth } from '../lib/http.js';
 import { readCollection, updateCollection } from '../lib/store.js';
@@ -10,6 +11,13 @@ const field = (v, max, label) => {
 };
 
 export default handle(async (req) => {
+  // Público: la tienda completa nombre y localidad con lo que cargó el admin para ese WhatsApp.
+  const lookup = req.method === 'GET' && new URL(req.url).searchParams.get('phone');
+  if (lookup) {
+    if (!/^\d{8,15}$/.test(lookup)) throw new HttpError('WhatsApp inválido.');
+    const c = (await readCollection('clients')).find((x) => x.phone === lookup);
+    return json(c ? { name: c.name, city: c.city } : {});
+  }
   requireAuth(req);
   switch (req.method) {
     case 'GET':

@@ -320,8 +320,32 @@ export function initCart({ onUpdate } = {}) {
       save();
     }
   };
-  phoneInput.addEventListener('change', tidyPhone);
+  // Si el admin le cargó nombre y localidad a este WhatsApp, se completan solos (pisan lo escrito).
+  let lookedUp = '';
+  const fillFromAdmin = async () => {
+    const phone = normalizeWhatsapp(phoneInput.value);
+    if (!phone || phone === lookedUp) return;
+    lookedUp = phone;
+    try {
+      const res = await fetch(`/api/clients?phone=${phone}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      for (const k of ['name', 'city']) {
+        if (!data[k] || normalizeWhatsapp(phoneInput.value) !== phone) continue;
+        state.info[k] = data[k];
+        $(fields[k]).value = data[k];
+      }
+      save();
+    } catch {
+      /* sin conexión: quedan los datos guardados en el teléfono */
+    }
+  };
+  phoneInput.addEventListener('change', () => {
+    tidyPhone();
+    fillFromAdmin();
+  });
   tidyPhone(); // números guardados antes de este cambio
+  fillFromAdmin();
 
   // Enviar: primero se registra el pedido (el servidor da el código o lo suma a su pedido abierto)
   // y después se abre WhatsApp con el mensaje que ya incluye ese código.
