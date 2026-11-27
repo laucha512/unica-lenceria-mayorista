@@ -220,6 +220,7 @@ export const refresh = () => render();
 
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex="-1"])';
 let lastFocus = null;
+let onOpen = () => {}; // al abrir el pedido se vuelve a buscar al cliente por su WhatsApp
 const isOpen = () => !$('#cartDrawer').classList.contains('hidden');
 
 export function open() {
@@ -230,6 +231,7 @@ export function open() {
   document.body.style.overflow = 'hidden';
   document.querySelectorAll('[data-open-cart]').forEach((b) => b.setAttribute('aria-expanded', 'true'));
   render();
+  onOpen();
   $('#cartClose').focus();
 }
 
@@ -324,11 +326,15 @@ export function initCart({ onUpdate } = {}) {
     }
   };
   // Si el admin le cargó nombre y localidad a este WhatsApp, se completan solos (pisan lo escrito).
+  // Se busca siempre que el número esté bien escrito (cambió, o faltan nombre o localidad).
   let lookedUp = '';
+  let pending = '';
   const fillFromAdmin = async () => {
     const phone = normalizeWhatsapp(phoneInput.value);
-    if (!phone || phone === lookedUp) return;
-    lookedUp = phone;
+    if (!phone || phone === pending) return;
+    const missing = !$(fields.name).value.trim() || !$(fields.city).value.trim();
+    if (phone === lookedUp && !missing) return;
+    pending = phone;
     try {
       const res = await fetch(`/api/clients?phone=${phone}`);
       if (!res.ok) return;
@@ -339,8 +345,11 @@ export function initCart({ onUpdate } = {}) {
         $(fields[k]).value = data[k];
       }
       save();
+      lookedUp = phone;
     } catch {
       /* sin conexión: quedan los datos guardados en el teléfono */
+    } finally {
+      pending = '';
     }
   };
   phoneInput.addEventListener('change', () => {
@@ -349,6 +358,10 @@ export function initCart({ onUpdate } = {}) {
   });
   tidyPhone(); // números guardados antes de este cambio
   fillFromAdmin();
+  onOpen = () => {
+    tidyPhone();
+    fillFromAdmin();
+  };
 
   // Enviar: primero se registra el pedido (el servidor da el código o lo suma a su pedido abierto)
   // y después se abre WhatsApp con el mensaje que ya incluye ese código.
@@ -420,7 +433,7 @@ export function initCart({ onUpdate } = {}) {
 export function setPickupOptions(labels) {
   const el = $('#cartDelivery');
   [...el.options].filter((o) => o.textContent.startsWith('Retiro en ')).forEach((o) => o.remove());
-  const shipping = el.options[el.options.length - 1];
+  const shipping = [...el.options].find((o) => o.textContent.startsWith('Envío')) || null;
   labels.forEach((label) => el.insertBefore(new Option(label, label), shipping));
   const saved = state.info.delivery;
   if (saved && ![...el.options].some((o) => o.value === saved)) {
