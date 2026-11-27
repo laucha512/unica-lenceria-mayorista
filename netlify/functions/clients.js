@@ -15,8 +15,14 @@ export default handle(async (req) => {
   const lookup = req.method === 'GET' && new URL(req.url).searchParams.get('phone');
   if (lookup) {
     if (!/^\d{8,15}$/.test(lookup)) throw new HttpError('WhatsApp inválido.');
-    const c = (await readCollection('clients')).find((x) => x.phone === lookup);
-    return json(c ? { name: c.name, city: c.city } : {});
+    // Primero lo editado en Clientes; si no, lo de su último pedido.
+    const edited = (await readCollection('clients')).find((x) => x.phone === lookup) || {};
+    const last = (await readCollection('orders'))
+      .filter((o) => o.phone === lookup)
+      .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))[0]?.info || {};
+    const name = edited.name || last.name || '';
+    const city = edited.city || last.city || '';
+    return json(name || city ? { name, city } : {});
   }
   requireAuth(req);
   switch (req.method) {

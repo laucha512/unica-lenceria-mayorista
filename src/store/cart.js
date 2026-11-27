@@ -304,7 +304,10 @@ export function initCart({ onUpdate } = {}) {
     el.addEventListener('input', () => {
       state.info[k] = el.value;
       save();
-      if (k === 'phone') showSendError('');
+      if (k === 'phone') {
+        showSendError('');
+        fillFromAdmin(); // apenas el número queda completo, sin esperar a salir del campo
+      }
       if (lines().length) $('#cartSend').href = whatsappLink(buildMessage());
     });
   }
