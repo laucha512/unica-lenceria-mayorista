@@ -26,11 +26,10 @@ import { salePrice as packPrice } from '../../src/shared/prices.js';
 const plain = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 const visitorHash = (ip) => createHash('sha256').update(`unica-pedidos:${ip || ''}`).digest('hex').slice(0, 16);
 
-/** Destino: la sucursal de retiro, o envío/a coordinar + localidad. Si cambia, es otro pedido. */
-const destinationOf = (info) => {
-  const delivery = plain(info.delivery || 'a coordinar');
-  return delivery.startsWith('retiro') ? delivery : `${delivery}|${plain(info.city)}`;
-};
+/** Destino: la forma de entrega elegida. Si cambia, es otro pedido; la localidad no separa pedidos. */
+const destinationOf = (info) => plain(info.delivery || 'a coordinar');
+// Pedidos guardados antes de este cambio: "a coordinar|rosario" → "a coordinar".
+const sameDestination = (o, destination) => String(o.destination || '').split('|')[0] === destination;
 
 function newCode(list) {
   const used = new Set(list.map((o) => o.code));
@@ -81,7 +80,7 @@ export default handle(async (req, context) => {
 
       const result = await updateCollection('orders', (raw) => {
         const list = raw.map(normalizeOrder);
-        const i = list.findIndex((o) => o.phone === phone && o.destination === destination && OPEN_STATUSES.includes(o.status));
+        const i = list.findIndex((o) => o.phone === phone && sameDestination(o, destination) &&OPEN_STATUSES.includes(o.status));
 
         if (i !== -1) {
           const open = list[i];
