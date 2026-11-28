@@ -819,7 +819,7 @@ export function renderSeason() {
     </div>
     <button type="button" id="seasonNext" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-bold ${due ? 'bg-amber-500 text-white animate-pulse' : 'bg-surface-container-high'}" title="Cambia todos los ganchos, textos y tips por los de la temporada siguiente">
       <span class="material-symbols-outlined text-[18px]" aria-hidden="true">refresh</span><span>Actualizar ideas</span>
-    </button>${last && due ? '<p class="basis-full text-right text-[11px] text-amber-800 font-semibold">Es la última temporada cargada: pedile a Claude una nueva investigación de ideas.</p>' : ''}`;
+    </button>${last && due ? '<p class="basis-full text-right text-[11px] text-on-surface-variant">Es la última temporada: al actualizar vuelve a la 1 (con la época del año nueva).</p>' : ''}`;
 }
 
 export async function loadSeason() {
@@ -840,13 +840,9 @@ export async function loadSeason() {
 
 async function nextSeason() {
   const left = Math.max(0, SEASON_WEEKS - weeksIn());
-  if (ui.season >= SEASONS.length - 1) {
-    d.showToast('Es la última temporada cargada: pedile a Claude una nueva investigación de ideas.', 'error');
-    return;
-  }
   if (left > 1 && !confirm(`Todavía te quedan ~${left} semanas de ideas en esta temporada. ¿Pasar igual a la siguiente?`)) return;
   try {
-    const row = await d.call('settings?social=1', { method: 'PUT', body: { season: ui.season + 1 } });
+    const row = await d.call('settings?social=1', { method: 'PUT', body: { season: (ui.season + 1) % SEASONS.length } });
     ui.season = row.season;
     ui.seasonStart = row.startedAt;
     ui.seed = 0;
