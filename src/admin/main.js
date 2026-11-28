@@ -8,6 +8,7 @@ import { findDuplicates } from './duplicates.js';
 import { combos, comboKey, isSoldOut, soldOutCount } from '../shared/stock.js';
 import { applyPercent } from '../shared/prices.js';
 import { initSocial, renderSocial } from './social.js';
+import { initIdeas, renderIdeas } from './ideas.js';
 import { initCategories, renderCategories, subcategoryOptions, subcategoryPath } from './categories.js';
 import { subIdsOf, inSubs } from '../shared/tree.js';
 
@@ -344,7 +345,10 @@ function switchTab(tab, focus = true) {
   // En el celular los 4 cuadros de arriba ocupan toda la pantalla: solo se muestran en Publicaciones y Pedidos.
   $('#kpiGrid').classList.toggle('max-sm:hidden', !['publicaciones', 'pedidos'].includes(tab));
   if (tab === 'estadisticas' && state.token && !stats.views) loadStatsViews();
-  if (tab === 'redes') renderSocial();
+  if (tab === 'redes') {
+    renderSocial();
+    if (!$('#ideasPanel').children.length) renderIdeas();
+  }
   $$('.tab-section').forEach((s) => s.classList.toggle('hidden', s.id !== `section-${tab}`));
   $$('.nav-btn').forEach((btn) => {
     const on = btn.dataset.tab === tab;
@@ -2877,6 +2881,7 @@ $('#brandListContainer').addEventListener('click', async (e) => {
 /* ================================================================ Inicio */
 
 initSocial({ state, showToast });
+initIdeas({ state, showToast });
 initCategories({
   state,
   call,

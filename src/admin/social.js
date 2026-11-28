@@ -8,7 +8,7 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const PINK = '#be185d';
 const DARK = '#1e293b';
 const SOFT = '#fdf2f8';
-const SIZES = { post: [1080, 1080], story: [1080, 1920] };
+const SIZES = { post: [1080, 1080], feed: [1080, 1350], story: [1080, 1920] };
 
 let d; // { state, showToast }
 const ui = { filter: 'novedades', search: '', format: 'post', shown: 24 };
@@ -18,7 +18,7 @@ const plain = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').to
 const productUrl = (a) => `${SITE_URL}/#producto/${a.id}`;
 const hashtag = (s) => '#' + plain(s).replace(/[^a-z0-9]/g, '');
 
-function loadImage(src) {
+export function loadImage(src) {
   if (!imageCache.has(src)) {
     imageCache.set(
       src,
@@ -61,7 +61,7 @@ export function captionOf(a) {
 
 /* ---------------------------------------------------------------- Imagen */
 
-function roundRect(ctx, x, y, w, h, r) {
+export function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
   ctx.arcTo(x + w, y, x + w, y + h, r);
@@ -72,14 +72,14 @@ function roundRect(ctx, x, y, w, h, r) {
 }
 
 /** Recorta la foto para que llene el recuadro (como object-fit: cover). */
-function drawCover(ctx, img, x, y, w, h) {
+export function drawCover(ctx, img, x, y, w, h) {
   const s = Math.max(w / img.width, h / img.height);
   const sw = w / s;
   const sh = h / s;
   ctx.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, x, y, w, h);
 }
 
-function wrap(ctx, text, maxWidth, maxLines) {
+export function wrap(ctx, text, maxWidth, maxLines) {
   const words = String(text).split(/\s+/);
   const lines = [];
   let line = '';
@@ -112,7 +112,7 @@ export async function drawPost(a, format = 'post') {
 
   const story = format === 'story';
   const pad = 48;
-  const infoH = story ? 450 : 300;
+  const infoH = story ? 450 : format === 'feed' ? 330 : 300;
   const top = story ? 170 : pad;
   const photo = { x: pad, y: top, w: W - pad * 2, h: H - top - infoH - pad };
 
@@ -258,7 +258,7 @@ export function renderSocial() {
 
 /* ---------------------------------------------------------------- Acciones */
 
-async function copyText(text) {
+export async function copyText(text) {
   try {
     await navigator.clipboard.writeText(text);
     return true;
@@ -267,7 +267,7 @@ async function copyText(text) {
   }
 }
 
-function download(blob, name) {
+export function download(blob, name) {
   const url = URL.createObjectURL(blob);
   const link = Object.assign(document.createElement('a'), { href: url, download: name });
   document.body.append(link);
