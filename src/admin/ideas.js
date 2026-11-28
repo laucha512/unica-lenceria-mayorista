@@ -3,6 +3,7 @@
 import { formatPrice, SITE_URL } from '../config.js';
 import { hasOffer, salePrice } from '../shared/prices.js';
 import { esc } from '../shared/utils.js';
+import { subIdsOf } from '../shared/tree.js';
 import { copyText, download, drawCover, drawPost, loadImage, roundRect, wrap } from './social.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -17,7 +18,7 @@ const SANS = '"Plus Jakarta Sans", sans-serif';
 const SERIF = '"Playfair Display", serif';
 
 let d; // { state, showToast }
-const ui = { idea: 'plan', brand: '', seed: 0, results: [], overrides: {}, bgMode: '0' };
+const ui = { idea: 'plan', brand: '', seed: 0, results: [], overrides: {}, bgMode: '0', sub: 'auto' };
 const plain = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
 /* ---------------------------------------------------------------- Artículos */
@@ -527,7 +528,8 @@ const IDEAS = {
     group: 'art',
     label: 'Carrusel: Nuevos ingresos',
     hint: 'Tapa con collage + una lámina por novedad + cierre. El formato más usado para mostrar lo nuevo.',
-    pick: () => rotate(newest(withPhoto().filter((a) => a.isNew)), 8),
+    n: 8,
+    pool: () => newest(withPhoto().filter((a) => a.isNew)),
     build: async (items, r) => [
       await one(coverSlide({ kicker: 'Nuevos ingresos', title: 'Llegó lo nuevo', subtitle: `${items.length} artículos para tu negocio`, items: items.map(art), bg: r.bg }), 'bg'),
       ...(await productSlides(items)),
@@ -539,7 +541,8 @@ const IDEAS = {
     group: 'art',
     label: 'Carrusel: Ofertas',
     hint: 'Ideal para empujar ventas: muestra el precio anterior tachado.',
-    pick: () => rotate(newest(withPhoto().filter(hasOffer)), 8),
+    n: 8,
+    pool: () => newest(withPhoto().filter(hasOffer)),
     build: async (items, r) => [
       await one(coverSlide({ kicker: 'Hasta agotar stock', title: 'Ofertas mayoristas', subtitle: 'Precios rebajados', items: items.map(art), bg: r.bg }), 'bg'),
       ...(await productSlides(items)),
@@ -552,7 +555,8 @@ const IDEAS = {
     label: 'Carrusel: Una marca',
     hint: 'Presenta una marca con sus artículos.',
     needsBrand: true,
-    pick: () => rotate(newest(withPhoto().filter((a) => a.brand === ui.brand)), 8),
+    n: 8,
+    pool: () => newest(withPhoto().filter((a) => a.brand === ui.brand)),
     build: async (items, r) => [
       await one(coverSlide({ kicker: 'Marca destacada', title: ui.brand, subtitle: 'Ahora en ÚNICA Mayorista', items: items.map(art), bg: r.bg }), 'bg'),
       ...(await productSlides(items)),
@@ -564,7 +568,8 @@ const IDEAS = {
     group: 'art',
     label: 'Carrusel: ¿Querés empezar a revender?',
     hint: 'Educativo: de los que más se guardan y comparten. Atrae revendedoras nuevas.',
-    pick: () => rotate([...withPhoto()].sort((x, y) => salePrice(x) - salePrice(y)), 4),
+    n: 4,
+    pool: () => [...withPhoto()].sort((x, y) => salePrice(x) - salePrice(y)),
     build: async (items, r) => [
       await one(coverSlide({ kicker: 'Guía para emprendedoras', title: '¿Querés vender lencería?', subtitle: 'Te contamos cómo arrancar 👉', items: items.map(art), bg: r.bg }), 'bg'),
       await one(textSlide({ number: 1, title: 'Elegí qué vender', body: 'Arrancá con lo que más rota: packs de bombachas, boxers, medias y conjuntos básicos. Se venden todo el año.' })),
@@ -581,7 +586,8 @@ const IDEAS = {
     group: 'art',
     label: 'Carrusel: Cómo comprar en la web',
     hint: 'Explica paso a paso cómo hacer un pedido. Sirve para fijar en el perfil.',
-    pick: () => rotate(newest(withPhoto()), 4),
+    n: 4,
+    pool: () => newest(withPhoto()),
     build: async (items, r) => [
       await one(coverSlide({ kicker: 'Paso a paso', title: 'Cómo comprar en ÚNICA', subtitle: 'Fácil y desde el celular 👉', items: items.map(art), bg: r.bg }), 'bg'),
       await one(textSlide({ number: 1, title: 'Entrá a la web', body: `Tocá el link de la bio o entrá a ${WEB}. Vas a ver todo el catálogo con precios mayoristas.` })),
@@ -597,7 +603,8 @@ const IDEAS = {
     group: 'art',
     label: 'Foto: Collage de novedades',
     hint: 'Una sola imagen con varias novedades y sus precios.',
-    pick: () => rotate(newest(withPhoto().filter((a) => a.isNew)), 9),
+    n: 9,
+    pool: () => newest(withPhoto().filter((a) => a.isNew)),
     build: async (items) => [await one(collageSlide(items.map(art)))],
     caption: (items) => `✨ Novedades ✨\n\n${list(items)}\n\n${CLOSING}\n\n${igLine()}${TAGS}`,
   },
@@ -605,7 +612,9 @@ const IDEAS = {
     group: 'art',
     label: 'Foto: ¿1, 2 o 3? Elegí tu favorito',
     hint: 'Encuesta para que comenten: más comentarios = más alcance.',
-    pick: () => [...new Set(rotate(newest(withPhoto().filter((a) => a.isNew).concat(withPhoto())), 6))].slice(0, 3),
+    n: 3,
+    exact: true, // la encuesta necesita 3 de la misma subcategoría
+    pool: () => [...new Set([...newest(withPhoto().filter((a) => a.isNew)), ...newest(withPhoto())])],
     build: async (items) => [await one(pickSlide(items.map(art)))],
     caption: (items) =>
       `💗 ¿Cuál elegís? ${items.map((_, i) => `${i + 1}️⃣`).join(' ')}\nComentá el número de tu favorito 👇\n\n${items.map((a, i) => `${i + 1}. ${a.title} – ${formatPrice(salePrice(a))}`).join('\n')}\n\n🛍️ Todos disponibles en la web (link en la bio).\n\n${igLine()}${TAGS}`,
@@ -639,6 +648,45 @@ IDEAS.fecha = {
   caption: (t) => `${t.title}\n${t.body}\n\n${CLOSING}\n\n${igLine()}#${plain(t.kicker)} ${TAGS}`,
 };
 
+/* ---------------------------------------------------------------- Elección por subcategoría */
+// Para que la publicación tenga sentido, los artículos salen de una misma subcategoría
+// (3 conjuntos, 3 boxers, 3 packs…). "Cambiar artículos" pasa a otra subcategoría.
+
+function subName(id) {
+  const sub = d.state.subcategories.find((x) => x.id === id);
+  const cat = sub && d.state.categories.find((c) => c.id === sub.categoryId);
+  return sub ? `${cat ? `${cat.name} › ` : ''}${sub.name}` : '';
+}
+
+function bySub(pool) {
+  const map = new Map();
+  for (const a of pool) for (const id of subIdsOf(a)) map.set(id, [...(map.get(id) || []), a]);
+  return map;
+}
+
+/** Subcategorías con artículos para esta idea, la que más tiene primero. */
+function subOptions(idea) {
+  return [...bySub(idea.pool())].filter(([id]) => subName(id)).sort((a, b) => b[1].length - a[1].length);
+}
+
+function smartPick(idea) {
+  const pool = idea.pool();
+  if (ui.sub === 'all') return { sub: null, items: rotate(pool, idea.n) };
+  const groups = bySub(pool);
+  if (ui.sub !== 'auto') return { sub: ui.sub, items: rotate(groups.get(ui.sub) || [], idea.n) };
+  const need = idea.exact ? idea.n : Math.min(idea.n, 3);
+  const ok = [...groups].filter(([id, list]) => subName(id) && list.length >= need).sort((a, b) => b[1].length - a[1].length);
+  if (!ok.length) return { sub: null, items: idea.exact ? [] : rotate(pool, idea.n) };
+  const [sub, list] = ok[ui.seed % ok.length];
+  return { sub, items: list.slice(0, idea.n) };
+}
+
+/** Artículos con los que se puede reemplazar uno de la publicación (misma subcategoría). */
+function swapOptions(r) {
+  const all = withPhoto();
+  return r.sub ? all.filter((a) => subIdsOf(a).includes(r.sub)) : all;
+}
+
 /* ---------------------------------------------------------------- Armado */
 
 async function buildResult(r) {
@@ -670,8 +718,11 @@ async function makeResult(key, day = '') {
     r.text = idea.pickText();
     r.bgChoice = bgChoice();
   } else {
-    r.items = idea.pick();
+    const { sub, items } = smartPick(idea);
+    r.sub = sub;
+    r.items = items;
     if (!r.items.length) return null;
+    if (sub) r.title += ` · ${subName(sub)}`;
   }
   return buildResult(r);
 }
@@ -682,7 +733,9 @@ async function weeklyPlan() {
   const generic = upcomingDates().length && week % 2 === 0 ? 'fecha' : ['frase', 'venta', 'cuidado', 'sabias'][week % 4];
   const friday = ['ofertas', 'elegir', 'revender', 'collage', 'comprar'][week % 5];
   const saved = ui.seed;
+  const savedSub = ui.sub;
   ui.seed = week; // los textos y artículos también rotan por semana
+  ui.sub = 'auto';
   const out = [];
   for (const [day, keys] of [
     ['Lunes', ['novedades', 'collage', 'elegir']],
@@ -698,6 +751,7 @@ async function weeklyPlan() {
     }
   }
   ui.seed = saved;
+  ui.sub = savedSub;
   return out;
 }
 
@@ -724,6 +778,15 @@ export function renderIdeas() {
   <div class="flex flex-wrap gap-2" role="group" aria-label="Ideas genéricas">${group('gen')}</div>
   <p class="mt-4 text-sm text-on-surface-variant">${esc(ui.idea === 'plan' ? 'Arma las 3 publicaciones de la semana: lunes con novedades, miércoles una foto genérica y viernes ofertas o una encuesta. Cada semana cambia sola.' : idea.hint)}</p>
   <div class="mt-3 flex flex-wrap items-center gap-2">
+    ${
+      idea && !idea.generic
+        ? `<select id="ideaSub" aria-label="Subcategoría" class="bg-surface-container-low px-3 py-2 pr-8 rounded-xl text-sm border-none focus:ring-2 focus:ring-primary font-medium max-w-full">
+            <option value="auto"${ui.sub === 'auto' ? ' selected' : ''}>Subcategoría: automática (todas del mismo tipo)</option>
+            <option value="all"${ui.sub === 'all' ? ' selected' : ''}>Mezclar subcategorías</option>
+            ${subOptions(idea).map(([id, list]) => `<option value="${esc(id)}"${id === ui.sub ? ' selected' : ''}>${esc(subName(id))} (${list.length})</option>`).join('')}
+          </select>`
+        : ''
+    }
     ${idea?.needsBrand ? `<select id="ideaBrand" aria-label="Marca" class="bg-surface-container-low px-3 py-2 pr-8 rounded-xl text-sm border-none focus:ring-2 focus:ring-primary font-medium">${brands.map(([b, n]) => `<option value="${esc(b)}"${b === ui.brand ? ' selected' : ''}>${esc(b)} (${n})</option>`).join('')}</select>` : ''}
     ${
       idea?.generic || ui.idea === 'plan'
@@ -766,6 +829,23 @@ function renderResults() {
       ? `<div class="mt-2 grid gap-2 sm:grid-cols-2">
       <label class="text-xs font-semibold">Título<textarea data-text="title" rows="2" maxlength="120" class="mt-1 w-full rounded-xl bg-surface-container-lowest border-none text-sm">${esc(r.text.title)}</textarea></label>
       <label class="text-xs font-semibold">Texto chico<textarea data-text="body" rows="2" maxlength="200" class="mt-1 w-full rounded-xl bg-surface-container-lowest border-none text-sm">${esc(r.text.body)}</textarea></label>
+    </div>`
+      : ''
+  }
+  ${
+    r.items
+      ? `<div class="mt-2">
+      <p class="text-xs font-bold text-on-surface-variant mb-1">Artículos de esta publicación${r.sub ? ` (de ${esc(subName(r.sub))})` : ''}: cambiá el que quieras</p>
+      <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">${r.items
+        .map((a, i) => {
+          const opts = swapOptions(r);
+          if (!opts.includes(a)) opts.unshift(a);
+          return `<label class="text-xs font-semibold flex items-center gap-2"><span class="w-5 text-primary">${i + 1}.</span><select data-swap="${i}" class="flex-1 min-w-0 bg-surface-container-lowest px-2 py-1.5 pr-7 rounded-lg text-xs border-none focus:ring-2 focus:ring-primary">${opts
+            .slice(0, 150)
+            .map((o) => `<option value="${esc(o.id)}"${o.id === a.id ? ' selected' : ''}>${esc(`${o.brand ? `${o.brand} · ` : ''}${o.title}`)}</option>`)
+            .join('')}</select></label>`;
+        })
+        .join('')}</div>
     </div>`
       : ''
   }
@@ -839,6 +919,7 @@ export function initIdeas(deps) {
     if (pick) {
       ui.idea = pick.dataset.idea;
       ui.seed = 0;
+      ui.sub = 'auto';
       ui.results = [];
       renderIdeas();
       return;
@@ -864,6 +945,22 @@ export function initIdeas(deps) {
     if (action === 'copy' && r) copyText(r.caption).then((ok) => d.showToast(ok ? 'Texto copiado.' : 'No se pudo copiar.', ok ? 'ok' : 'error'));
   });
   panel.addEventListener('change', async (e) => {
+    if (e.target.id === 'ideaSub') {
+      ui.sub = e.target.value;
+      ui.seed = 0;
+      build($('[data-idea-action="build"]'));
+    }
+    const swap = e.target.closest('[data-swap]');
+    if (swap) {
+      const r = ui.results[Number(swap.closest('[data-result]').dataset.result)];
+      const a = d.state.articles.find((x) => x.id === swap.value);
+      if (r && a) {
+        r.items[Number(swap.dataset.swap)] = a;
+        await buildResult(r);
+        renderResults();
+      }
+      return;
+    }
     if (e.target.id === 'ideaBrand') {
       ui.brand = e.target.value;
       ui.seed = 0;
