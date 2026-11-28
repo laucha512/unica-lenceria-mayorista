@@ -52,21 +52,97 @@ function saveStyle() {
 
 /* ---------------------------------------------------------------- Audio → texto */
 
-/** Saca el audio del video en mono a 16 kHz, que es lo que necesita la IA. */
-async function audioOf(file) {
+/**
+ * En el iPhone el navegador no deja reproducir con sonido si no es en el mismo toque del botón.
+ * Por eso, apenas se toca, se crea el audio y se "destraba" un video que después se usa.
+ */
+function unlockMedia() {
   const ac = new AudioContext();
+  ac.resume();
+  const video = document.createElement('video');
+  video.src = st.url;
+  video.playsInline = true;
+  video.preload = 'auto';
+  const ready = video
+    .play()
+    .then(() => {
+      video.pause();
+      video.currentTime = 0;
+    })
+    .catch(() => {});
+  return { ac, video, ready };
+}
+
+/** Espera a que el video tenga datos para reproducir (o avisa si no carga). */
+function whenReady(video) {
+  if (video.readyState >= 2) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const done = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(() => (video.readyState >= 2 ? resolve() : reject(new Error('El video tarda en cargar. Probá de nuevo.'))), 15000);
+    video.addEventListener('loadeddata', done, { once: true });
+    video.addEventListener('canplay', done, { once: true });
+    video.onerror = () => reject(new Error('No se pudo abrir el video.'));
+    if (video.networkState === 0) video.load();
+  });
+}
+
+async function toMono16k(buf) {
+  const off = new OfflineAudioContext(1, Math.ceil(buf.duration * 16000), 16000);
+  const src = off.createBufferSource();
+  src.buffer = buf;
+  src.connect(off.destination);
+  src.start();
+  return (await off.startRendering()).getChannelData(0);
+}
+
+/** Plan B: reproduce el video en silencio y va guardando el sonido (tarda lo que dura el video). */
+async function captureAudio({ ac, video, ready }, onProgress) {
+  await ready;
+  await whenReady(video);
+  const source = ac.createMediaElementSource(video);
+  const proc = ac.createScriptProcessor(4096, 1, 1);
+  const mute = ac.createGain();
+  mute.gain.value = 0;
+  const parts = [];
+  proc.onaudioprocess = (e) => {
+    if (!video.paused) parts.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+  };
+  source.connect(proc);
+  proc.connect(mute).connect(ac.destination);
+  video.currentTime = 0;
+  await video.play();
+  await new Promise((resolve) => {
+    const timer = setInterval(() => onProgress(video.currentTime / (video.duration || 1)), 300);
+    video.onended = () => {
+      clearInterval(timer);
+      resolve();
+    };
+  });
+  source.disconnect();
+  proc.disconnect();
+  const total = parts.reduce((n, x) => n + x.length, 0);
+  if (!total) throw new Error('No se pudo leer el audio del video.');
+  const buf = ac.createBuffer(1, total, ac.sampleRate);
+  const data = buf.getChannelData(0);
+  let off = 0;
+  for (const x of parts) {
+    data.set(x, off);
+    off += x.length;
+  }
+  return toMono16k(buf);
+}
+
+/** Saca el audio del video en mono a 16 kHz, que es lo que necesita la IA. */
+async function audioOf(file, media, onStatus) {
   try {
-    const buf = await ac.decodeAudioData(await file.arrayBuffer());
-    const off = new OfflineAudioContext(1, Math.ceil(buf.duration * 16000), 16000);
-    const src = off.createBufferSource();
-    src.buffer = buf;
-    src.connect(off.destination);
-    src.start();
-    return (await off.startRendering()).getChannelData(0);
+    const buf = await media.ac.decodeAudioData(await file.arrayBuffer());
+    return await toMono16k(buf);
   } catch {
-    throw new Error('No se pudo leer el audio del video. Probá con un MP4 o MOV.');
-  } finally {
-    ac.close();
+    onStatus('Leyendo el audio del video… (tarda lo que dura el video)');
+    return captureAudio(media, (p) => onStatus(`Leyendo el audio del video… ${Math.round(p * 100)}%`));
   }
 }
 
@@ -255,24 +331,19 @@ function startPreview() {
 const MIME = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm'];
 
 /** Reproduce el video de punta a punta dibujando cada cuadro con subtítulos y lo graba (tarda lo que dura el video). */
-async function exportVideo(onProgress) {
+async function exportVideo(onProgress, media) {
   const mime = window.MediaRecorder && MIME.find((m) => MediaRecorder.isTypeSupported(m));
   if (!mime) throw new Error('Este navegador no puede grabar video. Probá desde Chrome o desde el celular.');
-  const video = document.createElement('video');
-  video.src = st.url;
-  video.playsInline = true;
-  video.preload = 'auto';
-  await new Promise((r, j) => {
-    video.onloadeddata = r;
-    video.onerror = () => j(new Error('No se pudo abrir el video.'));
-  });
+  const { video, ac, ready } = media;
+  await ready;
+  await whenReady(video);
+  video.currentTime = 0;
   const [W, H] = outSize();
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext('2d');
   const draw = makeFrameDrawer(ctx, W, H);
-  const ac = new AudioContext();
   await ac.resume();
   const dest = ac.createMediaStreamDestination();
   ac.createMediaElementSource(video).connect(dest);
@@ -416,11 +487,12 @@ async function pickFile(file) {
 
 async function generate(button) {
   if (st.busy) return;
+  const media = unlockMedia(); // tiene que ser en el mismo toque (iPhone)
   st.busy = true;
   button.disabled = true;
   try {
     status('Sacando el audio del video…');
-    const audio = await audioOf(st.file);
+    const audio = await audioOf(st.file, media, status);
     st.words = await transcribe(audio, status);
     st.groups = groupWords(st.words, Number(st.style.words));
     status(st.groups.length ? `Listo: ${st.groups.length} subtítulos. Revisalos y corregí lo que haga falta.` : 'No se escuchó ninguna palabra.');
@@ -430,6 +502,7 @@ async function generate(button) {
     status('');
     d.showToast(err.message, 'error');
   } finally {
+    if (media.ac.state !== 'closed') media.ac.close().catch(() => {});
     st.busy = false;
     button.disabled = false;
   }
@@ -437,13 +510,14 @@ async function generate(button) {
 
 async function deliver(button, action) {
   if (st.busy) return;
+  const media = st.result ? null : unlockMedia(); // en el mismo toque (iPhone)
   st.busy = true;
   const label = button.lastElementChild;
   const original = label.textContent;
   button.disabled = true;
   st.video?.pause();
   try {
-    if (!st.result) st.result = await exportVideo((p) => (label.textContent = `Grabando… ${Math.round(p * 100)}%`));
+    if (!st.result) st.result = await exportVideo((p) => (label.textContent = `Grabando… ${Math.round(p * 100)}%`), media);
     if (action === 'share' && navigator.canShare?.({ files: [st.result] })) {
       try {
         await navigator.share({ files: [st.result] });
