@@ -501,13 +501,150 @@ const REELS = {
 
 export const buildReel = (kind, items, extra) => REELS[kind](items, extra);
 
+/* ---------------------------------------------------------------- Música */
+// Música original generada en el navegador (sin derechos de autor): acordes, bajo y ritmo.
+// También se puede usar un audio propio (archivo que sube el admin).
+
+const NOTE = (n) => 440 * Math.pow(2, (n - 69) / 12); // número MIDI → Hz
+// Progresiones de 4 acordes (notas MIDI); una vuelta = 4 compases.
+const STYLES = {
+  alegre: { bpm: 112, drums: true, chords: [[60, 64, 67], [55, 59, 62], [57, 60, 64], [53, 57, 60]], bass: [36, 31, 33, 29], wave: 'triangle' },
+  suave: { bpm: 84, drums: false, chords: [[57, 60, 64, 67], [53, 57, 60, 64], [60, 64, 67, 71], [55, 59, 62, 65]], bass: [33, 29, 36, 31], wave: 'sine' },
+};
+
+function tone(ac, out, { freq, start, dur, type = 'sine', gain = 0.1, attack = 0.02, release = 0.25, filter }) {
+  const osc = ac.createOscillator();
+  const g = ac.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  g.gain.setValueAtTime(0, start);
+  g.gain.linearRampToValueAtTime(gain, start + attack);
+  g.gain.setValueAtTime(gain, Math.max(start + attack, start + dur - release));
+  g.gain.linearRampToValueAtTime(0, start + dur);
+  let node = osc;
+  if (filter) {
+    const f = ac.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = filter;
+    osc.connect(f);
+    node = f;
+  }
+  node.connect(g).connect(out);
+  osc.start(start);
+  osc.stop(start + dur + 0.05);
+}
+
+function kick(ac, out, t) {
+  const osc = ac.createOscillator();
+  const g = ac.createGain();
+  osc.frequency.setValueAtTime(140, t);
+  osc.frequency.exponentialRampToValueAtTime(45, t + 0.15);
+  g.gain.setValueAtTime(0.55, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+  osc.connect(g).connect(out);
+  osc.start(t);
+  osc.stop(t + 0.32);
+}
+
+let noiseBuffer = null;
+function noise(ac, out, t, { dur = 0.05, gain = 0.12, freq = 7000 } = {}) {
+  if (!noiseBuffer || noiseBuffer.sampleRate !== ac.sampleRate) {
+    noiseBuffer = ac.createBuffer(1, ac.sampleRate * 0.5, ac.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  }
+  const src = ac.createBufferSource();
+  src.buffer = noiseBuffer;
+  const f = ac.createBiquadFilter();
+  f.type = 'highpass';
+  f.frequency.value = freq;
+  const g = ac.createGain();
+  g.gain.setValueAtTime(gain, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  src.connect(f).connect(g).connect(out);
+  src.start(t);
+  src.stop(t + dur + 0.02);
+}
+
+/** Programa la música desde `start` durante `duration` segundos, con fundido al principio y al final. */
+function scheduleMusic(ac, dest, style, start, duration) {
+  const st = STYLES[style];
+  const master = ac.createGain();
+  master.gain.setValueAtTime(0, start);
+  master.gain.linearRampToValueAtTime(0.9, start + 0.8);
+  master.gain.setValueAtTime(0.9, start + duration - 1.5);
+  master.gain.linearRampToValueAtTime(0, start + duration);
+  master.connect(dest);
+  const beat = 60 / st.bpm;
+  const bar = beat * 4;
+  for (let b = 0; b * bar < duration; b++) {
+    const t = start + b * bar;
+    const i = b % st.chords.length;
+    // Acordes (pad) y bajo
+    for (const n of st.chords[i]) tone(ac, master, { freq: NOTE(n), start: t, dur: bar, type: st.wave, gain: 0.05, attack: 0.15, release: 0.5, filter: 2200 });
+    for (let k = 0; k < 4; k++) tone(ac, master, { freq: NOTE(st.bass[i]), start: t + k * beat, dur: beat * 0.9, type: 'sine', gain: 0.16, release: 0.1 });
+    // Melodía simple: arpegio del acorde
+    const arp = [...st.chords[i], st.chords[i][1] + 12];
+    for (let k = 0; k < 8; k++) {
+      if (!st.drums && k % 2) continue;
+      tone(ac, master, { freq: NOTE(arp[k % arp.length] + 12), start: t + k * (beat / 2), dur: beat / 2, type: 'sine', gain: 0.04, release: 0.15 });
+    }
+    if (st.drums) {
+      for (let k = 0; k < 4; k++) {
+        kick(ac, master, t + k * beat);
+        noise(ac, master, t + k * beat + beat / 2);
+        if (k % 2) noise(ac, master, t + k * beat, { dur: 0.15, gain: 0.18, freq: 1500 });
+      }
+    }
+  }
+  return master;
+}
+
+/** Audio propio: suena desde el principio, recortado al largo del reel y con fundidos. */
+async function scheduleFile(ac, dest, arrayBuffer, start, duration) {
+  const buf = await ac.decodeAudioData(arrayBuffer.slice(0));
+  const src = ac.createBufferSource();
+  src.buffer = buf;
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0, start);
+  g.gain.linearRampToValueAtTime(1, start + 0.5);
+  g.gain.setValueAtTime(1, start + duration - 1.5);
+  g.gain.linearRampToValueAtTime(0, start + duration);
+  src.connect(g).connect(dest);
+  src.start(start, 0, duration + 0.1);
+  return g;
+}
+
+/** music: { kind: 'alegre' | 'suave' | 'archivo' | 'ninguna', file?: ArrayBuffer } */
+async function startMusic(ac, dest, music, duration) {
+  if (!music || music.kind === 'ninguna') return;
+  const start = ac.currentTime + 0.05;
+  if (music.kind === 'archivo' && music.file) return scheduleFile(ac, dest, music.file, start, duration);
+  if (STYLES[music.kind]) return scheduleMusic(ac, dest, music.kind, start, duration);
+}
+
+/** Escuchar la música por los parlantes (vista previa). Devuelve una función para cortarla. */
+export async function previewMusic(music, duration) {
+  const ac = new AudioContext();
+  await ac.resume();
+  await startMusic(ac, ac.destination, music, duration);
+  const timer = setTimeout(() => ac.close(), (duration + 0.5) * 1000);
+  return () => {
+    clearTimeout(timer);
+    ac.close();
+  };
+}
+
 /* ---------------------------------------------------------------- Grabación */
 
-const MIME = ['video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
+const MIME_AUDIO = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+const MIME_MUTE = ['video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
 
-/** Graba el reel en tiempo real (dura lo mismo que el video). Prefiere MP4, que es lo que toma Instagram. */
-export async function recordReel(reel, onProgress = () => {}) {
-  const mime = window.MediaRecorder && MIME.find((m) => MediaRecorder.isTypeSupported(m));
+/** Graba el reel en tiempo real (dura lo mismo que el video), con la música elegida. Prefiere MP4. */
+export async function recordReel(reel, onProgress = () => {}, music = { kind: 'ninguna' }) {
+  const withAudio = music && music.kind !== 'ninguna';
+  const list = withAudio ? MIME_AUDIO : MIME_MUTE;
+  const mime = window.MediaRecorder && list.find((m) => MediaRecorder.isTypeSupported(m));
   if (!mime) throw new Error('Este navegador no puede grabar video. Probá desde Chrome o desde el celular.');
   const c = document.createElement('canvas');
   c.width = 720;
@@ -518,24 +655,46 @@ export async function recordReel(reel, onProgress = () => {}) {
     reel.draw(ctx, t);
   };
   frame(0);
-  const rec = new MediaRecorder(c.captureStream(30), { mimeType: mime, videoBitsPerSecond: 6_000_000 });
+  const tracks = [...c.captureStream(30).getVideoTracks()];
+  let ac = null;
+  let audioDest = null;
+  if (withAudio) {
+    ac = new AudioContext();
+    await ac.resume();
+    audioDest = ac.createMediaStreamDestination();
+    // Señal muda y una pausa corta: así el audio ya está andando cuando arranca la grabación
+    // (si no, a veces el sonido empieza tarde y queda más corto que el video).
+    const silent = ac.createConstantSource();
+    const zero = ac.createGain();
+    zero.gain.value = 0;
+    silent.connect(zero).connect(audioDest);
+    silent.start();
+    tracks.push(...audioDest.stream.getAudioTracks());
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  const rec = new MediaRecorder(new MediaStream(tracks), { mimeType: mime, videoBitsPerSecond: 6_000_000, audioBitsPerSecond: 128_000 });
   const chunks = [];
   rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
   const stopped = new Promise((r) => (rec.onstop = r));
   rec.start(500);
+  if (ac) await startMusic(ac, audioDest, music, reel.duration);
   const t0 = performance.now();
-  await new Promise((resolve) => {
-    const tick = () => {
-      const t = (performance.now() - t0) / 1000;
-      frame(Math.min(t, reel.duration));
-      onProgress(Math.min(1, t / reel.duration));
-      if (t >= reel.duration + 0.2) return resolve();
+  try {
+    await new Promise((resolve) => {
+      const tick = () => {
+        const t = (performance.now() - t0) / 1000;
+        frame(Math.min(t, reel.duration));
+        onProgress(Math.min(1, t / reel.duration));
+        if (t >= reel.duration + 0.2) return resolve();
+        requestAnimationFrame(tick);
+      };
       requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  });
-  rec.stop();
-  await stopped;
+    });
+  } finally {
+    rec.stop();
+    await stopped;
+    ac?.close();
+  }
   const type = mime.split(';')[0];
   return new File([new Blob(chunks, { type })], `unica-reel.${type === 'video/mp4' ? 'mp4' : 'webm'}`, { type });
 }

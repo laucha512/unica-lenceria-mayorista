@@ -4,7 +4,7 @@ import { formatPrice, SITE_URL } from '../config.js';
 import { hasOffer, salePrice } from '../shared/prices.js';
 import { esc } from '../shared/utils.js';
 import { subIdsOf } from '../shared/tree.js';
-import { buildReel, recordReel } from './reels.js';
+import { buildReel, previewMusic, recordReel } from './reels.js';
 import { copyText, download, drawCover, drawPost, loadImage, roundRect, wrap } from './social.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -19,7 +19,7 @@ const SANS = '"Plus Jakarta Sans", sans-serif';
 const SERIF = '"Playfair Display", serif';
 
 let d; // { state, showToast }
-const ui = { idea: 'plan', brand: '', seed: 0, results: [], overrides: {}, bgMode: '0', sub: 'auto' };
+const ui = { idea: 'plan', brand: '', seed: 0, results: [], overrides: {}, bgMode: '0', sub: 'auto', music: 'alegre', musicFile: null, musicName: '' };
 const plain = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
 /* ---------------------------------------------------------------- Artículos */
@@ -690,7 +690,7 @@ function swapOptions(r) {
 
 /* ---------------------------------------------------------------- Reels */
 
-const REEL_HINT = 'Video vertical de ~20 s. Sin música: agregale un audio en tendencia desde Instagram.';
+const REEL_HINT = 'Video vertical de ~20 s con música propia (sin derechos de autor). Si querés, en Instagram podés cambiarla por un audio en tendencia.';
 const reelIdea = (kind, label, extra) => ({ group: 'reel', reel: kind, label: `Reel: ${label}`, hint: REEL_HINT, ...extra });
 Object.assign(IDEAS, {
   reel_novedades: reelIdea('novedades', 'Nuevos ingresos', {
@@ -855,6 +855,16 @@ export function renderIdeas() {
           </select>`
         : ''
     }
+    ${
+      idea?.reel || ui.idea === 'plan'
+        ? `<select id="ideaMusic" aria-label="Música de los reels" class="bg-surface-container-low px-3 py-2 pr-8 rounded-xl text-sm border-none focus:ring-2 focus:ring-primary font-medium">
+            ${[['alegre', '🎵 Música: alegre'], ['suave', '🎵 Música: suave'], ['archivo', ui.musicName ? `🎵 Mi audio: ${ui.musicName}` : '🎵 Subir mi audio…'], ['ninguna', '🔇 Sin música']]
+              .map(([v, t]) => `<option value="${v}"${v === ui.music ? ' selected' : ''}>${esc(t)}</option>`)
+              .join('')}
+          </select>
+          <input type="file" id="musicInput" accept="audio/*" class="hidden">`
+        : ''
+    }
     <button type="button" data-idea-action="build" class="${btnCls} bg-primary text-on-primary"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">auto_awesome</span><span>Armar</span></button>
     <button type="button" data-idea-action="shuffle" class="${btnCls} bg-surface-container-high"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">shuffle</span><span>${idea?.generic || idea?.tips ? 'Otro texto' : ui.idea === 'plan' ? 'Otra semana' : 'Cambiar artículos'}</span></button>
   </div>
@@ -877,7 +887,8 @@ function renderResults() {
   ${
     reel
       ? `<div class="flex flex-col items-start gap-1"><canvas data-reel="${ri}" width="360" height="640" class="h-80 sm:h-96 aspect-[9/16] rounded-xl shadow-sm border border-outline-variant/30 bg-black"></canvas>
-      <span class="text-xs text-on-surface-variant">Vista previa · ${Math.round(r.reel.duration)} segundos · sin música (agregala en Instagram)</span></div>`
+      <span class="text-xs text-on-surface-variant">Vista previa · ${Math.round(r.reel.duration)} segundos · ${esc(musicLabel())}</span>
+      <button type="button" data-idea-action="listen" class="${btnCls} bg-surface-container-high"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">volume_up</span><span>Ver con sonido</span></button></div>`
       : ''
   }
   <div class="flex gap-3 overflow-x-auto pb-2 snap-x${reel ? ' hidden' : ''}">
@@ -928,6 +939,10 @@ function renderResults() {
     .join('');
 }
 
+const musicOpt = () => ({ kind: ui.music, file: ui.musicFile });
+const musicLabel = () => (ui.music === 'ninguna' ? 'sin música' : ui.music === 'archivo' ? `con tu audio${ui.musicName ? ` (${ui.musicName})` : ''}` : `con música ${ui.music}`);
+let stopPreview = null;
+
 let playing = 0;
 function playReels() {
   cancelAnimationFrame(playing);
@@ -955,7 +970,7 @@ async function deliverReel(r, button, action) {
   button.disabled = true;
   try {
     if (!r.video) {
-      r.video = await recordReel(r.reel, (p) => (label.textContent = `Grabando… ${Math.round(p * 100)}%`));
+      r.video = await recordReel(r.reel, (p) => (label.textContent = `Grabando… ${Math.round(p * 100)}%`), musicOpt());
     }
     if (r.video.type !== 'video/mp4') d.showToast('Tu navegador grabó en formato WebM: si Instagram no lo toma, hacelo desde el celular o con Chrome actualizado.', 'error');
     const copied = await copyText(r.caption);
@@ -1056,12 +1071,40 @@ export function initIdeas(deps) {
       ui.seed++;
       build($('[data-idea-action="build"]'));
     }
+    if (r?.reel && action === 'listen') {
+      stopPreview?.();
+      playReels();
+      previewMusic(musicOpt(), r.reel.duration).then((stop) => (stopPreview = stop)).catch(() => d.showToast('No se pudo reproducir el audio.', 'error'));
+      return;
+    }
     if (r?.reel && (action === 'share' || action === 'download')) return deliverReel(r, b, action);
     if (action === 'share' && r) share(r);
     if (action === 'download' && r) saveAll(r);
     if (action === 'copy' && r) copyText(r.caption).then((ok) => d.showToast(ok ? 'Texto copiado.' : 'No se pudo copiar.', ok ? 'ok' : 'error'));
   });
   panel.addEventListener('change', async (e) => {
+    if (e.target.id === 'ideaMusic') {
+      if (e.target.value === 'archivo' && !ui.musicFile) {
+        e.target.value = ui.music;
+        $('#musicInput').click();
+        return;
+      }
+      ui.music = e.target.value;
+      ui.results.forEach((x) => (x.video = null));
+      renderResults();
+      return;
+    }
+    if (e.target.id === 'musicInput' && e.target.files[0]) {
+      const f = e.target.files[0];
+      if (f.size > 15 * 1024 * 1024) return d.showToast('El audio pesa más de 15 MB: elegí uno más corto.', 'error');
+      ui.musicFile = await f.arrayBuffer();
+      ui.musicName = f.name.replace(/\.[^.]+$/, '').slice(0, 30);
+      ui.music = 'archivo';
+      ui.results.forEach((x) => (x.video = null));
+      renderIdeas();
+      d.showToast('Audio cargado: se usa en los reels.');
+      return;
+    }
     if (e.target.id === 'ideaSub') {
       ui.sub = e.target.value;
       ui.seed = 0;
