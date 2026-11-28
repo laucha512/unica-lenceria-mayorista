@@ -6,11 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "npx -y netlify-cli dev",
-    "dev:vite": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "prebuild": "node scripts/copy-ort.mjs",
-    "predev:vite": "node scripts/copy-ort.mjs"
+    "dev:vite": "node scripts/copy-ort.mjs && vite",
+    "build": "node scripts/copy-ort.mjs && vite build",
+    "preview": "vite preview"
   },
   "engines": {
     "node": ">=20"
