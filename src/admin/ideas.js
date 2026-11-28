@@ -5,6 +5,7 @@ import { hasOffer, salePrice } from '../shared/prices.js';
 import { esc } from '../shared/utils.js';
 import { subIdsOf } from '../shared/tree.js';
 import { SEASON_WEEKS, SEASONS } from './seasons.js';
+import { currentClimate, fitsClimate } from './climate.js';
 import { buildReel, previewMusic, recordReel } from './reels.js';
 import { copyText, download, drawCover, drawPost, loadImage, roundRect, wrap } from './social.js';
 
@@ -424,10 +425,18 @@ const BANK = {
   venta: { label: 'Tips para vender más', kicker: 'Tips para revendedoras', tags: '#revendedoras #tipsdeventa #emprendimiento' },
   sabias: { label: '¿Sabías que…?', kicker: '¿Sabías que…?', tags: '#sabiasque #lenceria #datoscuriosos' },
   mito: { label: 'Mito vs. realidad', kicker: 'Mito vs. realidad', tags: '#mitos #revendedoras #emprendedoras', mito: true },
+  clima: { label: 'Época del año', kicker: '', tags: '', clima: true },
 };
 const season = () => SEASONS[Math.min(ui.season, SEASONS.length - 1)];
 const bankOf = (topic) => season().bank[topic] || SEASONS[0].bank[topic] || [];
-const hooks = () => season().hooks;
+const climateKicker = () => {
+  const c = currentClimate();
+  return c.coming ? c.comingKicker : c.kicker;
+};
+const hooks = () => {
+  const h = season().hooks;
+  return { ...h, novedades: { ...h.novedades, kicker: climateKicker() }, cover: { ...h.cover, kicker: climateKicker() } };
+};
 /** Semanas desde que empezó la temporada en uso. */
 const weeksIn = () => (ui.seasonStart ? Math.max(0, Math.floor((Date.now() - Date.parse(ui.seasonStart)) / (7 * 86400000))) : 0);
 
@@ -579,11 +588,16 @@ for (const [key, topic] of Object.entries(BANK)) {
     hint: 'Foto con texto, sin artículos. Elegí el fondo o subí una foto tuya; el texto se puede editar.',
     generic: true,
     pickText: () => {
+      if (topic.clima) {
+        const c = currentClimate();
+        const [title, body] = c.posts[ui.seed % c.posts.length];
+        return { kicker: climateKicker(), title, body, climate: c.key };
+      }
       const list = bankOf(key);
       const [title, body] = list[ui.seed % list.length];
       return topic.mito ? { kicker: topic.kicker, title: `Mito: ${title}`, body: `Realidad: ${body}` } : { kicker: topic.kicker, title, body };
     },
-    caption: (t) => `${t.title}\n${t.body ? `${t.body}\n` : ''}\n💗 ÚNICA Lencería Mayorista · Rosario\n🔗 Link en la bio\n\n${igLine()}${topic.tags} ${TAGS}`,
+    caption: (t) => `${t.title}\n${t.body ? `${t.body}\n` : ''}\n💗 ÚNICA Lencería Mayorista · Rosario\n🔗 Link en la bio\n\n${igLine()}${topic.clima ? `#${currentClimate().key} #temporada${currentClimate().key}` : topic.tags} ${TAGS}`,
   };
 }
 IDEAS.fecha = {
@@ -626,7 +640,8 @@ function smartPick(idea) {
   const groups = bySub(pool);
   if (ui.sub !== 'auto') return { sub: ui.sub, items: rotate(groups.get(ui.sub) || [], idea.n) };
   const need = idea.exact ? idea.n : Math.min(idea.n, 3);
-  const ok = [...groups].filter(([id, list]) => subName(id) && list.length >= need).sort((a, b) => b[1].length - a[1].length);
+  const fit = ([id]) => (fitsClimate(subName(id)) ? 1 : 0);
+  const ok = [...groups].filter(([id, list]) => subName(id) && list.length >= need).sort((a, b) => fit(b) - fit(a) || b[1].length - a[1].length);
   if (!ok.length) return { sub: null, items: idea.exact ? [] : rotate(pool, idea.n) };
   const [sub, list] = ok[ui.seed % ok.length];
   return { sub, items: list.slice(0, idea.n) };
@@ -734,7 +749,7 @@ async function makeResult(key, day = '') {
 /** Plan de la semana: lunes artículos, miércoles genérica, viernes venta/encuesta. Cambia cada semana. */
 async function weeklyPlan() {
   const week = weeksIn() + ui.seed + ui.season * 2;
-  const generic = upcomingDates().length && week % 2 === 0 ? 'fecha' : ['frase', 'venta', 'mito', 'cuidado', 'sabias'][week % 5];
+  const generic = week % 3 === 0 ? 'clima' : upcomingDates().length && week % 3 === 1 ? 'fecha' : ['frase', 'venta', 'mito', 'cuidado', 'sabias'][week % 5];
   const friday = ['ofertas', 'elegir', 'revender', 'collage', 'comprar'][week % 5];
   const saved = ui.seed;
   const savedSub = ui.sub;
@@ -774,7 +789,7 @@ export function renderSeason() {
   const left = Math.max(0, SEASON_WEEKS - weeksIn());
   const due = left <= 1;
   box.innerHTML = `<div class="text-right">
-      <p class="text-xs font-bold text-on-surface">${esc(season().name)} <span class="font-normal text-on-surface-variant">(${ui.season + 1} de ${SEASONS.length})</span></p>
+      <p class="text-xs font-bold text-on-surface">${esc(season().name)} <span class="font-normal text-on-surface-variant">(${ui.season + 1} de ${SEASONS.length}) · Época: ${esc(currentClimate().name)}${currentClimate().coming ? ' (se viene)' : ''}</span></p>
       <p class="text-[11px] ${due ? 'text-amber-800 font-bold' : 'text-on-surface-variant'}">${
         left ? `Te quedan ~${left} ${left === 1 ? 'semana' : 'semanas'} de ideas nuevas (3 fotos + 2 reels por semana)` : 'Ya usaste las ideas de esta temporada'
       }</p>
