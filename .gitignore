@@ -10,3 +10,4 @@ dist/
 Thumbs.db
 .claude/
 deno.lock
+public/admin/ort/

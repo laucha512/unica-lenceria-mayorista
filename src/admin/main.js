@@ -8,6 +8,7 @@ import { findDuplicates } from './duplicates.js';
 import { combos, comboKey, isSoldOut, soldOutCount } from '../shared/stock.js';
 import { applyPercent } from '../shared/prices.js';
 import { initIdeas, renderIdeas, loadSeason } from './ideas.js';
+import { initSubtitles, renderSubtitles } from './subtitles.js';
 import { initCategories, renderCategories, subcategoryOptions, subcategoryPath } from './categories.js';
 import { subIdsOf, inSubs } from '../shared/tree.js';
 
@@ -347,6 +348,7 @@ function switchTab(tab, focus = true) {
     if (!$('#ideasPanel').children.length) {
       renderIdeas();
       loadSeason();
+      renderSubtitles();
     }
   }
   $$('.tab-section').forEach((s) => s.classList.toggle('hidden', s.id !== `section-${tab}`));
@@ -2881,6 +2883,7 @@ $('#brandListContainer').addEventListener('click', async (e) => {
 /* ================================================================ Inicio */
 
 initIdeas({ state, showToast, call });
+initSubtitles({ showToast });
 initCategories({
   state,
   call,
