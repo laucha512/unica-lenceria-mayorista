@@ -17,7 +17,8 @@ const SANS = '"Plus Jakarta Sans", sans-serif';
 const SERIF = '"Playfair Display", serif';
 
 let d; // { state, showToast }
-const ui = { idea: 'novedades', brand: '', seed: 0, slides: [], caption: '' };
+const ui = { idea: 'plan', brand: '', seed: 0, results: [], overrides: {}, bgMode: '0' };
+const plain = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
 /* ---------------------------------------------------------------- Artículos */
 
@@ -119,7 +120,7 @@ function footer(ctx, text = `${WEB} · link en la bio`, color = DARK) {
 }
 
 /** Tapa: collage de fotos atrás y una franja con el título. */
-async function coverSlide({ kicker, title, subtitle, items }) {
+async function coverSlide({ kicker, title, subtitle, items, bg }) {
   await fonts();
   const [c, ctx] = newCanvas();
   ctx.fillStyle = SOFT;
@@ -130,7 +131,14 @@ async function coverSlide({ kicker, title, subtitle, items }) {
   const rows = pics.length > 2 ? 2 : 1;
   const cw = (W - gap * (cols + 1)) / cols;
   const ch = (H - gap * (rows + 1)) / rows;
-  for (let i = 0; i < pics.length; i++) {
+  if (bg) {
+    try {
+      drawCover(ctx, await loadImage(bg), 0, 0, W, H);
+    } catch {
+      /* sin foto */
+    }
+  }
+  for (let i = 0; i < (bg ? 0 : pics.length); i++) {
     const lastAlone = cols === 2 && i === pics.length - 1 && i % 2 === 0;
     await photo(ctx, pics[i], gap + (i % cols) * (cw + gap), gap + Math.floor(i / cols) * (ch + gap), lastAlone ? W - gap * 2 : cw, ch, 20);
   }
@@ -298,108 +306,406 @@ async function pickSlide(items) {
   return toBlob(c);
 }
 
+/* ---------------------------------------------------------------- Fotos genéricas */
+// Texto sobre un fondo: diseño propio (3 estilos), una foto de tus artículos o una foto que subas.
+
+const PALETTES = [
+  { from: '#fdf2f8', to: '#fbcfe8', fg: DARK, accent: PINK, dark: false }, // rosa claro
+  { from: '#831843', to: '#be185d', fg: '#fff', accent: '#fbcfe8', dark: true }, // bordó
+  { from: '#fff7ed', to: '#fde68a', fg: DARK, accent: '#b45309', dark: false }, // nude / crema
+];
+
+/** Puntilla dibujada: semicírculos con agujeritos, como el borde de una prenda de encaje. */
+function lace(ctx, y, color, flip = false) {
+  ctx.save();
+  ctx.fillStyle = color;
+  const r = 30;
+  for (let x = -r; x < W + r; x += r * 2) {
+    ctx.beginPath();
+    ctx.arc(x + r, y, r, flip ? Math.PI : 0, flip ? Math.PI * 2 : Math.PI);
+    ctx.fill();
+  }
+  ctx.fillRect(0, flip ? y : y - 40, W, 40);
+  ctx.globalCompositeOperation = 'destination-out';
+  for (let x = -r; x < W + r; x += r * 2) {
+    ctx.beginPath();
+    ctx.arc(x + r, y + (flip ? -12 : 12), 7, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+async function background(ctx, bg) {
+  if (bg.photo) {
+    try {
+      drawCover(ctx, await loadImage(bg.photo), 0, 0, W, H);
+    } catch {
+      ctx.fillStyle = DEEP;
+      ctx.fillRect(0, 0, W, H);
+    }
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, 'rgba(0,0,0,0.15)');
+    g.addColorStop(0.45, 'rgba(80,7,36,0.55)');
+    g.addColorStop(1, 'rgba(80,7,36,0.85)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    return { fg: '#fff', accent: '#fbcfe8', dark: true };
+  }
+  const p = PALETTES[bg.palette % PALETTES.length];
+  const g = ctx.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, p.from);
+  g.addColorStop(1, p.to);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  // Lunares suaves
+  ctx.fillStyle = p.dark ? 'rgba(255,255,255,0.07)' : 'rgba(190,24,93,0.06)';
+  for (let i = 0; i < 40; i++) {
+    const x = (i * 263) % W;
+    const y = (i * 397) % H;
+    ctx.beginPath();
+    ctx.arc(x, y, 10 + (i % 4) * 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  const laceColor = p.dark ? 'rgba(255,255,255,0.18)' : 'rgba(190,24,93,0.16)';
+  lace(ctx, 40, laceColor);
+  lace(ctx, H - 40, laceColor, true);
+  return p;
+}
+
+async function genericSlide(post, bg) {
+  await fonts();
+  const [c, ctx] = newCanvas();
+  const p = await background(ctx, bg);
+  // Bloque centrado: logo + etiqueta + título + texto chico
+  const long = post.title.length > 60;
+  ctx.font = `700 ${long ? 76 : 92}px ${SERIF}`;
+  const tLines = wrap(ctx, post.title, W - 160, 5);
+  const tLH = long ? 88 : 104;
+  ctx.font = `500 46px ${SANS}`;
+  const bLines = post.body ? wrap(ctx, post.body, W - 200, 5) : [];
+  const blockH = 130 + 90 + tLines.length * tLH + (bLines.length ? 40 + bLines.length * 62 : 0);
+  let y = Math.max(140, (H - blockH) / 2 + (bg.photo ? 120 : 0));
+  await logo(ctx, W / 2 - 60, y, 120);
+  y += 130 + 60;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = p.accent;
+  ctx.font = `800 34px ${SANS}`;
+  ctx.fillText(post.kicker.toUpperCase(), W / 2, y);
+  y += 30 + tLH * 0.85;
+  ctx.fillStyle = p.fg;
+  ctx.font = `700 ${long ? 76 : 92}px ${SERIF}`;
+  for (const l of tLines) {
+    ctx.fillText(l, W / 2, y);
+    y += tLH;
+  }
+  if (bLines.length) {
+    y += 30;
+    ctx.font = `500 46px ${SANS}`;
+    ctx.fillStyle = p.dark ? '#fce7f3' : '#475569';
+    for (const l of bLines) {
+      ctx.fillText(l, W / 2, y);
+      y += 62;
+    }
+  }
+  ctx.textAlign = 'left';
+  footer(ctx, undefined, p.dark ? '#fce7f3' : DARK);
+  return toBlob(c);
+}
+
+/* ---------------------------------------------------------------- Banco de textos */
+// Textos propios, pensados para revendedoras y negocios de lencería.
+
+const BANK = {
+  frase: {
+    label: 'Frase para emprendedoras',
+    kicker: 'Para vos, emprendedora',
+    tags: '#emprendedoras #frasesemprendedoras #mujeresemprendedoras',
+    posts: [
+      ['Tu negocio crece cada vez que no te rendís.', 'Cada pedido cuenta. Seguí adelante 💗'],
+      ['Empezar chiquito también es empezar.', 'Lo importante es dar el primer paso.'],
+      ['Vender lencería es vender confianza.', 'Tus clientas vuelven porque las asesorás bien.'],
+      ['No esperes el momento perfecto: armá tu primer pedido hoy.', ''],
+      ['Detrás de cada emprendimiento hay una mujer valiente.', 'Feliz de acompañarte en el camino.'],
+      ['Tu stock es tu vidriera: renovalo seguido.', 'Las novedades atraen clientas nuevas.'],
+      ['El éxito es la suma de pequeños esfuerzos de todos los días.', ''],
+      ['Creé en lo que vendés y se nota.', 'La seguridad también se contagia.'],
+      ['Hoy es un buen día para vender.', 'Subí una historia, mostrá lo nuevo y escuchá a tus clientas.'],
+      ['Ser tu propia jefa es una decisión que se renueva cada día.', ''],
+      ['Cada clienta conforme es tu mejor publicidad.', ''],
+      ['Lo que hoy es un sueño, mañana puede ser tu local.', 'Vamos por más 💪'],
+    ],
+  },
+  cuidado: {
+    label: 'Cuidado de la lencería',
+    kicker: 'Tips de cuidado',
+    tags: '#cuidadodelalenceria #tips #lenceria',
+    posts: [
+      ['Lavá tu lencería a mano con agua fría', 'Así el encaje y los elásticos duran mucho más.'],
+      ['Usá una bolsa de red si lavás en lavarropas', 'Evita que los breteles y ganchos se enganchen.'],
+      ['Nunca la pongas en la secadora', 'El calor arruina los elásticos. Mejor secarla a la sombra.'],
+      ['Abrochá el corpiño antes de lavarlo', 'Así los ganchos no dañan otras prendas.'],
+      ['Guardá los corpiños con taza sin doblarlos', 'Uno dentro del otro, para que mantengan la forma.'],
+      ['Rotá tus corpiños', 'Dejar descansar el elástico un día entre uso y uso lo hace durar más.'],
+      ['Jabón neutro, siempre', 'Los detergentes fuertes y la lavandina gastan colores y telas.'],
+      ['Las prendas de satén, del revés', 'Lavalas y planchalas del revés y a baja temperatura.'],
+    ],
+  },
+  venta: {
+    label: 'Tips para vender más',
+    kicker: 'Tips para revendedoras',
+    tags: '#revendedoras #tipsdeventa #emprendimiento',
+    posts: [
+      ['Mostrá las prendas puestas o en maniquí', 'Las clientas compran más cuando ven cómo queda.'],
+      ['Usá los estados de WhatsApp todos los días', 'Son gratis y los ven todas tus clientas.'],
+      ['Armá combos', 'Ej.: corpiño + bombacha, o pack de 3. Aumenta el ticket de cada venta.'],
+      ['Sacá fotos con luz natural', 'Cerca de una ventana y con fondo liso: se ve mucho más lindo.'],
+      ['Tené siempre talles grandes', 'Es lo que más cuesta conseguir y lo que más te van a agradecer.'],
+      ['Preguntá qué buscan tus clientas', 'Anotá lo que te piden y sumalo en tu próximo pedido.'],
+      ['Ofrecé cambio de talle', 'Da confianza para comprar sin probarse.'],
+      ['Publicá en horarios de más movimiento', 'Al mediodía y a la noche, entre 20 y 23 h, suele haber más gente conectada.'],
+    ],
+  },
+  sabias: {
+    label: '¿Sabías que…?',
+    kicker: '¿Sabías que…?',
+    tags: '#sabiasque #lenceria #datoscuriosos',
+    posts: [
+      ['La mayoría de las mujeres usa un talle de corpiño que no es el suyo', 'Asesorar bien a tus clientas hace la diferencia.'],
+      ['Un corpiño bien cuidado puede durar más de un año', 'Lavarlo a mano y rotarlo es la clave.'],
+      ['El algodón es la tela más recomendada para el uso diario', 'Es fresco, suave y deja respirar la piel.'],
+      ['El encaje es de los materiales más elegidos en lencería', 'Combina con todo y nunca pasa de moda.'],
+      ['La lencería es de los regalos más elegidos en fechas especiales', 'Día de la Madre, San Valentín y Navidad: preparate con stock.'],
+      ['Los packs son lo que más rota en una lencería', 'Bombachas, boxers y medias se venden todo el año.'],
+    ],
+  },
+};
+
+/* ---------------------------------------------------------------- Fechas especiales */
+
+const nthSunday = (y, m, n) => {
+  const d1 = new Date(y, m, 1);
+  return new Date(y, m, 1 + ((7 - d1.getDay()) % 7) + (n - 1) * 7);
+};
+function specialDates(year) {
+  const thanksgiving = (() => {
+    const d1 = new Date(year, 10, 1);
+    return new Date(year, 10, 1 + ((4 - d1.getDay() + 7) % 7) + 21);
+  })();
+  return [
+    { date: new Date(year, 1, 14), name: 'San Valentín', title: 'Se viene San Valentín 💘', body: 'Conjuntos, encaje y colores rojo y negro: lo más pedido para regalar.' },
+    { date: new Date(year, 2, 8), name: 'Día de la Mujer', title: 'Feliz Día de la Mujer 💜', body: 'Para todas las que emprenden, venden y sostienen. ¡Gracias por elegirnos!' },
+    { date: nthSunday(year, 5, 3), name: 'Día del Padre', title: 'Se viene el Día del Padre', body: 'Boxers, medias y pijamas: el regalo que nunca falla. Preparate con stock.' },
+    { date: new Date(year, 6, 20), name: 'Día del Amigo', title: 'Feliz Día del Amigo 🤝', body: 'Gracias a todas las clientas que nos acompañan. ¡Las queremos!' },
+    { date: nthSunday(year, 7, 3), name: 'Día de las Infancias', title: 'Se viene el Día de las Infancias', body: 'Ropa interior y pijamas para niños y niñas. Hacé tu pedido a tiempo.' },
+    { date: new Date(year, 8, 21), name: 'Primavera', title: 'Llegó la primavera 🌸', body: 'Colores claros, algodón y prendas frescas para la nueva temporada.' },
+    { date: nthSunday(year, 9, 3), name: 'Día de la Madre', title: 'Se viene el Día de la Madre 💐', body: 'Es la fecha que más vende en lencería. Armá tu pedido con tiempo.' },
+    { date: new Date(thanksgiving.getFullYear(), 10, thanksgiving.getDate() + 1), name: 'Black Friday', title: 'Black Friday en ÚNICA 🖤', body: 'Aprovechá las ofertas mayoristas en la web.' },
+    { date: new Date(year, 11, 25), name: 'Navidad', title: 'Se vienen las fiestas 🎄', body: 'Rojo, dorado y conjuntos para regalar: preparate para la temporada más fuerte del año.' },
+    { date: new Date(year, 11, 31), name: 'Año Nuevo', title: '¡Feliz Año Nuevo! ✨', body: 'Gracias por un año increíble. Vamos por más en el que viene.' },
+  ];
+}
+/** Próximas fechas (dentro de 40 días), la más cercana primero. */
+function upcomingDates(now = new Date()) {
+  const all = [...specialDates(now.getFullYear()), ...specialDates(now.getFullYear() + 1)];
+  return all.filter((x) => x.date - now >= -86400000 && x.date - now <= 40 * 86400000).sort((a, b) => a.date - b.date);
+}
+
 /* ---------------------------------------------------------------- Ideas */
 
 const TAGS = '#lenceriamayorista #lenceriapormayor #ropainteriormayorista #mayoristarosario #revendedoras #emprendedoras #lenceria #rosario';
 const list = (items) => items.map((a) => `▪️ ${a.title} – ${formatPrice(salePrice(a))}`).join('\n');
 const igLine = () => (d.state.contact?.instagramUser ? `@${d.state.contact.instagramUser}\n` : '');
+const CLOSING = '🛍️ Precios mayoristas. Armá tu pedido desde la web (link en la bio) y te llega por WhatsApp.';
+
+// Cada lámina sabe qué foto se puede cambiar: { blob, edit: 'bg' | id de artículo | null }
+const art = (a) => (ui.overrides[a.id] ? { ...a, images: [ui.overrides[a.id]] } : a);
+const productSlides = async (items) => Promise.all(items.map(async (a) => ({ blob: await drawPost(art(a), 'feed'), edit: a.id })));
+const one = async (blob, edit = null) => ({ blob: await blob, edit });
 
 const IDEAS = {
   novedades: {
+    group: 'art',
     label: 'Carrusel: Nuevos ingresos',
     hint: 'Tapa con collage + una lámina por novedad + cierre. El formato más usado para mostrar lo nuevo.',
     pick: () => rotate(newest(withPhoto().filter((a) => a.isNew)), 8),
-    async build(items) {
-      const slides = [await coverSlide({ kicker: 'Nuevos ingresos', title: 'Llegó lo nuevo', subtitle: `${items.length} artículos para tu negocio`, items })];
-      for (const a of items) slides.push(await drawPost(a, 'feed'));
-      slides.push(await ctaSlide('¿Cuál vas a sumar a tu local?'));
-      return slides;
-    },
-    caption: (items) =>
-      `✨ NUEVOS INGRESOS ✨\nDeslizá y mirá todo lo que llegó esta semana 👉\n\n${list(items)}\n\n🛍️ Precios mayoristas. Armá tu pedido desde la web (link en la bio) y te llega por WhatsApp.\n📍 Showrooms en Rosario\n\n${igLine()}${TAGS}`,
+    build: async (items, r) => [
+      await one(coverSlide({ kicker: 'Nuevos ingresos', title: 'Llegó lo nuevo', subtitle: `${items.length} artículos para tu negocio`, items: items.map(art), bg: r.bg }), 'bg'),
+      ...(await productSlides(items)),
+      await one(ctaSlide('¿Cuál vas a sumar a tu local?')),
+    ],
+    caption: (items) => `✨ NUEVOS INGRESOS ✨\nDeslizá y mirá todo lo que llegó 👉\n\n${list(items)}\n\n${CLOSING}\n📍 Showrooms en Rosario\n\n${igLine()}${TAGS}`,
   },
   ofertas: {
-    label: 'Carrusel: Ofertas de la semana',
+    group: 'art',
+    label: 'Carrusel: Ofertas',
     hint: 'Ideal para empujar ventas: muestra el precio anterior tachado.',
     pick: () => rotate(newest(withPhoto().filter(hasOffer)), 8),
-    async build(items) {
-      const slides = [await coverSlide({ kicker: 'Solo por esta semana', title: 'Ofertas mayoristas', subtitle: 'Hasta agotar stock', items })];
-      for (const a of items) slides.push(await drawPost(a, 'feed'));
-      slides.push(await ctaSlide('¡Aprovechá antes que se agoten!'));
-      return slides;
-    },
-    caption: (items) =>
-      `🔥 OFERTAS DE LA SEMANA 🔥\nPrecios mayoristas rebajados, hasta agotar stock 👉\n\n${list(items)}\n\n🛍️ Pedí desde la web (link en la bio).\n\n${igLine()}${TAGS} #ofertas`,
+    build: async (items, r) => [
+      await one(coverSlide({ kicker: 'Hasta agotar stock', title: 'Ofertas mayoristas', subtitle: 'Precios rebajados', items: items.map(art), bg: r.bg }), 'bg'),
+      ...(await productSlides(items)),
+      await one(ctaSlide('¡Aprovechá antes que se agoten!')),
+    ],
+    caption: (items) => `🔥 OFERTAS 🔥\nPrecios mayoristas rebajados, hasta agotar stock 👉\n\n${list(items)}\n\n${CLOSING}\n\n${igLine()}${TAGS} #ofertas`,
   },
   marca: {
-    label: 'Carrusel: Llegó una marca',
-    hint: 'Presenta una marca con sus artículos. Elegí la marca abajo.',
+    group: 'art',
+    label: 'Carrusel: Una marca',
+    hint: 'Presenta una marca con sus artículos.',
     needsBrand: true,
     pick: () => rotate(newest(withPhoto().filter((a) => a.brand === ui.brand)), 8),
-    async build(items) {
-      const slides = [await coverSlide({ kicker: 'Marca destacada', title: ui.brand, subtitle: 'Ahora en ÚNICA Mayorista', items })];
-      for (const a of items) slides.push(await drawPost(a, 'feed'));
-      slides.push(await ctaSlide(`Todo ${ui.brand} en la web`));
-      return slides;
-    },
-    caption: (items) =>
-      `💗 ${ui.brand.toUpperCase()} en ÚNICA 💗\nDeslizá para ver los modelos disponibles 👉\n\n${list(items)}\n\n🛍️ Precios mayoristas. Pedí desde la web (link en la bio).\n\n${igLine()}#${ui.brand.toLowerCase().replace(/[^a-z0-9]/g, '')} ${TAGS}`,
+    build: async (items, r) => [
+      await one(coverSlide({ kicker: 'Marca destacada', title: ui.brand, subtitle: 'Ahora en ÚNICA Mayorista', items: items.map(art), bg: r.bg }), 'bg'),
+      ...(await productSlides(items)),
+      await one(ctaSlide(`Todo ${ui.brand} en la web`)),
+    ],
+    caption: (items) => `💗 ${ui.brand.toUpperCase()} en ÚNICA 💗\nDeslizá para ver los modelos 👉\n\n${list(items)}\n\n${CLOSING}\n\n${igLine()}#${plain(ui.brand)} ${TAGS}`,
   },
   revender: {
+    group: 'art',
     label: 'Carrusel: ¿Querés empezar a revender?',
     hint: 'Educativo: de los que más se guardan y comparten. Atrae revendedoras nuevas.',
     pick: () => rotate([...withPhoto()].sort((x, y) => salePrice(x) - salePrice(y)), 4),
-    async build(items) {
-      return [
-        await coverSlide({ kicker: 'Guía para emprendedoras', title: '¿Querés vender lencería?', subtitle: 'Te contamos cómo arrancar 👉', items }),
-        await textSlide({ number: 1, title: 'Elegí qué vender', body: 'Arrancá con lo que más rota: packs de bombachas, boxers, medias y conjuntos básicos. Se venden todo el año.' }),
-        await textSlide({ number: 2, title: 'Comprá por mayor', body: 'Comprando al por mayor tenés margen para revender a precio de mercado y ganar en cada prenda.' }),
-        await textSlide({ number: 3, title: 'Mostralo bien', body: 'Sacá fotos con luz natural, armá un catálogo en tus historias y usá estados de WhatsApp todos los días.' }),
-        await textSlide({ number: 4, title: 'Reponé lo que se vende', body: 'Fijate qué te piden más y volvé a pedir eso. En ÚNICA tenés novedades seguido.' }),
-        await collageSlide(items, { title: 'Para arrancar', kicker: 'Los más accesibles' }),
-        await ctaSlide('Empezá hoy con ÚNICA'),
-      ];
-    },
+    build: async (items, r) => [
+      await one(coverSlide({ kicker: 'Guía para emprendedoras', title: '¿Querés vender lencería?', subtitle: 'Te contamos cómo arrancar 👉', items: items.map(art), bg: r.bg }), 'bg'),
+      await one(textSlide({ number: 1, title: 'Elegí qué vender', body: 'Arrancá con lo que más rota: packs de bombachas, boxers, medias y conjuntos básicos. Se venden todo el año.' })),
+      await one(textSlide({ number: 2, title: 'Comprá por mayor', body: 'Comprando al por mayor tenés margen para revender a precio de mercado y ganar en cada prenda.' })),
+      await one(textSlide({ number: 3, title: 'Mostralo bien', body: 'Sacá fotos con luz natural, armá un catálogo en tus historias y usá estados de WhatsApp todos los días.' })),
+      await one(textSlide({ number: 4, title: 'Reponé lo que se vende', body: 'Fijate qué te piden más y volvé a pedir eso. En ÚNICA tenés novedades seguido.' })),
+      await one(collageSlide(items.map(art), { title: 'Para arrancar', kicker: 'Los más accesibles' })),
+      await one(ctaSlide('Empezá hoy con ÚNICA')),
+    ],
     caption: () =>
-      `💼 ¿Querés empezar a vender lencería? Guardá este posteo 📌\n\n1️⃣ Elegí productos que roten todo el año\n2️⃣ Comprá por mayor para tener margen\n3️⃣ Mostralo bien en tus redes\n4️⃣ Reponé lo que más se vende\n\nEn ÚNICA tenés precios mayoristas y novedades seguido. Armá tu primer pedido desde la web (link en la bio).\n\n${igLine()}${TAGS} #emprendimiento #negociopropio`,
+      `💼 ¿Querés empezar a vender lencería? Guardá este posteo 📌\n\n1️⃣ Elegí productos que roten todo el año\n2️⃣ Comprá por mayor para tener margen\n3️⃣ Mostralo bien en tus redes\n4️⃣ Reponé lo que más se vende\n\n${CLOSING}\n\n${igLine()}${TAGS} #emprendimiento #negociopropio`,
   },
   comprar: {
+    group: 'art',
     label: 'Carrusel: Cómo comprar en la web',
     hint: 'Explica paso a paso cómo hacer un pedido. Sirve para fijar en el perfil.',
     pick: () => rotate(newest(withPhoto()), 4),
-    async build(items) {
-      return [
-        await coverSlide({ kicker: 'Paso a paso', title: 'Cómo comprar en ÚNICA', subtitle: 'Fácil y desde el celular 👉', items }),
-        await textSlide({ number: 1, title: 'Entrá a la web', body: `Tocá el link de la bio o entrá a ${WEB}. Vas a ver todo el catálogo con precios mayoristas.` }),
-        await textSlide({ number: 2, title: 'Elegí tus artículos', body: 'Filtrá por categoría, marca o talle. En cada artículo elegís talles, colores y cantidad.' }),
-        await textSlide({ number: 3, title: 'Completá tus datos', body: 'Tu WhatsApp, nombre y localidad. La próxima vez ya te aparecen solos.' }),
-        await textSlide({ number: 4, title: 'Enviá el pedido', body: 'Te llega a nuestro WhatsApp con un código. Te confirmamos y coordinamos retiro o envío.', dark: true }),
-        await ctaSlide('¡Hacé tu pedido ahora!'),
-      ];
-    },
+    build: async (items, r) => [
+      await one(coverSlide({ kicker: 'Paso a paso', title: 'Cómo comprar en ÚNICA', subtitle: 'Fácil y desde el celular 👉', items: items.map(art), bg: r.bg }), 'bg'),
+      await one(textSlide({ number: 1, title: 'Entrá a la web', body: `Tocá el link de la bio o entrá a ${WEB}. Vas a ver todo el catálogo con precios mayoristas.` })),
+      await one(textSlide({ number: 2, title: 'Elegí tus artículos', body: 'Filtrá por categoría, marca o talle. En cada artículo elegís talles, colores y cantidad.' })),
+      await one(textSlide({ number: 3, title: 'Completá tus datos', body: 'Tu WhatsApp, nombre y localidad. La próxima vez ya te aparecen solos.' })),
+      await one(textSlide({ number: 4, title: 'Enviá el pedido', body: 'Te llega a nuestro WhatsApp con un código. Te confirmamos y coordinamos retiro o envío.', dark: true })),
+      await one(ctaSlide('¡Hacé tu pedido ahora!')),
+    ],
     caption: () =>
       `🛒 ¿Cómo comprar en ÚNICA? Te lo explicamos en 4 pasos 👉\n\n1️⃣ Entrá a la web (link en la bio)\n2️⃣ Elegí artículos, talles y colores\n3️⃣ Completá tus datos\n4️⃣ Enviá el pedido y te llega a nuestro WhatsApp\n\nRetiro en nuestros showrooms de Rosario o envío por expreso/comisionista.\n\n${igLine()}${TAGS}`,
   },
   collage: {
+    group: 'art',
     label: 'Foto: Collage de novedades',
     hint: 'Una sola imagen con varias novedades y sus precios.',
     pick: () => rotate(newest(withPhoto().filter((a) => a.isNew)), 9),
-    build: async (items) => [await collageSlide(items)],
-    caption: (items) => `✨ Novedades de la semana ✨\n\n${list(items)}\n\n🛍️ Pedí desde la web (link en la bio).\n\n${igLine()}${TAGS}`,
+    build: async (items) => [await one(collageSlide(items.map(art)))],
+    caption: (items) => `✨ Novedades ✨\n\n${list(items)}\n\n${CLOSING}\n\n${igLine()}${TAGS}`,
   },
   elegir: {
+    group: 'art',
     label: 'Foto: ¿1, 2 o 3? Elegí tu favorito',
     hint: 'Encuesta para que comenten: más comentarios = más alcance.',
-    pick: () => rotate(newest(withPhoto().filter((a) => a.isNew).concat(withPhoto())), 3).filter((a, i, arr) => arr.indexOf(a) === i),
-    build: async (items) => [await pickSlide(items)],
+    pick: () => [...new Set(rotate(newest(withPhoto().filter((a) => a.isNew).concat(withPhoto())), 6))].slice(0, 3),
+    build: async (items) => [await one(pickSlide(items.map(art)))],
     caption: (items) =>
       `💗 ¿Cuál elegís? ${items.map((_, i) => `${i + 1}️⃣`).join(' ')}\nComentá el número de tu favorito 👇\n\n${items.map((a, i) => `${i + 1}. ${a.title} – ${formatPrice(salePrice(a))}`).join('\n')}\n\n🛍️ Todos disponibles en la web (link en la bio).\n\n${igLine()}${TAGS}`,
   },
 };
 
+// Las genéricas: una idea por cada tema del banco de textos, más las fechas especiales.
+for (const [key, topic] of Object.entries(BANK)) {
+  IDEAS[key] = {
+    group: 'gen',
+    label: `Foto: ${topic.label}`,
+    hint: 'Foto con texto, sin artículos. Elegí el fondo o subí una foto tuya; el texto se puede editar.',
+    generic: true,
+    pickText: () => {
+      const [title, body] = topic.posts[ui.seed % topic.posts.length];
+      return { kicker: topic.kicker, title, body };
+    },
+    caption: (t) => `${t.title}\n${t.body ? `${t.body}\n` : ''}\n💗 ÚNICA Lencería Mayorista · Rosario\n🔗 Link en la bio\n\n${igLine()}${topic.tags} ${TAGS}`,
+  };
+}
+IDEAS.fecha = {
+  group: 'gen',
+  label: 'Foto: Fecha especial que se viene',
+  hint: 'Toma sola la próxima fecha (Navidad, Día de la Madre, San Valentín…). "Cambiar" pasa a la siguiente.',
+  generic: true,
+  pickText: () => {
+    const dates = upcomingDates();
+    const x = dates.length ? dates[ui.seed % dates.length] : specialDates(new Date().getFullYear() + 1)[0];
+    return { kicker: x.name, title: x.title, body: x.body };
+  },
+  caption: (t) => `${t.title}\n${t.body}\n\n${CLOSING}\n\n${igLine()}#${plain(t.kicker)} ${TAGS}`,
+};
+
+/* ---------------------------------------------------------------- Armado */
+
+async function buildResult(r) {
+  const idea = IDEAS[r.idea];
+  if (idea.generic) {
+    r.slides = [{ blob: await genericSlide(r.text, r.bg ? { photo: r.bg } : r.bgChoice), edit: 'bg' }];
+    r.caption = idea.caption(r.text);
+  } else {
+    r.slides = await idea.build(r.items, r);
+    r.caption = idea.caption(r.items);
+  }
+  return r;
+}
+
+function bgChoice() {
+  if (ui.bgMode === 'articulo') {
+    const pics = withPhoto();
+    const a = pics.length ? pics[ui.seed % pics.length] : null;
+    return a ? { photo: a.images[0] } : { palette: 0 };
+  }
+  return { palette: Number(ui.bgMode) || 0 };
+}
+
+/** Arma una idea; devuelve null si no hay artículos para ella. */
+async function makeResult(key, day = '') {
+  const idea = IDEAS[key];
+  const r = { idea: key, day, title: idea.label.replace(/^(Carrusel|Foto): /, ''), bg: null };
+  if (idea.generic) {
+    r.text = idea.pickText();
+    r.bgChoice = bgChoice();
+  } else {
+    r.items = idea.pick();
+    if (!r.items.length) return null;
+  }
+  return buildResult(r);
+}
+
+/** Plan de la semana: lunes artículos, miércoles genérica, viernes venta/encuesta. Cambia cada semana. */
+async function weeklyPlan() {
+  const week = Math.floor((Date.now() - new Date(2026, 0, 5)) / (7 * 86400000)) + ui.seed;
+  const generic = upcomingDates().length && week % 2 === 0 ? 'fecha' : ['frase', 'venta', 'cuidado', 'sabias'][week % 4];
+  const friday = ['ofertas', 'elegir', 'revender', 'collage', 'comprar'][week % 5];
+  const saved = ui.seed;
+  ui.seed = week; // los textos y artículos también rotan por semana
+  const out = [];
+  for (const [day, keys] of [
+    ['Lunes', ['novedades', 'collage', 'elegir']],
+    ['Miércoles', [generic]],
+    ['Viernes', [friday, 'elegir', 'revender']],
+  ]) {
+    for (const k of keys) {
+      const r = await makeResult(k, day);
+      if (r) {
+        out.push(r);
+        break;
+      }
+    }
+  }
+  ui.seed = saved;
+  return out;
+}
+
 /* ---------------------------------------------------------------- Pantalla */
 
 const btnCls = 'inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-bold';
+const chip = (k, v) =>
+  `<button type="button" data-idea="${k}" aria-pressed="${k === ui.idea}" class="px-3.5 py-2 rounded-full text-xs font-bold bg-surface-container-high aria-pressed:bg-primary aria-pressed:text-on-primary">${esc(v.label)}</button>`;
 
 export function renderIdeas() {
   const box = $('#ideasPanel');
@@ -407,53 +713,92 @@ export function renderIdeas() {
   const brands = brandsWithStock();
   if (!ui.brand && brands.length) ui.brand = brands[0][0];
   const idea = IDEAS[ui.idea];
+  const group = (g) => Object.entries(IDEAS).filter(([, v]) => v.group === g).map(([k, v]) => chip(k, v)).join('');
   box.innerHTML = `
-  <div class="flex flex-wrap gap-2" role="group" aria-label="Ideas">
-    ${Object.entries(IDEAS)
-      .map(([k, v]) => `<button type="button" data-idea="${k}" aria-pressed="${k === ui.idea}" class="px-3.5 py-2 rounded-full text-xs font-bold bg-surface-container-high aria-pressed:bg-primary aria-pressed:text-on-primary">${esc(v.label)}</button>`)
-      .join('')}
+  <div class="flex flex-wrap gap-2" role="group" aria-label="Plan">
+    <button type="button" data-idea="plan" aria-pressed="${ui.idea === 'plan'}" class="px-4 py-2.5 rounded-full text-sm font-bold bg-surface-container-high aria-pressed:bg-primary aria-pressed:text-on-primary">📅 Plan de la semana (3 publicaciones)</button>
   </div>
-  <p class="mt-3 text-sm text-on-surface-variant">${esc(idea.hint)}</p>
+  <p class="mt-4 mb-2 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Con tus artículos</p>
+  <div class="flex flex-wrap gap-2" role="group" aria-label="Ideas con artículos">${group('art')}</div>
+  <p class="mt-4 mb-2 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Fotos genéricas (sin artículos)</p>
+  <div class="flex flex-wrap gap-2" role="group" aria-label="Ideas genéricas">${group('gen')}</div>
+  <p class="mt-4 text-sm text-on-surface-variant">${esc(ui.idea === 'plan' ? 'Arma las 3 publicaciones de la semana: lunes con novedades, miércoles una foto genérica y viernes ofertas o una encuesta. Cada semana cambia sola.' : idea.hint)}</p>
   <div class="mt-3 flex flex-wrap items-center gap-2">
-    ${idea.needsBrand ? `<select id="ideaBrand" aria-label="Marca" class="bg-surface-container-low px-3 py-2 pr-8 rounded-xl text-sm border-none focus:ring-2 focus:ring-primary font-medium">${brands.map(([b, n]) => `<option value="${esc(b)}"${b === ui.brand ? ' selected' : ''}>${esc(b)} (${n})</option>`).join('')}</select>` : ''}
+    ${idea?.needsBrand ? `<select id="ideaBrand" aria-label="Marca" class="bg-surface-container-low px-3 py-2 pr-8 rounded-xl text-sm border-none focus:ring-2 focus:ring-primary font-medium">${brands.map(([b, n]) => `<option value="${esc(b)}"${b === ui.brand ? ' selected' : ''}>${esc(b)} (${n})</option>`).join('')}</select>` : ''}
+    ${
+      idea?.generic || ui.idea === 'plan'
+        ? `<select id="ideaBg" aria-label="Fondo de las fotos genéricas" class="bg-surface-container-low px-3 py-2 pr-8 rounded-xl text-sm border-none focus:ring-2 focus:ring-primary font-medium">
+            ${[['0', 'Fondo: rosa con puntilla'], ['1', 'Fondo: bordó con puntilla'], ['2', 'Fondo: nude con puntilla'], ['articulo', 'Fondo: foto de un artículo']]
+              .map(([v, t]) => `<option value="${v}"${v === ui.bgMode ? ' selected' : ''}>${t}</option>`)
+              .join('')}
+          </select>`
+        : ''
+    }
     <button type="button" data-idea-action="build" class="${btnCls} bg-primary text-on-primary"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">auto_awesome</span><span>Armar</span></button>
-    <button type="button" data-idea-action="shuffle" class="${btnCls} bg-surface-container-high"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">shuffle</span><span>Cambiar artículos</span></button>
+    <button type="button" data-idea-action="shuffle" class="${btnCls} bg-surface-container-high"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">shuffle</span><span>${idea?.generic ? 'Otro texto' : ui.idea === 'plan' ? 'Otra semana' : 'Cambiar artículos'}</span></button>
   </div>
-  <div id="ideaResult" class="mt-4"></div>`;
+  <input type="file" id="ideaPhotoInput" accept="image/*" class="hidden">
+  <div id="ideaResult" class="mt-5 flex flex-col gap-6"></div>`;
+  renderResults();
 }
 
-function renderResult() {
+function renderResults() {
   const out = $('#ideaResult');
-  if (!ui.slides.length) return (out.innerHTML = '');
-  const urls = ui.slides.map((b) => URL.createObjectURL(b));
-  out.innerHTML = `
+  if (!out) return;
+  out.innerHTML = ui.results
+    .map((r, ri) => {
+      const urls = r.slides.map((s) => URL.createObjectURL(s.blob));
+      const editable = IDEAS[r.idea].generic;
+      return `<div data-result="${ri}" class="p-3 rounded-2xl border border-outline-variant/30 bg-surface-container-low/40">
+  <p class="mb-2 font-bold text-sm">${r.day ? `<span class="text-primary">${esc(r.day)}</span> · ` : ''}${esc(r.title)}</p>
   <div class="flex gap-3 overflow-x-auto pb-2 snap-x">
-    ${urls.map((u, i) => `<img src="${u}" alt="Lámina ${i + 1} de ${urls.length}" class="h-72 sm:h-80 aspect-[4/5] object-cover rounded-xl shadow-sm snap-start shrink-0 border border-outline-variant/30">`).join('')}
+    ${urls
+      .map(
+        (u, i) => `<figure class="shrink-0 snap-start flex flex-col items-center gap-1.5">
+        <img src="${u}" alt="Lámina ${i + 1} de ${urls.length}" class="h-72 sm:h-80 aspect-[4/5] object-cover rounded-xl shadow-sm border border-outline-variant/30">
+        ${r.slides[i].edit ? `<button type="button" data-change-photo="${i}" class="text-xs font-bold text-primary hover:underline">📷 Cambiar foto</button>` : '<span class="text-xs text-transparent">.</span>'}
+      </figure>`
+      )
+      .join('')}
   </div>
-  <p class="mt-1 text-xs text-on-surface-variant">${urls.length === 1 ? '1 imagen' : `${urls.length} láminas: deslizá para verlas`}</p>
+  ${
+    editable
+      ? `<div class="mt-2 grid gap-2 sm:grid-cols-2">
+      <label class="text-xs font-semibold">Título<textarea data-text="title" rows="2" maxlength="120" class="mt-1 w-full rounded-xl bg-surface-container-lowest border-none text-sm">${esc(r.text.title)}</textarea></label>
+      <label class="text-xs font-semibold">Texto chico<textarea data-text="body" rows="2" maxlength="200" class="mt-1 w-full rounded-xl bg-surface-container-lowest border-none text-sm">${esc(r.text.body)}</textarea></label>
+    </div>`
+      : ''
+  }
   <div class="mt-3 flex flex-wrap gap-2">
     <button type="button" data-idea-action="share" class="${btnCls} bg-primary text-on-primary"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">ios_share</span><span>Compartir en Instagram</span></button>
-    <button type="button" data-idea-action="download" class="${btnCls} bg-surface-container-high"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">download</span><span>Descargar ${urls.length === 1 ? 'imagen' : 'imágenes'}</span></button>
+    <button type="button" data-idea-action="download" class="${btnCls} bg-surface-container-high"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">download</span><span>Descargar ${urls.length === 1 ? 'imagen' : `${urls.length} imágenes`}</span></button>
     <button type="button" data-idea-action="copy" class="${btnCls} bg-surface-container-high"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">content_copy</span><span>Copiar texto</span></button>
   </div>
-  <textarea readonly rows="8" class="mt-3 w-full rounded-xl bg-surface-container-low border-none text-sm" aria-label="Texto de la publicación">${esc(ui.caption)}</textarea>`;
+  <details class="mt-2"><summary class="cursor-pointer text-xs font-bold text-on-surface-variant">Ver texto de la publicación</summary>
+    <textarea readonly rows="8" class="mt-2 w-full rounded-xl bg-surface-container-lowest border-none text-sm" aria-label="Texto de la publicación">${esc(r.caption)}</textarea>
+  </details>
+</div>`;
+    })
+    .join('');
 }
 
 async function build(button) {
-  const idea = IDEAS[ui.idea];
-  const items = idea.pick();
-  if (!items.length) {
-    d.showToast(ui.idea === 'ofertas' ? 'No hay artículos en oferta con foto.' : 'No hay artículos con foto para esta idea (¿marcaste novedades?).', 'error');
-    return;
-  }
   const label = button?.lastElementChild;
   const original = label?.textContent;
   if (label) label.textContent = 'Armando…';
   if (button) button.disabled = true;
   try {
-    ui.slides = await idea.build(items);
-    ui.caption = idea.caption(items);
-    renderResult();
+    if (ui.idea === 'plan') {
+      ui.results = await weeklyPlan();
+    } else {
+      const r = await makeResult(ui.idea);
+      if (!r) {
+        d.showToast(ui.idea === 'ofertas' ? 'No hay artículos en oferta con foto.' : 'No hay artículos con foto para esta idea (¿marcaste novedades?).', 'error');
+        return;
+      }
+      ui.results = [r];
+    }
+    renderResults();
   } catch (err) {
     d.showToast(err.message || 'No se pudo armar.', 'error');
   } finally {
@@ -462,11 +807,11 @@ async function build(button) {
   }
 }
 
-const files = () => ui.slides.map((b, i) => new File([b], `unica-${ui.idea}-${String(i + 1).padStart(2, '0')}.jpg`, { type: 'image/jpeg' }));
+const filesOf = (r) => r.slides.map((s, i) => new File([s.blob], `unica-${r.idea}-${String(i + 1).padStart(2, '0')}.jpg`, { type: 'image/jpeg' }));
 
-async function share() {
-  const list = files();
-  const copied = await copyText(ui.caption);
+async function share(r) {
+  const list = filesOf(r);
+  const copied = await copyText(r.caption);
   if (navigator.canShare?.({ files: list })) {
     try {
       await navigator.share({ files: list });
@@ -476,41 +821,76 @@ async function share() {
       if (err.name === 'AbortError') return;
     }
   }
-  saveAll(list);
+  saveAll(r);
   d.showToast(copied ? 'Imágenes descargadas y texto copiado.' : 'Imágenes descargadas.');
 }
 
-function saveAll(list = files()) {
-  list.forEach((f, i) => setTimeout(() => download(f, f.name), i * 350));
+function saveAll(r) {
+  filesOf(r).forEach((f, i) => setTimeout(() => download(f, f.name), i * 350));
 }
+
+let pendingPhoto = null; // { ri, si } de la lámina a la que se le cambia la foto
 
 export function initIdeas(deps) {
   d = deps;
-  $('#ideasPanel').addEventListener('click', (e) => {
+  const panel = $('#ideasPanel');
+  panel.addEventListener('click', (e) => {
     const pick = e.target.closest('[data-idea]');
     if (pick) {
       ui.idea = pick.dataset.idea;
       ui.seed = 0;
-      ui.slides = [];
+      ui.results = [];
       renderIdeas();
+      return;
+    }
+    const change = e.target.closest('[data-change-photo]');
+    if (change) {
+      pendingPhoto = { ri: Number(change.closest('[data-result]').dataset.result), si: Number(change.dataset.changePhoto) };
+      $('#ideaPhotoInput').value = '';
+      $('#ideaPhotoInput').click();
       return;
     }
     const b = e.target.closest('[data-idea-action]');
     if (!b) return;
     const action = b.dataset.ideaAction;
+    const r = ui.results[Number(b.closest('[data-result]')?.dataset.result)];
     if (action === 'build') build(b);
     if (action === 'shuffle') {
       ui.seed++;
       build($('[data-idea-action="build"]'));
     }
-    if (action === 'share') share();
-    if (action === 'download') saveAll();
-    if (action === 'copy') copyText(ui.caption).then((ok) => d.showToast(ok ? 'Texto copiado.' : 'No se pudo copiar.', ok ? 'ok' : 'error'));
+    if (action === 'share' && r) share(r);
+    if (action === 'download' && r) saveAll(r);
+    if (action === 'copy' && r) copyText(r.caption).then((ok) => d.showToast(ok ? 'Texto copiado.' : 'No se pudo copiar.', ok ? 'ok' : 'error'));
   });
-  $('#ideasPanel').addEventListener('change', (e) => {
-    if (e.target.id !== 'ideaBrand') return;
-    ui.brand = e.target.value;
-    ui.seed = 0;
-    build($('[data-idea-action="build"]'));
+  panel.addEventListener('change', async (e) => {
+    if (e.target.id === 'ideaBrand') {
+      ui.brand = e.target.value;
+      ui.seed = 0;
+      build($('[data-idea-action="build"]'));
+    }
+    if (e.target.id === 'ideaBg') {
+      ui.bgMode = e.target.value;
+      if (ui.results.length) build($('[data-idea-action="build"]'));
+    }
+    if (e.target.id === 'ideaPhotoInput' && pendingPhoto && e.target.files[0]) {
+      const r = ui.results[pendingPhoto.ri];
+      const slide = r?.slides[pendingPhoto.si];
+      if (!slide) return;
+      const url = URL.createObjectURL(e.target.files[0]);
+      if (slide.edit === 'bg') r.bg = url;
+      else ui.overrides[slide.edit] = url; // vale para esta sesión: el artículo de la web no cambia
+      await buildResult(r);
+      renderResults();
+      d.showToast('Foto cambiada.');
+    }
+    // Texto editado de una foto genérica
+    const field = e.target.closest('[data-text]');
+    if (field) {
+      const r = ui.results[Number(field.closest('[data-result]').dataset.result)];
+      r.text = { ...r.text, [field.dataset.text]: field.value.trim() };
+      await buildResult(r);
+      renderResults();
+    }
   });
 }
