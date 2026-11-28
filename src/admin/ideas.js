@@ -5,6 +5,7 @@ import { hasOffer, salePrice } from '../shared/prices.js';
 import { esc } from '../shared/utils.js';
 import { subIdsOf } from '../shared/tree.js';
 import { SEASON_WEEKS, SEASONS } from './seasons.js';
+import { DATE_VARIANTS, EXTRA_BANK } from './extra-bank.js';
 import { currentClimate, fitsClimate } from './climate.js';
 import { buildReel, previewMusic, recordReel } from './reels.js';
 import { copyText, download, drawCover, drawPost, loadImage, roundRect, wrap } from './social.js';
@@ -428,7 +429,8 @@ const BANK = {
   clima: { label: 'Época del año', kicker: '', tags: '', clima: true },
 };
 const season = () => SEASONS[Math.min(ui.season, SEASONS.length - 1)];
-const bankOf = (topic) => season().bank[topic] || SEASONS[0].bank[topic] || [];
+// Primero los textos de la temporada y después el banco extra: "Armar" de nuevo trae otro.
+const bankOf = (topic) => [...(season().bank[topic] || SEASONS[0].bank[topic] || []), ...(EXTRA_BANK[topic] || [])];
 const climateKicker = () => {
   const c = currentClimate();
   return c.coming ? c.comingKicker : c.kicker;
@@ -585,7 +587,7 @@ for (const [key, topic] of Object.entries(BANK)) {
   IDEAS[key] = {
     group: 'gen',
     label: `Foto: ${topic.label}`,
-    hint: 'Foto con texto, sin artículos. Elegí el fondo o subí una foto tuya; el texto se puede editar.',
+    hint: 'Foto con texto, sin artículos. Cada vez que tocás Armar sale otra opción. Elegí el fondo o subí una foto tuya; el texto se puede editar.',
     generic: true,
     pickText: () => {
       if (topic.clima) {
@@ -603,12 +605,13 @@ for (const [key, topic] of Object.entries(BANK)) {
 IDEAS.fecha = {
   group: 'gen',
   label: 'Foto: Fecha especial que se viene',
-  hint: 'Toma sola la próxima fecha (Navidad, Día de la Madre, San Valentín…). "Cambiar" pasa a la siguiente.',
+  hint: 'Toma sola las próximas fechas (Navidad, Día de la Madre, San Valentín…). Cada vez que tocás Armar sale otra opción.',
   generic: true,
   pickText: () => {
     const dates = upcomingDates();
-    const x = dates.length ? dates[ui.seed % dates.length] : specialDates(new Date().getFullYear() + 1)[0];
-    return { kicker: x.name, title: x.title, body: x.body };
+    const list = dates.length ? dates : [specialDates(new Date().getFullYear() + 1)[0]];
+    const options = list.flatMap((x) => (DATE_VARIANTS[x.name] || [[x.title, x.body]]).map(([title, body]) => ({ kicker: x.name, title, body })));
+    return options[ui.seed % options.length];
   },
   caption: (t) => `${t.title}\n${t.body}\n\n${CLOSING}\n\n${igLine()}#${plain(t.kicker)} ${TAGS}`,
 };
@@ -1013,11 +1016,13 @@ async function deliverReel(r, button, action) {
   }
 }
 
-async function build(button) {
+async function build(button, opts = {}) {
   const label = button?.lastElementChild;
   const original = label?.textContent;
   if (label) label.textContent = 'Armando…';
   if (button) button.disabled = true;
+  const idea = IDEAS[ui.idea];
+  if ((idea?.generic || idea?.tips) && ui.results[0]?.idea === ui.idea && opts.reroll) ui.seed++;
   try {
     if (ui.idea === 'plan') {
       ui.results = await weeklyPlan();
@@ -1089,7 +1094,7 @@ export function initIdeas(deps) {
     if (!b) return;
     const action = b.dataset.ideaAction;
     const r = ui.results[Number(b.closest('[data-result]')?.dataset.result)];
-    if (action === 'build') build(b);
+    if (action === 'build') build(b, { reroll: true });
     if (action === 'shuffle') {
       ui.seed++;
       build($('[data-idea-action="build"]'));
