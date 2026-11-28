@@ -19,7 +19,7 @@ const SANS = '"Plus Jakarta Sans", sans-serif';
 const SERIF = '"Playfair Display", serif';
 
 let d; // { state, showToast }
-const ui = { idea: 'plan', brand: '', seed: 0, results: [], overrides: {}, bgMode: '0', sub: 'auto', music: 'alegre', musicFile: null, musicName: '' };
+const ui = { idea: 'plan', brand: '', seed: 0, results: [], overrides: {}, bgMode: '0', sub: 'auto', music: 'pop', musicFile: null, musicName: '' };
 const plain = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
 /* ---------------------------------------------------------------- Artículos */
@@ -690,7 +690,7 @@ function swapOptions(r) {
 
 /* ---------------------------------------------------------------- Reels */
 
-const REEL_HINT = 'Video vertical de ~20 s con música propia (sin derechos de autor). Si querés, en Instagram podés cambiarla por un audio en tendencia.';
+const REEL_HINT = 'Video vertical de ~20 s con música propia (sin derechos de autor) y efectos de sonido sincronizados.';
 const reelIdea = (kind, label, extra) => ({ group: 'reel', reel: kind, label: `Reel: ${label}`, hint: REEL_HINT, ...extra });
 Object.assign(IDEAS, {
   reel_novedades: reelIdea('novedades', 'Nuevos ingresos', {
@@ -858,7 +858,7 @@ export function renderIdeas() {
     ${
       idea?.reel || ui.idea === 'plan'
         ? `<select id="ideaMusic" aria-label="Música de los reels" class="bg-surface-container-low px-3 py-2 pr-8 rounded-xl text-sm border-none focus:ring-2 focus:ring-primary font-medium">
-            ${[['alegre', '🎵 Música: alegre'], ['suave', '🎵 Música: suave'], ['archivo', ui.musicName ? `🎵 Mi audio: ${ui.musicName}` : '🎵 Subir mi audio…'], ['ninguna', '🔇 Sin música']]
+            ${[['pop', '🎵 Música: pop movida'], ['urbano', '🎵 Música: urbano (reggaetón)'], ['efectos', '✨ Solo efectos de sonido'], ['archivo', ui.musicName ? `🎵 Mi audio: ${ui.musicName}` : '🎵 Subir mi audio…'], ['ninguna', '🔇 Sin sonido']]
               .map(([v, t]) => `<option value="${v}"${v === ui.music ? ' selected' : ''}>${esc(t)}</option>`)
               .join('')}
           </select>
@@ -940,7 +940,8 @@ function renderResults() {
 }
 
 const musicOpt = () => ({ kind: ui.music, file: ui.musicFile });
-const musicLabel = () => (ui.music === 'ninguna' ? 'sin música' : ui.music === 'archivo' ? `con tu audio${ui.musicName ? ` (${ui.musicName})` : ''}` : `con música ${ui.music}`);
+const musicLabel = () =>
+  ui.music === 'ninguna' ? 'sin sonido' : ui.music === 'efectos' ? 'solo efectos' : ui.music === 'archivo' ? `con tu audio${ui.musicName ? ` (${ui.musicName})` : ''} + efectos` : `música ${ui.music} + efectos`;
 let stopPreview = null;
 
 let playing = 0;
@@ -1074,7 +1075,7 @@ export function initIdeas(deps) {
     if (r?.reel && action === 'listen') {
       stopPreview?.();
       playReels();
-      previewMusic(musicOpt(), r.reel.duration).then((stop) => (stopPreview = stop)).catch(() => d.showToast('No se pudo reproducir el audio.', 'error'));
+      previewMusic(musicOpt(), r.reel.duration, r.reel.sfx).then((stop) => (stopPreview = stop)).catch(() => d.showToast('No se pudo reproducir el audio.', 'error'));
       return;
     }
     if (r?.reel && (action === 'share' || action === 'download')) return deliverReel(r, b, action);

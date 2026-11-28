@@ -118,8 +118,16 @@ function shade(ctx, from = 0.45) {
 function sequence(scenes) {
   const duration = scenes.reduce((s, x) => s + x.dur, 0);
   const FADE = 0.4;
+  const sfx = [];
+  let start = 0;
+  scenes.forEach((sc, i) => {
+    if (i > 0) sfx.push([start, 'whoosh']);
+    for (const [t, kind] of sc.sfx || []) sfx.push([start + t, kind]);
+    start += sc.dur;
+  });
   return {
     duration,
+    sfx,
     draw(ctx, time) {
       let acc = 0;
       for (let i = 0; i < scenes.length; i++) {
@@ -143,6 +151,7 @@ function sequence(scenes) {
 
 const ctaScene = (A, title = 'Pedí por mayor desde la web') => ({
   dur: 3.6,
+  sfx: [[0.2, 'rise'], [1, 'bling']],
   draw(ctx, t) {
     gradientBg(ctx, true);
     const s = 0.85 + 0.15 * appear(t, 0, 0.6);
@@ -157,6 +166,7 @@ const ctaScene = (A, title = 'Pedí por mayor desde la web') => ({
 /** Lámina de un artículo a pantalla completa: zoom lento + tarjeta con precio. */
 const productScene = (A, a, img, { index, total, badge, dur = 3.5 }) => ({
   dur,
+  sfx: [[0.35, 'pop'], [0.8, 'ding']],
   draw(ctx, t, d) {
     cover(ctx, img, 0, 0, W, H, 1 + 0.1 * (t / d));
     shade(ctx, 0.5);
@@ -222,15 +232,52 @@ function storeHeader(ctx, A, x, y, w) {
   ctx.fill();
 }
 
-function tap(ctx, cx, cy, t) {
-  const p = (t % 1.4) / 1.4;
+/**
+ * Dedito que se mueve rápido entre toques. taps: [[segundo, x, y], ...]; rest: dónde arranca.
+ * En cada toque se achica un instante y deja una onda (el sonido lo pone la escena).
+ */
+function finger(ctx, t, taps, rest) {
+  let [x, y] = rest;
+  let prev = rest;
+  for (const [tt, tx, ty] of taps) {
+    if (t >= tt) {
+      prev = [tx, ty];
+      [x, y] = prev;
+      continue;
+    }
+    const k = ease((t - (tt - 0.3)) / 0.3);
+    x = prev[0] + (tx - prev[0]) * k;
+    y = prev[1] + (ty - prev[1]) * k;
+    break;
+  }
+  // Después del último toque, el dedito se corre para que se lea lo que cambió
+  const last = taps[taps.length - 1];
+  if (last && t > last[0] + 0.35) {
+    const k = ease((t - last[0] - 0.35) / 0.35);
+    x = last[1] + (W - 60 - last[1]) * k;
+    y = last[2] + (H + 80 - last[2]) * k;
+  }
+  for (const [tt, tx, ty] of taps) {
+    const p = (t - tt) / 0.45;
+    if (p < 0 || p >= 1) continue;
+    ctx.save();
+    ctx.globalAlpha = 0.6 * (1 - p);
+    ctx.strokeStyle = PINK;
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.arc(tx, ty, 30 + 70 * p, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+  const pressed = taps.some(([tt]) => t >= tt && t < tt + 0.14);
   ctx.save();
-  ctx.globalAlpha = 0.5 * (1 - p);
-  ctx.fillStyle = '#fff';
+  ctx.shadowColor = 'rgba(0,0,0,0.35)';
+  ctx.shadowBlur = 20;
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
   ctx.strokeStyle = PINK;
   ctx.lineWidth = 6;
   ctx.beginPath();
-  ctx.arc(cx, cy, 30 + 50 * p, 0, Math.PI * 2);
+  ctx.arc(x, y, pressed ? 30 : 40, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
   ctx.restore();
@@ -255,6 +302,7 @@ const REELS = {
     return sequence([
       {
         dur: 3.2,
+        sfx: [[0.5, 'rise']],
         draw(ctx, t, d) {
           const z = 1 + 0.06 * (t / d);
           const half = [W / 2, H / 2];
@@ -278,6 +326,7 @@ const REELS = {
     return sequence([
       {
         dur: 2.8,
+        sfx: [[0.2, 'rise']],
         draw(ctx, t) {
           gradientBg(ctx, false);
           logo(ctx, A.logo, W / 2, 600, 180);
@@ -289,6 +338,7 @@ const REELS = {
         const base = productScene(A, a, A.imgs[i], { dur: 3.2 });
         return {
           dur: 3.2,
+          sfx: [[0, 'pop'], ...base.sfx],
           draw(ctx, t, d) {
             base.draw(ctx, t, d);
             const s = appear(t, 0, 0.4);
@@ -305,6 +355,7 @@ const REELS = {
       }),
       {
         dur: 4.4,
+        sfx: [[0.2, 'pop'], [0.45, 'pop'], [0.7, 'pop'], [1.2, 'bling']],
         draw(ctx, t) {
           gradientBg(ctx, false);
           text(ctx, '¿1, 2 o 3?', W / 2, 330, { size: 120, font: SERIF, color: DARK, alpha: appear(t, 0) });
@@ -332,7 +383,8 @@ const REELS = {
     const list = items.slice(0, 6);
     return sequence([
       {
-        dur: 3.6,
+        dur: 3.4,
+        sfx: [[0.4, 'rise']],
         draw(ctx, t) {
           gradientBg(ctx, true);
           text(ctx, 'POV:', W / 2, 700, { size: 70, weight: 800, color: '#fbcfe8', alpha: appear(t, 0) });
@@ -341,7 +393,8 @@ const REELS = {
         },
       },
       {
-        dur: 11,
+        dur: 9.5,
+        sfx: [...list.map((_, i) => [i * 0.9, 'pop']), [list.length * 0.9 + 0.3, 'bling']],
         draw(ctx, t) {
           ctx.fillStyle = SOFT;
           ctx.fillRect(0, 0, W, H);
@@ -350,7 +403,7 @@ const REELS = {
           const cw = (W - gap * 3) / cols;
           const ch = (H - 380 - gap * 4) / 3;
           list.forEach((a, i) => {
-            const pop = appear(t, i * 1.1, 0.5);
+            const pop = appear(t, i * 0.9, 0.35);
             if (pop <= 0) return;
             const x = gap + (i % cols) * (cw + gap);
             const y = 200 + Math.floor(i / cols) * (ch + gap);
@@ -371,80 +424,107 @@ const REELS = {
             ctx.restore();
           });
           text(ctx, 'Todo a precio mayorista 💗', W / 2, 130, { size: 62, font: SERIF, color: DARK, alpha: appear(t, 0.2) });
-          pill(ctx, 'Armá tu pedido en la web', W / 2, H - 170, { size: 46, alpha: appear(t, list.length * 1.1 + 0.3) });
+          pill(ctx, 'Armá tu pedido en la web', W / 2, H - 170, { size: 46, alpha: appear(t, list.length * 0.9 + 0.3) });
         },
       },
       ctaScene(A),
     ]);
   },
 
-  /** Así comprás en la web: un celular dibujado con la tienda, el artículo y el carrito. ~20 s */
+  /** Así comprás en la web: un celular dibujado; el dedito toca rápido y cada toque suena. ~20 s */
   async web(items) {
     const A = await assets(items);
+    const { x: PX, y: PY, w: PW, h: PH } = PHONE;
     const caption = (ctx, n, title, t) => {
       pill(ctx, `PASO ${n}`, W / 2, 150, { size: 40, alpha: appear(t, 0) });
       text(ctx, title, W / 2, 390, { size: 74, font: SERIF, color: DARK, alpha: appear(t, 0.2), maxLines: 2 });
     };
+    const cw = (PW - 60) / 2;
+    const chips = (items[0].sizes?.length ? items[0].sizes : ['S', 'M', 'L', 'XL']).slice(0, 4);
+    const chipAt = (i) => [PX + 90 + i * 135, PY + 910];
+    const step2Taps = [[0.7, ...chipAt(0)], [1.25, ...chipAt(Math.min(1, chips.length - 1))], [1.8, ...chipAt(Math.min(2, chips.length - 1))], [2.8, PX + PW / 2, PY + 1060]];
+    const sendAt = [PX + PW / 2, PY + PH - 110];
     return sequence([
       {
-        dur: 3.2,
+        dur: 3,
+        sfx: [[0.2, 'rise']],
         draw(ctx, t) {
           gradientBg(ctx, true);
           logo(ctx, A.logo, W / 2, 620, 200);
           text(ctx, '¿Ya compraste en nuestra web? 🛍️', W / 2, 900, { size: 92, font: SERIF, alpha: appear(t, 0.2), dy: 40 * (1 - appear(t, 0.2)) });
-          text(ctx, 'Te mostramos lo fácil que es', W / 2, 1250, { size: 52, weight: 600, color: '#fce7f3', alpha: appear(t, 1) });
+          text(ctx, 'Te mostramos lo fácil que es 👇', W / 2, 1250, { size: 52, weight: 600, color: '#fce7f3', alpha: appear(t, 0.8) });
         },
       },
       {
-        dur: 4.6,
+        dur: 4.4,
+        sfx: [[0.6, 'swipe'], [2.4, 'tap']],
         draw(ctx, t) {
           gradientBg(ctx, false);
           caption(ctx, 1, 'Entrá y mirá todo el catálogo', t);
-          phone(ctx, (x, y, w) => {
-            const scroll = 140 * (t / 4.6);
-            const cw = (w - 60) / 2;
+          const scroll = 300 * ease((t - 0.6) / 0.8);
+          const picked = t >= 2.4;
+          phone(ctx, (x, y) => {
             items.slice(0, 6).forEach((a, i) => {
               const cx = x + 20 + (i % 2) * (cw + 20);
               const cy = y + 200 + Math.floor(i / 2) * (cw * 1.35 + 20) - scroll;
-              clipRound(ctx, cx, cy, cw, cw * 1.05, 20, () => cover(ctx, A.imgs[i % A.imgs.length], cx, cy, cw, cw * 1.05));
+              const big = picked && i === 2 ? 1 + 0.05 * (1 - appear(t, 2.4, 0.3)) : 1;
+              ctx.save();
+              ctx.translate(cx + cw / 2, cy + cw / 2);
+              ctx.scale(big, big);
+              clipRound(ctx, -cw / 2, -cw / 2, cw, cw * 1.05, 20, () => cover(ctx, A.imgs[i % A.imgs.length], -cw / 2, -cw / 2, cw, cw * 1.05));
+              ctx.restore();
               text(ctx, formatPrice(salePrice(a)), cx + 8, cy + cw * 1.05 + 46, { size: 32, weight: 800, color: PINK, align: 'left', maxW: cw });
             });
-            storeHeader(ctx, A, x, y, w);
+            storeHeader(ctx, A, x, y, PW);
           });
+          // Dedito: desliza para arriba y toca un producto
+          const card = [PX + 20 + cw / 2, PY + 200 + (cw * 1.35 + 20) - 300 + cw / 2];
+          const swipeY = PY + PH - 250 - 500 * ease((t - 0.6) / 0.8);
+          finger(ctx, t, [[2.4, ...card]], [PX + PW / 2, t < 1.6 ? swipeY : PY + PH - 750]);
         },
       },
       {
-        dur: 4.6,
+        dur: 4.4,
+        sfx: [...step2Taps.map(([tt]) => [tt, 'tap']), [2.9, 'ding']],
         draw(ctx, t) {
           const a = items[0];
           gradientBg(ctx, false);
           caption(ctx, 2, 'Elegí talles, colores y cantidad', t);
+          const tapped = step2Taps.filter(([tt]) => t >= tt).length;
+          const active = Math.min(chips.length - 1, Math.max(0, Math.min(tapped, 3) - 1));
+          const added = t >= 2.85;
           phone(ctx, (x, y, w) => {
             cover(ctx, A.imgs[0], x, y, w, 620, 1.05);
             text(ctx, a.title, x + 30, y + 700, { size: 36, font: SERIF, color: DARK, align: 'left', maxW: w - 60, maxLines: 2 });
             text(ctx, formatPrice(salePrice(a)), x + 30, y + 820, { size: 46, weight: 800, color: PINK, align: 'left' });
-            const sizes = (a.sizes?.length ? a.sizes : ['S', 'M', 'L', 'XL']).slice(0, 4);
-            const active = Math.min(sizes.length - 1, Math.floor(t / 1.1));
-            sizes.forEach((s, i) => {
+            chips.forEach((sz, i) => {
               const bx = x + 30 + i * 135;
-              ctx.fillStyle = i === active ? PINK : '#fce7f3';
+              const on = tapped > 0 && i === active;
+              ctx.fillStyle = on ? PINK : '#fce7f3';
               roundRect(ctx, bx, y + 870, 120, 80, 20);
               ctx.fill();
-              text(ctx, String(s).slice(0, 5), bx + 60, y + 925, { size: 32, weight: 700, color: i === active ? '#fff' : DARK, maxW: 110 });
+              text(ctx, String(sz).slice(0, 5), bx + 60, y + 925, { size: 32, weight: 700, color: on ? '#fff' : DARK, maxW: 110 });
             });
-            ctx.fillStyle = PINK;
-            roundRect(ctx, x + 30, y + 1010, w - 60, 100, 50);
+            const pulse = added ? 1 + 0.06 * (1 - appear(t, 2.85, 0.3)) : 1;
+            ctx.save();
+            ctx.translate(x + w / 2, y + 1060);
+            ctx.scale(pulse, pulse);
+            ctx.fillStyle = added ? WA : PINK;
+            roundRect(ctx, -(w - 60) / 2, -50, w - 60, 100, 50);
             ctx.fill();
-            text(ctx, 'Agregar al pedido', x + w / 2, y + 1075, { size: 36, weight: 800 });
-            tap(ctx, x + 30 + active * 135 + 60, y + 910, t);
+            ctx.restore();
+            text(ctx, added ? '✓ Agregado' : 'Agregar al pedido', x + w / 2, y + 1075, { size: 36, weight: 800 });
           });
+          finger(ctx, t, step2Taps, [PX + PW - 60, PY + PH + 100]);
         },
       },
       {
-        dur: 4.6,
+        dur: 4.4,
+        sfx: [[1.2, 'tap'], [1.35, 'success']],
         draw(ctx, t) {
           gradientBg(ctx, false);
           caption(ctx, 3, 'Enviá el pedido por WhatsApp', t);
+          const sent = t >= 1.25;
           phone(ctx, (x, y, w, h) => {
             text(ctx, 'Tu pedido mayorista', x + 30, y + 140, { size: 40, font: SERIF, color: DARK, align: 'left' });
             items.slice(0, 3).forEach((a, i) => {
@@ -453,9 +533,9 @@ const REELS = {
               text(ctx, a.title, x + 200, ry + 50, { size: 28, weight: 600, color: DARK, align: 'left', maxW: w - 240, maxLines: 2 });
               text(ctx, formatPrice(salePrice(a)), x + 200, ry + 130, { size: 32, weight: 800, color: PINK, align: 'left' });
             });
-            const total = items.slice(0, 3).reduce((s, a) => s + salePrice(a), 0);
+            const total = items.slice(0, 3).reduce((sum, a) => sum + salePrice(a), 0);
             text(ctx, `Total estimado ${formatPrice(total)}`, x + 30, y + h - 220, { size: 36, weight: 800, color: DARK, align: 'left' });
-            const pulse = 1 + 0.03 * Math.sin(t * 6);
+            const pulse = sent ? 1 + 0.06 * (1 - appear(t, 1.25, 0.3)) : 1 + 0.025 * Math.sin(t * 9);
             ctx.save();
             ctx.translate(x + w / 2, y + h - 110);
             ctx.scale(pulse, pulse);
@@ -463,9 +543,25 @@ const REELS = {
             roundRect(ctx, -(w - 60) / 2, -55, w - 60, 110, 55);
             ctx.fill();
             ctx.restore();
-            text(ctx, 'Enviar pedido por WhatsApp', x + w / 2, y + h - 97, { size: 34, weight: 800 });
-            if (t > 1.5) tap(ctx, x + w / 2, y + h - 110, t);
+            text(ctx, sent ? '✓ ¡Pedido enviado!' : 'Enviar pedido por WhatsApp', x + w / 2, y + h - 97, { size: 34, weight: 800 });
           });
+          finger(ctx, t, [[1.2, ...sendAt]], [PX + PW - 40, PY + PH + 120]);
+          // Cartel de confirmación
+          const ok = appear(t, 1.4, 0.35);
+          if (ok > 0) {
+            ctx.save();
+            ctx.globalAlpha = ok;
+            ctx.translate(W / 2, 1150);
+            ctx.scale(0.7 + 0.3 * ok, 0.7 + 0.3 * ok);
+            ctx.fillStyle = '#fff';
+            ctx.shadowColor = 'rgba(0,0,0,0.25)';
+            ctx.shadowBlur = 40;
+            roundRect(ctx, -360, -150, 720, 300, 50);
+            ctx.fill();
+            ctx.restore();
+            text(ctx, '✅', W / 2, 1120, { size: 90, alpha: ok });
+            text(ctx, '¡Listo! Te respondemos por WhatsApp', W / 2, 1220, { size: 40, weight: 800, color: DARK, alpha: ok, maxW: 640, maxLines: 2 });
+          }
         },
       },
       ctaScene(A, '¡Así de fácil!'),
@@ -478,6 +574,7 @@ const REELS = {
     return sequence([
       {
         dur: 3.4,
+        sfx: [[0.2, 'rise']],
         draw(ctx, t) {
           gradientBg(ctx, true);
           logo(ctx, A.logo, W / 2, 600, 190);
@@ -487,6 +584,7 @@ const REELS = {
       },
       ...tips.map(([tTitle, body], i) => ({
         dur: 4.8,
+        sfx: [[0, 'pop'], [0.9, 'ding']],
         draw(ctx, t) {
           gradientBg(ctx, false);
           text(ctx, String(i + 1), W / 2, 620, { size: 260, font: SERIF, color: PINK, alpha: appear(t, 0) });
@@ -502,132 +600,221 @@ const REELS = {
 export const buildReel = (kind, items, extra) => REELS[kind](items, extra);
 
 /* ---------------------------------------------------------------- Música */
-// Música original generada en el navegador (sin derechos de autor): acordes, bajo y ritmo.
-// También se puede usar un audio propio (archivo que sube el admin).
+// Música original generada en el navegador (sin derechos de autor) + efectos de sonido
+// sincronizados con lo que pasa en pantalla (toques, apariciones, precios, cambios de escena).
 
 const NOTE = (n) => 440 * Math.pow(2, (n - 69) / 12); // número MIDI → Hz
-// Progresiones de 4 acordes (notas MIDI); una vuelta = 4 compases.
-const STYLES = {
-  alegre: { bpm: 112, drums: true, chords: [[60, 64, 67], [55, 59, 62], [57, 60, 64], [53, 57, 60]], bass: [36, 31, 33, 29], wave: 'triangle' },
-  suave: { bpm: 84, drums: false, chords: [[57, 60, 64, 67], [53, 57, 60, 64], [60, 64, 67, 71], [55, 59, 62, 65]], bass: [33, 29, 36, 31], wave: 'sine' },
-};
+// La menor – Fa – Do – Sol: la vuelta de acordes de muchos hits pop.
+const CHORDS = [
+  [57, 60, 64],
+  [53, 57, 60],
+  [48, 52, 55],
+  [55, 59, 62],
+];
+const ROOTS = [45, 41, 36, 43];
+// Gancho melódico (pentatónica de La menor), en corcheas; null = silencio.
+const HOOK = [76, null, 79, 76, 74, null, 72, 74, 76, null, 79, 81, 79, null, 76, null];
 
-function tone(ac, out, { freq, start, dur, type = 'sine', gain = 0.1, attack = 0.02, release = 0.25, filter }) {
-  const osc = ac.createOscillator();
+let noiseBuffer = null;
+function noiseSrc(ac) {
+  if (!noiseBuffer || noiseBuffer.sampleRate !== ac.sampleRate) {
+    noiseBuffer = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+    const d = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const src = ac.createBufferSource();
+  src.buffer = noiseBuffer;
+  return src;
+}
+
+function env(ac, out, t, { attack = 0.005, peak = 0.2, decay = 0.2 }) {
   const g = ac.createGain();
-  osc.type = type;
-  osc.frequency.value = freq;
-  g.gain.setValueAtTime(0, start);
-  g.gain.linearRampToValueAtTime(gain, start + attack);
-  g.gain.setValueAtTime(gain, Math.max(start + attack, start + dur - release));
-  g.gain.linearRampToValueAtTime(0, start + dur);
-  let node = osc;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(peak, t + attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay);
+  g.connect(out);
+  return g;
+}
+
+function osc(ac, out, t, { freq, type = 'sine', dur = 0.2, peak = 0.2, attack = 0.005, filter, glideTo }) {
+  const o = ac.createOscillator();
+  o.type = type;
+  o.frequency.setValueAtTime(freq, t);
+  if (glideTo) o.frequency.exponentialRampToValueAtTime(glideTo, t + dur);
+  const g = env(ac, out, t, { attack, peak, decay: dur });
   if (filter) {
     const f = ac.createBiquadFilter();
     f.type = 'lowpass';
     f.frequency.value = filter;
-    osc.connect(f);
-    node = f;
-  }
-  node.connect(g).connect(out);
-  osc.start(start);
-  osc.stop(start + dur + 0.05);
+    o.connect(f).connect(g);
+  } else o.connect(g);
+  o.start(t);
+  o.stop(t + attack + dur + 0.05);
 }
 
-function kick(ac, out, t) {
-  const osc = ac.createOscillator();
-  const g = ac.createGain();
-  osc.frequency.setValueAtTime(140, t);
-  osc.frequency.exponentialRampToValueAtTime(45, t + 0.15);
-  g.gain.setValueAtTime(0.55, t);
-  g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-  osc.connect(g).connect(out);
-  osc.start(t);
-  osc.stop(t + 0.32);
-}
-
-let noiseBuffer = null;
-function noise(ac, out, t, { dur = 0.05, gain = 0.12, freq = 7000 } = {}) {
-  if (!noiseBuffer || noiseBuffer.sampleRate !== ac.sampleRate) {
-    noiseBuffer = ac.createBuffer(1, ac.sampleRate * 0.5, ac.sampleRate);
-    const data = noiseBuffer.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-  }
-  const src = ac.createBufferSource();
-  src.buffer = noiseBuffer;
+function noiseHit(ac, out, t, { type = 'highpass', freq = 8000, dur = 0.06, peak = 0.15, q = 1 }) {
+  const src = noiseSrc(ac);
   const f = ac.createBiquadFilter();
-  f.type = 'highpass';
+  f.type = type;
   f.frequency.value = freq;
-  const g = ac.createGain();
-  g.gain.setValueAtTime(gain, t);
-  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-  src.connect(f).connect(g).connect(out);
+  f.Q.value = q;
+  src.connect(f).connect(env(ac, out, t, { peak, decay: dur }));
   src.start(t);
-  src.stop(t + dur + 0.02);
+  src.stop(t + dur + 0.05);
 }
 
-/** Programa la música desde `start` durante `duration` segundos, con fundido al principio y al final. */
-function scheduleMusic(ac, dest, style, start, duration) {
-  const st = STYLES[style];
-  const master = ac.createGain();
-  master.gain.setValueAtTime(0, start);
-  master.gain.linearRampToValueAtTime(0.9, start + 0.8);
-  master.gain.setValueAtTime(0.9, start + duration - 1.5);
-  master.gain.linearRampToValueAtTime(0, start + duration);
-  master.connect(dest);
-  const beat = 60 / st.bpm;
+const kick = (ac, out, t, peak = 0.9) => osc(ac, out, t, { freq: 150, glideTo: 42, dur: 0.28, peak });
+const clap = (ac, out, t) => {
+  for (const d of [0, 0.012, 0.024]) noiseHit(ac, out, t + d, { type: 'bandpass', freq: 1600, q: 0.8, dur: 0.12, peak: 0.28 });
+};
+const hat = (ac, out, t, peak = 0.08) => noiseHit(ac, out, t, { freq: 8500, dur: 0.05, peak });
+const snare = (ac, out, t) => {
+  noiseHit(ac, out, t, { type: 'bandpass', freq: 2200, q: 0.7, dur: 0.14, peak: 0.3 });
+  osc(ac, out, t, { freq: 220, glideTo: 160, dur: 0.1, peak: 0.15 });
+};
+
+/** Pop movido: 124 BPM, bombo en cada tiempo, palmas, bajo bombeando y un gancho pegadizo. */
+function popBeat(ac, out, start, duration) {
+  const beat = 60 / 124;
   const bar = beat * 4;
-  for (let b = 0; b * bar < duration; b++) {
-    const t = start + b * bar;
-    const i = b % st.chords.length;
-    // Acordes (pad) y bajo
-    for (const n of st.chords[i]) tone(ac, master, { freq: NOTE(n), start: t, dur: bar, type: st.wave, gain: 0.05, attack: 0.15, release: 0.5, filter: 2200 });
-    for (let k = 0; k < 4; k++) tone(ac, master, { freq: NOTE(st.bass[i]), start: t + k * beat, dur: beat * 0.9, type: 'sine', gain: 0.16, release: 0.1 });
-    // Melodía simple: arpegio del acorde
-    const arp = [...st.chords[i], st.chords[i][1] + 12];
-    for (let k = 0; k < 8; k++) {
-      if (!st.drums && k % 2) continue;
-      tone(ac, master, { freq: NOTE(arp[k % arp.length] + 12), start: t + k * (beat / 2), dur: beat / 2, type: 'sine', gain: 0.04, release: 0.15 });
+  for (let b = 0; start + b * bar < start + duration; b++) {
+    const t0 = start + b * bar;
+    const c = b % 4;
+    for (let k = 0; k < 4; k++) {
+      const t = t0 + k * beat;
+      kick(ac, out, t);
+      hat(ac, out, t + beat / 2, 0.1);
+      if (k % 2) clap(ac, out, t);
+      // Bajo en contratiempo (efecto "bombeo")
+      osc(ac, out, t + beat / 2, { freq: NOTE(ROOTS[c] + 12), type: 'sawtooth', dur: beat * 0.4, peak: 0.13, filter: 700 });
+      // Acordes cortos (stabs)
+      for (const n of CHORDS[c]) osc(ac, out, t + beat / 2, { freq: NOTE(n + 12), type: 'sawtooth', dur: 0.16, peak: 0.035, filter: 2400 });
     }
-    if (st.drums) {
-      for (let k = 0; k < 4; k++) {
-        kick(ac, master, t + k * beat);
-        noise(ac, master, t + k * beat + beat / 2);
-        if (k % 2) noise(ac, master, t + k * beat, { dur: 0.15, gain: 0.18, freq: 1500 });
-      }
+    // Gancho: cada 2 compases, desde el 3er compás (la intro respira)
+    if (b >= 1) {
+      HOOK.forEach((n, i) => {
+        if (n == null || i >= 8 * ((b % 2) + 1) || i < 8 * (b % 2)) return;
+        osc(ac, out, t0 + (i % 8) * (beat / 2), { freq: NOTE(n), type: 'square', dur: 0.18, peak: 0.06, filter: 3200 });
+      });
     }
   }
-  return master;
+}
+
+/** Urbano (dembow): 96 BPM, bombo + redoblante en el patrón típico del reggaetón, bajo 808 y marimba. */
+function urbanBeat(ac, out, start, duration) {
+  const beat = 60 / 96;
+  const bar = beat * 4;
+  for (let b = 0; start + b * bar < start + duration; b++) {
+    const t0 = start + b * bar;
+    const c = b % 4;
+    for (let half = 0; half < 2; half++) {
+      const h = t0 + half * beat * 2;
+      kick(ac, out, h, 0.85);
+      kick(ac, out, h + beat, 0.85);
+      snare(ac, out, h + beat * 0.75);
+      snare(ac, out, h + beat * 1.5);
+      for (let k = 0; k < 4; k++) hat(ac, out, h + k * (beat / 2), 0.06);
+      osc(ac, out, h, { freq: NOTE(ROOTS[c]), dur: beat * 0.9, peak: 0.35, glideTo: NOTE(ROOTS[c]) * 0.97 });
+      osc(ac, out, h + beat, { freq: NOTE(ROOTS[c]), dur: beat * 0.9, peak: 0.3 });
+    }
+    // Marimba: arpegio del acorde
+    const arp = [...CHORDS[c], CHORDS[c][1] + 12];
+    for (let k = 0; k < 8; k++) {
+      if (k === 3 || k === 7) continue;
+      osc(ac, out, t0 + k * (beat / 2), { freq: NOTE(arp[k % arp.length] + 12), dur: 0.22, peak: 0.07 });
+    }
+  }
+}
+
+/* ---------------------------------------------------------------- Efectos */
+
+const SFX = {
+  // Cambio de escena
+  whoosh(ac, out, t) {
+    const src = noiseSrc(ac);
+    const f = ac.createBiquadFilter();
+    f.type = 'bandpass';
+    f.Q.value = 1.2;
+    f.frequency.setValueAtTime(400, t);
+    f.frequency.exponentialRampToValueAtTime(4500, t + 0.3);
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.35, t + 0.12);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+    src.connect(f).connect(g).connect(out);
+    src.start(t);
+    src.stop(t + 0.4);
+  },
+  swipe(ac, out, t) {
+    SFX.whoosh(ac, out, t);
+  },
+  // Aparece algo
+  pop(ac, out, t) {
+    osc(ac, out, t, { freq: 1200, glideTo: 380, dur: 0.09, peak: 0.4 });
+  },
+  // Precio / dato importante: campanita
+  ding(ac, out, t) {
+    osc(ac, out, t, { freq: 1760, dur: 0.7, peak: 0.16 });
+    osc(ac, out, t, { freq: 2637, dur: 0.45, peak: 0.07 });
+  },
+  // Toque del dedito: "bling" de dos notas que suben
+  tap(ac, out, t) {
+    noiseHit(ac, out, t, { freq: 5000, dur: 0.02, peak: 0.15 });
+    osc(ac, out, t, { freq: 1568, dur: 0.25, peak: 0.2 });
+    osc(ac, out, t + 0.06, { freq: 2093, dur: 0.35, peak: 0.18 });
+  },
+  bling(ac, out, t) {
+    [1319, 1760, 2349].forEach((f, i) => osc(ac, out, t + i * 0.05, { freq: f, dur: 0.4, peak: 0.13 }));
+  },
+  // Pedido enviado
+  success(ac, out, t) {
+    [1047, 1319, 1568, 2093].forEach((f, i) => osc(ac, out, t + i * 0.07, { freq: f, dur: 0.45, peak: 0.15 }));
+  },
+  // Entra un título: barrido que sube
+  rise(ac, out, t) {
+    osc(ac, out, t, { freq: 300, glideTo: 1400, dur: 0.45, peak: 0.08, type: 'triangle' });
+    SFX.whoosh(ac, out, t + 0.05);
+  },
+};
+
+function scheduleSfx(ac, out, start, sfx = []) {
+  const bus = ac.createGain();
+  bus.gain.value = 0.9;
+  bus.connect(out);
+  for (const [t, kind] of sfx) SFX[kind]?.(ac, bus, start + t);
 }
 
 /** Audio propio: suena desde el principio, recortado al largo del reel y con fundidos. */
-async function scheduleFile(ac, dest, arrayBuffer, start, duration) {
+async function scheduleFile(ac, out, arrayBuffer, start, duration) {
   const buf = await ac.decodeAudioData(arrayBuffer.slice(0));
   const src = ac.createBufferSource();
   src.buffer = buf;
-  const g = ac.createGain();
-  g.gain.setValueAtTime(0, start);
-  g.gain.linearRampToValueAtTime(1, start + 0.5);
-  g.gain.setValueAtTime(1, start + duration - 1.5);
-  g.gain.linearRampToValueAtTime(0, start + duration);
-  src.connect(g).connect(dest);
+  src.connect(out);
   src.start(start, 0, duration + 0.1);
-  return g;
 }
 
-/** music: { kind: 'alegre' | 'suave' | 'archivo' | 'ninguna', file?: ArrayBuffer } */
-async function startMusic(ac, dest, music, duration) {
+/** music: { kind: 'pop' | 'urbano' | 'efectos' | 'archivo' | 'ninguna', file?: ArrayBuffer }. sfx: [[segundo, tipo]] */
+async function startAudio(ac, dest, music, duration, sfx) {
   if (!music || music.kind === 'ninguna') return;
   const start = ac.currentTime + 0.05;
-  if (music.kind === 'archivo' && music.file) return scheduleFile(ac, dest, music.file, start, duration);
-  if (STYLES[music.kind]) return scheduleMusic(ac, dest, music.kind, start, duration);
+  // La música va un poco más baja que los efectos, con fundido al principio y al final
+  const bed = ac.createGain();
+  bed.gain.setValueAtTime(0, start);
+  bed.gain.linearRampToValueAtTime(0.6, start + 0.4);
+  bed.gain.setValueAtTime(0.6, start + duration - 1.2);
+  bed.gain.linearRampToValueAtTime(0, start + duration);
+  bed.connect(dest);
+  if (music.kind === 'pop') popBeat(ac, bed, start, duration);
+  if (music.kind === 'urbano') urbanBeat(ac, bed, start, duration);
+  if (music.kind === 'archivo' && music.file) await scheduleFile(ac, bed, music.file, start, duration);
+  scheduleSfx(ac, dest, start, sfx);
 }
 
 /** Escuchar la música por los parlantes (vista previa). Devuelve una función para cortarla. */
-export async function previewMusic(music, duration) {
+export async function previewMusic(music, duration, sfx = []) {
   const ac = new AudioContext();
   await ac.resume();
-  await startMusic(ac, ac.destination, music, duration);
+  await startAudio(ac, ac.destination, music, duration, sfx);
   const timer = setTimeout(() => ac.close(), (duration + 0.5) * 1000);
   return () => {
     clearTimeout(timer);
@@ -640,7 +827,7 @@ export async function previewMusic(music, duration) {
 const MIME_AUDIO = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
 const MIME_MUTE = ['video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
 
-/** Graba el reel en tiempo real (dura lo mismo que el video), con la música elegida. Prefiere MP4. */
+/** Graba el reel en tiempo real (dura lo mismo que el video), con música y efectos. Prefiere MP4. */
 export async function recordReel(reel, onProgress = () => {}, music = { kind: 'ninguna' }) {
   const withAudio = music && music.kind !== 'ninguna';
   const list = withAudio ? MIME_AUDIO : MIME_MUTE;
@@ -670,14 +857,14 @@ export async function recordReel(reel, onProgress = () => {}, music = { kind: 'n
     silent.connect(zero).connect(audioDest);
     silent.start();
     tracks.push(...audioDest.stream.getAudioTracks());
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 700));
   }
   const rec = new MediaRecorder(new MediaStream(tracks), { mimeType: mime, videoBitsPerSecond: 6_000_000, audioBitsPerSecond: 128_000 });
   const chunks = [];
   rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
   const stopped = new Promise((r) => (rec.onstop = r));
   rec.start(500);
-  if (ac) await startMusic(ac, audioDest, music, reel.duration);
+  if (ac) await startAudio(ac, audioDest, music, reel.duration, reel.sfx);
   const t0 = performance.now();
   try {
     await new Promise((resolve) => {
