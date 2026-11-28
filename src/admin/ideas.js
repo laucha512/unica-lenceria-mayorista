@@ -4,6 +4,7 @@ import { formatPrice, SITE_URL } from '../config.js';
 import { hasOffer, salePrice } from '../shared/prices.js';
 import { esc } from '../shared/utils.js';
 import { subIdsOf } from '../shared/tree.js';
+import { SEASON_WEEKS, SEASONS } from './seasons.js';
 import { buildReel, previewMusic, recordReel } from './reels.js';
 import { copyText, download, drawCover, drawPost, loadImage, roundRect, wrap } from './social.js';
 
@@ -19,7 +20,7 @@ const SANS = '"Plus Jakarta Sans", sans-serif';
 const SERIF = '"Playfair Display", serif';
 
 let d; // { state, showToast }
-const ui = { idea: 'plan', brand: '', seed: 0, results: [], overrides: {}, bgMode: '0', sub: 'auto', music: 'pop', musicFile: null, musicName: '' };
+const ui = { idea: 'plan', brand: '', seed: 0, results: [], overrides: {}, bgMode: '0', sub: 'auto', music: 'pop', musicFile: null, musicName: '', season: 0, seasonStart: null };
 const plain = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
 /* ---------------------------------------------------------------- Artículos */
@@ -418,69 +419,17 @@ async function genericSlide(post, bg) {
 // Textos propios, pensados para revendedoras y negocios de lencería.
 
 const BANK = {
-  frase: {
-    label: 'Frase para emprendedoras',
-    kicker: 'Para vos, emprendedora',
-    tags: '#emprendedoras #frasesemprendedoras #mujeresemprendedoras',
-    posts: [
-      ['Tu negocio crece cada vez que no te rendís.', 'Cada pedido cuenta. Seguí adelante 💗'],
-      ['Empezar chiquito también es empezar.', 'Lo importante es dar el primer paso.'],
-      ['Vender lencería es vender confianza.', 'Tus clientas vuelven porque las asesorás bien.'],
-      ['No esperes el momento perfecto: armá tu primer pedido hoy.', ''],
-      ['Detrás de cada emprendimiento hay una mujer valiente.', 'Feliz de acompañarte en el camino.'],
-      ['Tu stock es tu vidriera: renovalo seguido.', 'Las novedades atraen clientas nuevas.'],
-      ['El éxito es la suma de pequeños esfuerzos de todos los días.', ''],
-      ['Creé en lo que vendés y se nota.', 'La seguridad también se contagia.'],
-      ['Hoy es un buen día para vender.', 'Subí una historia, mostrá lo nuevo y escuchá a tus clientas.'],
-      ['Ser tu propia jefa es una decisión que se renueva cada día.', ''],
-      ['Cada clienta conforme es tu mejor publicidad.', ''],
-      ['Lo que hoy es un sueño, mañana puede ser tu local.', 'Vamos por más 💪'],
-    ],
-  },
-  cuidado: {
-    label: 'Cuidado de la lencería',
-    kicker: 'Tips de cuidado',
-    tags: '#cuidadodelalenceria #tips #lenceria',
-    posts: [
-      ['Lavá tu lencería a mano con agua fría', 'Así el encaje y los elásticos duran mucho más.'],
-      ['Usá una bolsa de red si lavás en lavarropas', 'Evita que los breteles y ganchos se enganchen.'],
-      ['Nunca la pongas en la secadora', 'El calor arruina los elásticos. Mejor secarla a la sombra.'],
-      ['Abrochá el corpiño antes de lavarlo', 'Así los ganchos no dañan otras prendas.'],
-      ['Guardá los corpiños con taza sin doblarlos', 'Uno dentro del otro, para que mantengan la forma.'],
-      ['Rotá tus corpiños', 'Dejar descansar el elástico un día entre uso y uso lo hace durar más.'],
-      ['Jabón neutro, siempre', 'Los detergentes fuertes y la lavandina gastan colores y telas.'],
-      ['Las prendas de satén, del revés', 'Lavalas y planchalas del revés y a baja temperatura.'],
-    ],
-  },
-  venta: {
-    label: 'Tips para vender más',
-    kicker: 'Tips para revendedoras',
-    tags: '#revendedoras #tipsdeventa #emprendimiento',
-    posts: [
-      ['Mostrá las prendas puestas o en maniquí', 'Las clientas compran más cuando ven cómo queda.'],
-      ['Usá los estados de WhatsApp todos los días', 'Son gratis y los ven todas tus clientas.'],
-      ['Armá combos', 'Ej.: corpiño + bombacha, o pack de 3. Aumenta el ticket de cada venta.'],
-      ['Sacá fotos con luz natural', 'Cerca de una ventana y con fondo liso: se ve mucho más lindo.'],
-      ['Tené siempre talles grandes', 'Es lo que más cuesta conseguir y lo que más te van a agradecer.'],
-      ['Preguntá qué buscan tus clientas', 'Anotá lo que te piden y sumalo en tu próximo pedido.'],
-      ['Ofrecé cambio de talle', 'Da confianza para comprar sin probarse.'],
-      ['Publicá en horarios de más movimiento', 'Al mediodía y a la noche, entre 20 y 23 h, suele haber más gente conectada.'],
-    ],
-  },
-  sabias: {
-    label: '¿Sabías que…?',
-    kicker: '¿Sabías que…?',
-    tags: '#sabiasque #lenceria #datoscuriosos',
-    posts: [
-      ['La mayoría de las mujeres usa un talle de corpiño que no es el suyo', 'Asesorar bien a tus clientas hace la diferencia.'],
-      ['Un corpiño bien cuidado puede durar más de un año', 'Lavarlo a mano y rotarlo es la clave.'],
-      ['El algodón es la tela más recomendada para el uso diario', 'Es fresco, suave y deja respirar la piel.'],
-      ['El encaje es de los materiales más elegidos en lencería', 'Combina con todo y nunca pasa de moda.'],
-      ['La lencería es de los regalos más elegidos en fechas especiales', 'Día de la Madre, San Valentín y Navidad: preparate con stock.'],
-      ['Los packs son lo que más rota en una lencería', 'Bombachas, boxers y medias se venden todo el año.'],
-    ],
-  },
+  frase: { label: 'Frase para emprendedoras', kicker: 'Para vos, emprendedora', tags: '#emprendedoras #frasesemprendedoras #mujeresemprendedoras' },
+  cuidado: { label: 'Cuidado de la lencería', kicker: 'Tips de cuidado', tags: '#cuidadodelalenceria #tips #lenceria' },
+  venta: { label: 'Tips para vender más', kicker: 'Tips para revendedoras', tags: '#revendedoras #tipsdeventa #emprendimiento' },
+  sabias: { label: '¿Sabías que…?', kicker: '¿Sabías que…?', tags: '#sabiasque #lenceria #datoscuriosos' },
+  mito: { label: 'Mito vs. realidad', kicker: 'Mito vs. realidad', tags: '#mitos #revendedoras #emprendedoras', mito: true },
 };
+const season = () => SEASONS[Math.min(ui.season, SEASONS.length - 1)];
+const bankOf = (topic) => season().bank[topic] || SEASONS[0].bank[topic] || [];
+const hooks = () => season().hooks;
+/** Semanas desde que empezó la temporada en uso. */
+const weeksIn = () => (ui.seasonStart ? Math.max(0, Math.floor((Date.now() - Date.parse(ui.seasonStart)) / (7 * 86400000))) : 0);
 
 /* ---------------------------------------------------------------- Fechas especiales */
 
@@ -532,9 +481,9 @@ const IDEAS = {
     n: 8,
     pool: () => newest(withPhoto().filter((a) => a.isNew)),
     build: async (items, r) => [
-      await one(coverSlide({ kicker: 'Nuevos ingresos', title: 'Llegó lo nuevo', subtitle: `${items.length} artículos para tu negocio`, items: items.map(art), bg: r.bg }), 'bg'),
+      await one(coverSlide({ kicker: hooks().cover.kicker, title: hooks().cover.title, subtitle: `${items.length} artículos para tu negocio`, items: items.map(art), bg: r.bg }), 'bg'),
       ...(await productSlides(items)),
-      await one(ctaSlide('¿Cuál vas a sumar a tu local?')),
+      await one(ctaSlide(hooks().cta)),
     ],
     caption: (items) => `✨ NUEVOS INGRESOS ✨\nDeslizá y mirá todo lo que llegó 👉\n\n${list(items)}\n\n${CLOSING}\n📍 Showrooms en Rosario\n\n${igLine()}${TAGS}`,
   },
@@ -630,8 +579,9 @@ for (const [key, topic] of Object.entries(BANK)) {
     hint: 'Foto con texto, sin artículos. Elegí el fondo o subí una foto tuya; el texto se puede editar.',
     generic: true,
     pickText: () => {
-      const [title, body] = topic.posts[ui.seed % topic.posts.length];
-      return { kicker: topic.kicker, title, body };
+      const list = bankOf(key);
+      const [title, body] = list[ui.seed % list.length];
+      return topic.mito ? { kicker: topic.kicker, title: `Mito: ${title}`, body: `Realidad: ${body}` } : { kicker: topic.kicker, title, body };
     },
     caption: (t) => `${t.title}\n${t.body ? `${t.body}\n` : ''}\n💗 ÚNICA Lencería Mayorista · Rosario\n🔗 Link en la bio\n\n${igLine()}${topic.tags} ${TAGS}`,
   };
@@ -728,7 +678,7 @@ Object.assign(IDEAS, {
 
 /** 3 tips seguidos del banco, distintos cada semana o con "Otro". */
 function pickTips(topic) {
-  const posts = BANK[topic].posts;
+  const posts = bankOf(topic);
   const start = (ui.seed * 3) % posts.length;
   return [0, 1, 2].map((i) => posts[(start + i) % posts.length]);
 }
@@ -738,7 +688,7 @@ function pickTips(topic) {
 async function buildResult(r) {
   const idea = IDEAS[r.idea];
   if (idea.reel) {
-    r.reel = await buildReel(idea.reel, (r.items || []).map(art), r.extra);
+    r.reel = await buildReel(idea.reel, (r.items || []).map(art), { ...r.extra, hooks: hooks() });
     r.slides = [];
     r.caption = idea.caption(r.items || [], r.extra);
     return r;
@@ -767,7 +717,7 @@ async function makeResult(key, day = '') {
   const idea = IDEAS[key];
   const r = { idea: key, day, title: idea.label.replace(/^(Carrusel|Foto): /, ''), bg: null };
   if (idea.tips) {
-    r.extra = { title: idea.tipsTitle, tips: pickTips(idea.tips) };
+    r.extra = { title: hooks()[idea.tips === 'venta' ? 'tipsVenta' : 'tipsCuidado'] || idea.tipsTitle, tips: pickTips(idea.tips) };
   } else if (idea.generic) {
     r.text = idea.pickText();
     r.bgChoice = bgChoice();
@@ -783,8 +733,8 @@ async function makeResult(key, day = '') {
 
 /** Plan de la semana: lunes artículos, miércoles genérica, viernes venta/encuesta. Cambia cada semana. */
 async function weeklyPlan() {
-  const week = Math.floor((Date.now() - new Date(2026, 0, 5)) / (7 * 86400000)) + ui.seed;
-  const generic = upcomingDates().length && week % 2 === 0 ? 'fecha' : ['frase', 'venta', 'cuidado', 'sabias'][week % 4];
+  const week = weeksIn() + ui.seed + ui.season * 2;
+  const generic = upcomingDates().length && week % 2 === 0 ? 'fecha' : ['frase', 'venta', 'mito', 'cuidado', 'sabias'][week % 5];
   const friday = ['ofertas', 'elegir', 'revender', 'collage', 'comprar'][week % 5];
   const saved = ui.seed;
   const savedSub = ui.sub;
@@ -816,6 +766,60 @@ async function weeklyPlan() {
 const btnCls = 'inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-bold';
 const chip = (k, v) =>
   `<button type="button" data-idea="${k}" aria-pressed="${k === ui.idea}" class="px-3.5 py-2 rounded-full text-xs font-bold bg-surface-container-high aria-pressed:bg-primary aria-pressed:text-on-primary">${esc(v.label)}</button>`;
+
+export function renderSeason() {
+  const box = $('#seasonBox');
+  if (!box) return;
+  const last = ui.season >= SEASONS.length - 1;
+  const left = Math.max(0, SEASON_WEEKS - weeksIn());
+  const due = left <= 1;
+  box.innerHTML = `<div class="text-right">
+      <p class="text-xs font-bold text-on-surface">${esc(season().name)} <span class="font-normal text-on-surface-variant">(${ui.season + 1} de ${SEASONS.length})</span></p>
+      <p class="text-[11px] ${due ? 'text-amber-800 font-bold' : 'text-on-surface-variant'}">${
+        left ? `Te quedan ~${left} ${left === 1 ? 'semana' : 'semanas'} de ideas nuevas (3 fotos + 2 reels por semana)` : 'Ya usaste las ideas de esta temporada'
+      }</p>
+    </div>
+    <button type="button" id="seasonNext" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-bold ${due ? 'bg-amber-500 text-white animate-pulse' : 'bg-surface-container-high'}" title="Cambia todos los ganchos, textos y tips por los de la temporada siguiente">
+      <span class="material-symbols-outlined text-[18px]" aria-hidden="true">refresh</span><span>Actualizar ideas</span>
+    </button>${last && due ? '<p class="basis-full text-right text-[11px] text-amber-800 font-semibold">Es la última temporada cargada: pedile a Claude una nueva investigación de ideas.</p>' : ''}`;
+}
+
+export async function loadSeason() {
+  try {
+    const row = await d.call('settings?social=1');
+    ui.season = Number(row.season) || 0;
+    ui.seasonStart = row.startedAt;
+    if (!row.startedAt) {
+      // Primera vez: arranca la cuenta hoy
+      const saved = await d.call('settings?social=1', { method: 'PUT', body: { season: 0 } });
+      ui.seasonStart = saved.startedAt;
+    }
+  } catch {
+    /* sin conexión: queda la temporada 1 */
+  }
+  renderSeason();
+}
+
+async function nextSeason() {
+  const left = Math.max(0, SEASON_WEEKS - weeksIn());
+  if (ui.season >= SEASONS.length - 1) {
+    d.showToast('Es la última temporada cargada: pedile a Claude una nueva investigación de ideas.', 'error');
+    return;
+  }
+  if (left > 1 && !confirm(`Todavía te quedan ~${left} semanas de ideas en esta temporada. ¿Pasar igual a la siguiente?`)) return;
+  try {
+    const row = await d.call('settings?social=1', { method: 'PUT', body: { season: ui.season + 1 } });
+    ui.season = row.season;
+    ui.seasonStart = row.startedAt;
+    ui.seed = 0;
+    ui.results = [];
+    renderSeason();
+    renderIdeas();
+    d.showToast(`Listo: ahora usás ${season().name}. Ganchos, textos y tips nuevos.`);
+  } catch (err) {
+    d.showToast(`No se pudo actualizar: ${err.message}`, 'error');
+  }
+}
 
 export function renderIdeas() {
   const box = $('#ideasPanel');
@@ -1045,6 +1049,9 @@ let pendingPhoto = null; // { ri, si } de la lámina a la que se le cambia la fo
 
 export function initIdeas(deps) {
   d = deps;
+  $('#seasonBox').addEventListener('click', (e) => {
+    if (e.target.closest('#seasonNext')) nextSeason();
+  });
   const panel = $('#ideasPanel');
   panel.addEventListener('click', (e) => {
     const pick = e.target.closest('[data-idea]');

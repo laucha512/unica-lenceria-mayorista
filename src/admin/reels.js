@@ -296,7 +296,8 @@ async function assets(items) {
 
 const REELS = {
   /** Intro con collage + 4 productos + cierre. ~21 s */
-  async novedades(items) {
+  async novedades(items, extra = {}) {
+    const h = extra.hooks?.novedades || {};
     const A = await assets(items);
     const n = items.length;
     return sequence([
@@ -310,18 +311,19 @@ const REELS = {
           ctx.fillStyle = 'rgba(131,24,67,0.72)';
           ctx.fillRect(0, 0, W, H);
           logo(ctx, A.logo, W / 2, 620, 200, appear(t, 0));
-          text(ctx, 'NUEVOS INGRESOS', W / 2, 860, { size: 46, weight: 800, color: '#fbcfe8', alpha: appear(t, 0.2) });
-          text(ctx, 'Llegó lo nuevo ✨', W / 2, 1010, { size: 110, font: SERIF, alpha: appear(t, 0.5), dy: 40 * (1 - appear(t, 0.5)) });
-          text(ctx, 'Mirá hasta el final 👀', W / 2, 1220, { size: 48, weight: 600, color: '#fce7f3', alpha: appear(t, 1.1) });
+          text(ctx, h.kicker || 'NUEVOS INGRESOS', W / 2, 860, { size: 46, weight: 800, color: '#fbcfe8', alpha: appear(t, 0.2) });
+          text(ctx, h.title || 'Llegó lo nuevo ✨', W / 2, 1010, { size: 100, maxLines: 3, font: SERIF, alpha: appear(t, 0.5), dy: 40 * (1 - appear(t, 0.5)) });
+          text(ctx, h.sub || 'Mirá hasta el final 👀', W / 2, 1330, { size: 48, weight: 600, color: '#fce7f3', alpha: appear(t, 1.1) });
         },
       },
       ...items.map((a, i) => productScene(A, a, A.imgs[i], { index: i + 1, total: n, badge: a.isNew ? 'NOVEDAD' : hasOffer(a) ? 'OFERTA' : '' })),
-      ctaScene(A, '¿Cuál sumás a tu local?'),
+      ctaScene(A, extra.hooks?.cta || '¿Cuál sumás a tu local?'),
     ]);
   },
 
   /** ¿Cuál te llevás? 3 productos + los 3 juntos. ~20 s */
-  async elegir(items) {
+  async elegir(items, extra = {}) {
+    const h = extra.hooks?.elegir || {};
     const A = await assets(items);
     return sequence([
       {
@@ -330,8 +332,8 @@ const REELS = {
         draw(ctx, t) {
           gradientBg(ctx, false);
           logo(ctx, A.logo, W / 2, 600, 180);
-          text(ctx, '¿Cuál te llevás?', W / 2, 920, { size: 110, font: SERIF, color: DARK, alpha: appear(t, 0.2), dy: 40 * (1 - appear(t, 0.2)) });
-          text(ctx, 'Mirá las 3 y elegí 👇', W / 2, 1100, { size: 52, weight: 600, color: PINK, alpha: appear(t, 0.8) });
+          text(ctx, h.title || '¿Cuál te llevás?', W / 2, 920, { size: 100, maxLines: 3, font: SERIF, color: DARK, alpha: appear(t, 0.2), dy: 40 * (1 - appear(t, 0.2)) });
+          text(ctx, h.sub || 'Mirá las 3 y elegí 👇', W / 2, 1250, { size: 52, weight: 600, color: PINK, alpha: appear(t, 0.8) });
         },
       },
       ...items.map((a, i) => {
@@ -378,7 +380,8 @@ const REELS = {
   },
 
   /** POV: te llegó tu pedido. Los productos van apareciendo en una grilla. ~19 s */
-  async pov(items) {
+  async pov(items, extra = {}) {
+    const h = extra.hooks?.pov || {};
     const A = await assets(items);
     const list = items.slice(0, 6);
     return sequence([
@@ -387,9 +390,9 @@ const REELS = {
         sfx: [[0.4, 'rise']],
         draw(ctx, t) {
           gradientBg(ctx, true);
-          text(ctx, 'POV:', W / 2, 700, { size: 70, weight: 800, color: '#fbcfe8', alpha: appear(t, 0) });
-          text(ctx, 'Te llegó tu pedido de ÚNICA 📦', W / 2, 860, { size: 100, font: SERIF, alpha: appear(t, 0.4), dy: 40 * (1 - appear(t, 0.4)) });
-          text(ctx, 'y es todo lo que pediste', W / 2, 1250, { size: 52, weight: 600, color: '#fce7f3', alpha: appear(t, 1.2) });
+          text(ctx, h.pre || 'POV:', W / 2, 700, { size: 70, weight: 800, color: '#fbcfe8', alpha: appear(t, 0) });
+          text(ctx, h.title || 'Te llegó tu pedido de ÚNICA 📦', W / 2, 860, { size: 100, font: SERIF, alpha: appear(t, 0.4), dy: 40 * (1 - appear(t, 0.4)) });
+          text(ctx, h.sub || 'y es todo lo que pediste', W / 2, 1300, { size: 52, weight: 600, color: '#fce7f3', alpha: appear(t, 1.2) });
         },
       },
       {
@@ -432,7 +435,8 @@ const REELS = {
   },
 
   /** Así comprás en la web: un celular dibujado; el dedito toca rápido y cada toque suena. ~20 s */
-  async web(items) {
+  async web(items, extra = {}) {
+    const h = extra.hooks?.web || {};
     const A = await assets(items);
     const { x: PX, y: PY, w: PW, h: PH } = PHONE;
     const caption = (ctx, n, title, t) => {
@@ -451,8 +455,8 @@ const REELS = {
         draw(ctx, t) {
           gradientBg(ctx, true);
           logo(ctx, A.logo, W / 2, 620, 200);
-          text(ctx, '¿Ya compraste en nuestra web? 🛍️', W / 2, 900, { size: 92, font: SERIF, alpha: appear(t, 0.2), dy: 40 * (1 - appear(t, 0.2)) });
-          text(ctx, 'Te mostramos lo fácil que es 👇', W / 2, 1250, { size: 52, weight: 600, color: '#fce7f3', alpha: appear(t, 0.8) });
+          text(ctx, h.title || '¿Ya compraste en nuestra web? 🛍️', W / 2, 900, { size: 92, font: SERIF, alpha: appear(t, 0.2), dy: 40 * (1 - appear(t, 0.2)) });
+          text(ctx, h.sub || 'Te mostramos lo fácil que es 👇', W / 2, 1300, { size: 52, weight: 600, color: '#fce7f3', alpha: appear(t, 0.8) });
         },
       },
       {

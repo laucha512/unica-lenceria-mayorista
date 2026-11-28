@@ -32,7 +32,8 @@ const SEEDS = {
 
 /** Datos de contacto vigentes (WhatsApp e Instagram), con los de config.js como respaldo. */
 export async function readContact() {
-  const [row] = await readCollection('settings');
+  const rows = await readCollection('settings');
+  const row = rows.find((r) => r.id === 'contact') || rows.find((r) => r.id !== 'social');
   const fallback = seedSettings()[0];
   return {
     whatsappNumber: row?.whatsappNumber || fallback.whatsappNumber,

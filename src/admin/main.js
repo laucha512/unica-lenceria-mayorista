@@ -7,7 +7,7 @@ import { instagramUrlOf, normalizeInstagram } from '../shared/instagram.js';
 import { findDuplicates } from './duplicates.js';
 import { combos, comboKey, isSoldOut, soldOutCount } from '../shared/stock.js';
 import { applyPercent } from '../shared/prices.js';
-import { initIdeas, renderIdeas } from './ideas.js';
+import { initIdeas, renderIdeas, loadSeason } from './ideas.js';
 import { initCategories, renderCategories, subcategoryOptions, subcategoryPath } from './categories.js';
 import { subIdsOf, inSubs } from '../shared/tree.js';
 
@@ -344,7 +344,10 @@ function switchTab(tab, focus = true) {
   $('#kpiGrid').classList.toggle('max-sm:hidden', !['publicaciones', 'pedidos'].includes(tab));
   if (tab === 'estadisticas' && state.token && !stats.views) loadStatsViews();
   if (tab === 'redes') {
-    if (!$('#ideasPanel').children.length) renderIdeas();
+    if (!$('#ideasPanel').children.length) {
+      renderIdeas();
+      loadSeason();
+    }
   }
   $$('.tab-section').forEach((s) => s.classList.toggle('hidden', s.id !== `section-${tab}`));
   $$('.nav-btn').forEach((btn) => {
@@ -2877,7 +2880,7 @@ $('#brandListContainer').addEventListener('click', async (e) => {
 
 /* ================================================================ Inicio */
 
-initIdeas({ state, showToast });
+initIdeas({ state, showToast, call });
 initCategories({
   state,
   call,
