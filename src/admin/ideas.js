@@ -703,20 +703,40 @@ function pickTips(topic) {
 
 /* ---------------------------------------------------------------- Armado */
 
+/**
+ * Cierre igual en todas las descripciones, justo antes de los hashtags:
+ * dirección de la sucursal mayorista y la web. Saca las líneas sueltas que lo repetían.
+ */
+function withFooter(caption) {
+  const main = (d.state.branches || []).find((b) => b.isMain);
+  const address = (main?.name || 'San Luis 1830').replace(/\s*\(.*\)$/, '');
+  const lines = caption.split('\n').filter((l) => !/^📍|^🔗 Link en la bio/.test(l.trim()));
+  let cut = lines.length;
+  while (cut > 0 && (/^[#@]/.test(lines[cut - 1].trim()) || !lines[cut - 1].trim())) cut--;
+  const body = lines.slice(0, cut).join('\n').trim();
+  // Hashtags sin repetir y como mucho 10 (lo recomendado hoy); el @ de la cuenta va aparte
+  const tail = lines.slice(cut).join(' ').split(/\s+/).filter(Boolean);
+  const mention = tail.filter((w) => w.startsWith('@'));
+  const hashtags = [...new Set(tail.filter((w) => w.startsWith('#')).map((w) => w.toLowerCase()))].slice(0, 10);
+  const tags = [mention.join(' '), hashtags.join(' ')].filter(Boolean).join('\n');
+  const footer = `📍 Sucursal mayorista: ${address}, Rosario\n🌐 Hacé tu pedido online: ${SITE_URL.replace(/^https?:\/\//, '')} (link en la bio)`;
+  return `${body}\n\n${footer}\n\n${tags}`.trim();
+}
+
 async function buildResult(r) {
   const idea = IDEAS[r.idea];
   if (idea.reel) {
     r.reel = await buildReel(idea.reel, (r.items || []).map(art), { ...r.extra, hooks: hooks() });
     r.slides = [];
-    r.caption = idea.caption(r.items || [], r.extra);
+    r.caption = withFooter(idea.caption(r.items || [], r.extra));
     return r;
   }
   if (idea.generic) {
     r.slides = [{ blob: await genericSlide(r.text, r.bg ? { photo: r.bg } : r.bgChoice), edit: 'bg' }];
-    r.caption = idea.caption(r.text);
+    r.caption = withFooter(idea.caption(r.text));
   } else {
     r.slides = await idea.build(r.items, r);
-    r.caption = idea.caption(r.items);
+    r.caption = withFooter(idea.caption(r.items));
   }
   return r;
 }
