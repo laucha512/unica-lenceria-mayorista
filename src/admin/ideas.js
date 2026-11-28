@@ -4,6 +4,7 @@ import { formatPrice, SITE_URL } from '../config.js';
 import { hasOffer, salePrice } from '../shared/prices.js';
 import { esc } from '../shared/utils.js';
 import { subIdsOf } from '../shared/tree.js';
+import { buildReel, recordReel } from './reels.js';
 import { copyText, download, drawCover, drawPost, loadImage, roundRect, wrap } from './social.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -687,10 +688,61 @@ function swapOptions(r) {
   return r.sub ? all.filter((a) => subIdsOf(a).includes(r.sub)) : all;
 }
 
+/* ---------------------------------------------------------------- Reels */
+
+const REEL_HINT = 'Video vertical de ~20 s. Sin música: agregale un audio en tendencia desde Instagram.';
+const reelIdea = (kind, label, extra) => ({ group: 'reel', reel: kind, label: `Reel: ${label}`, hint: REEL_HINT, ...extra });
+Object.assign(IDEAS, {
+  reel_novedades: reelIdea('novedades', 'Nuevos ingresos', {
+    n: 4,
+    pool: () => newest(withPhoto().filter((a) => a.isNew)),
+    caption: (items) => `✨ Llegó lo nuevo a ÚNICA ✨\n\n${list(items)}\n\n${CLOSING}\n\n${igLine()}${TAGS} #reels`,
+  }),
+  reel_web: reelIdea('web', 'Así comprás en la web', {
+    n: 6,
+    pool: () => newest(withPhoto()),
+    caption: () => `🛍️ ¿Ya compraste en nuestra web? Es así de fácil:\n\n1️⃣ Entrá y mirá el catálogo\n2️⃣ Elegí talles, colores y cantidad\n3️⃣ Enviá el pedido por WhatsApp\n\n🔗 Link en la bio · ${WEB}\n\n${igLine()}${TAGS} #reels`,
+  }),
+  reel_pov: reelIdea('pov', 'POV: te llegó tu pedido', {
+    n: 6,
+    pool: () => newest(withPhoto()),
+    caption: (items) => `📦 POV: te llegó tu pedido de ÚNICA\n\n${list(items)}\n\n${CLOSING}\n\n${igLine()}${TAGS} #pov #reels`,
+  }),
+  reel_elegir: reelIdea('elegir', '¿Cuál te llevás? 1, 2 o 3', {
+    n: 3,
+    exact: true,
+    pool: () => [...new Set([...newest(withPhoto().filter((a) => a.isNew)), ...newest(withPhoto())])],
+    caption: (items) => `💗 ¿Cuál te llevás? Comentá 1, 2 o 3 👇\n\n${items.map((a, i) => `${i + 1}. ${a.title} – ${formatPrice(salePrice(a))}`).join('\n')}\n\n🛍️ Todos en la web (link en la bio).\n\n${igLine()}${TAGS} #reels`,
+  }),
+  reel_tips_venta: reelIdea('tips', '3 tips para vender más', {
+    tips: 'venta',
+    tipsTitle: '3 tips para vender más lencería',
+    caption: (_, x) => `💼 ${x.title} 📌 Guardalo\n\n${x.tips.map(([t], i) => `${i + 1}️⃣ ${t}`).join('\n')}\n\n💗 ÚNICA Lencería Mayorista · link en la bio\n\n${igLine()}#tipsdeventa #revendedoras ${TAGS} #reels`,
+  }),
+  reel_tips_cuidado: reelIdea('tips', '3 tips de cuidado', {
+    tips: 'cuidado',
+    tipsTitle: '3 tips para que tu lencería dure más',
+    caption: (_, x) => `🧺 ${x.title} 📌 Guardalo\n\n${x.tips.map(([t], i) => `${i + 1}️⃣ ${t}`).join('\n')}\n\n💗 ÚNICA Lencería Mayorista · link en la bio\n\n${igLine()}#cuidadodelalenceria ${TAGS} #reels`,
+  }),
+});
+
+/** 3 tips seguidos del banco, distintos cada semana o con "Otro". */
+function pickTips(topic) {
+  const posts = BANK[topic].posts;
+  const start = (ui.seed * 3) % posts.length;
+  return [0, 1, 2].map((i) => posts[(start + i) % posts.length]);
+}
+
 /* ---------------------------------------------------------------- Armado */
 
 async function buildResult(r) {
   const idea = IDEAS[r.idea];
+  if (idea.reel) {
+    r.reel = await buildReel(idea.reel, (r.items || []).map(art), r.extra);
+    r.slides = [];
+    r.caption = idea.caption(r.items || [], r.extra);
+    return r;
+  }
   if (idea.generic) {
     r.slides = [{ blob: await genericSlide(r.text, r.bg ? { photo: r.bg } : r.bgChoice), edit: 'bg' }];
     r.caption = idea.caption(r.text);
@@ -714,7 +766,9 @@ function bgChoice() {
 async function makeResult(key, day = '') {
   const idea = IDEAS[key];
   const r = { idea: key, day, title: idea.label.replace(/^(Carrusel|Foto): /, ''), bg: null };
-  if (idea.generic) {
+  if (idea.tips) {
+    r.extra = { title: idea.tipsTitle, tips: pickTips(idea.tips) };
+  } else if (idea.generic) {
     r.text = idea.pickText();
     r.bgChoice = bgChoice();
   } else {
@@ -739,7 +793,9 @@ async function weeklyPlan() {
   const out = [];
   for (const [day, keys] of [
     ['Lunes', ['novedades', 'collage', 'elegir']],
+    ['Martes', [['reel_novedades', 'reel_web', 'reel_pov'][week % 3], 'reel_web', 'reel_tips_venta']],
     ['Miércoles', [generic]],
+    ['Jueves', [['reel_elegir', 'reel_tips_venta', 'reel_tips_cuidado'][week % 3], 'reel_tips_cuidado']],
     ['Viernes', [friday, 'elegir', 'revender']],
   ]) {
     for (const k of keys) {
@@ -770,16 +826,18 @@ export function renderIdeas() {
   const group = (g) => Object.entries(IDEAS).filter(([, v]) => v.group === g).map(([k, v]) => chip(k, v)).join('');
   box.innerHTML = `
   <div class="flex flex-wrap gap-2" role="group" aria-label="Plan">
-    <button type="button" data-idea="plan" aria-pressed="${ui.idea === 'plan'}" class="px-4 py-2.5 rounded-full text-sm font-bold bg-surface-container-high aria-pressed:bg-primary aria-pressed:text-on-primary">📅 Plan de la semana (3 publicaciones)</button>
+    <button type="button" data-idea="plan" aria-pressed="${ui.idea === 'plan'}" class="px-4 py-2.5 rounded-full text-sm font-bold bg-surface-container-high aria-pressed:bg-primary aria-pressed:text-on-primary">📅 Plan de la semana (3 fotos + 2 reels)</button>
   </div>
   <p class="mt-4 mb-2 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Con tus artículos</p>
   <div class="flex flex-wrap gap-2" role="group" aria-label="Ideas con artículos">${group('art')}</div>
+  <p class="mt-4 mb-2 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Reels (~20 segundos)</p>
+  <div class="flex flex-wrap gap-2" role="group" aria-label="Reels">${group('reel')}</div>
   <p class="mt-4 mb-2 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Fotos genéricas (sin artículos)</p>
   <div class="flex flex-wrap gap-2" role="group" aria-label="Ideas genéricas">${group('gen')}</div>
-  <p class="mt-4 text-sm text-on-surface-variant">${esc(ui.idea === 'plan' ? 'Arma las 3 publicaciones de la semana: lunes con novedades, miércoles una foto genérica y viernes ofertas o una encuesta. Cada semana cambia sola.' : idea.hint)}</p>
+  <p class="mt-4 text-sm text-on-surface-variant">${esc(ui.idea === 'plan' ? 'Arma la semana completa: lunes foto de novedades, martes reel, miércoles foto genérica, jueves reel y viernes ofertas o encuesta. Cada semana cambia sola.' : idea.hint)}</p>
   <div class="mt-3 flex flex-wrap items-center gap-2">
     ${
-      idea && !idea.generic
+      idea && !idea.generic && !idea.tips
         ? `<select id="ideaSub" aria-label="Subcategoría" class="bg-surface-container-low px-3 py-2 pr-8 rounded-xl text-sm border-none focus:ring-2 focus:ring-primary font-medium max-w-full">
             <option value="auto"${ui.sub === 'auto' ? ' selected' : ''}>Subcategoría: automática (todas del mismo tipo)</option>
             <option value="all"${ui.sub === 'all' ? ' selected' : ''}>Mezclar subcategorías</option>
@@ -798,7 +856,7 @@ export function renderIdeas() {
         : ''
     }
     <button type="button" data-idea-action="build" class="${btnCls} bg-primary text-on-primary"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">auto_awesome</span><span>Armar</span></button>
-    <button type="button" data-idea-action="shuffle" class="${btnCls} bg-surface-container-high"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">shuffle</span><span>${idea?.generic ? 'Otro texto' : ui.idea === 'plan' ? 'Otra semana' : 'Cambiar artículos'}</span></button>
+    <button type="button" data-idea-action="shuffle" class="${btnCls} bg-surface-container-high"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">shuffle</span><span>${idea?.generic || idea?.tips ? 'Otro texto' : ui.idea === 'plan' ? 'Otra semana' : 'Cambiar artículos'}</span></button>
   </div>
   <input type="file" id="ideaPhotoInput" accept="image/*" class="hidden">
   <div id="ideaResult" class="mt-5 flex flex-col gap-6"></div>`;
@@ -808,13 +866,21 @@ export function renderIdeas() {
 function renderResults() {
   const out = $('#ideaResult');
   if (!out) return;
+  setTimeout(playReels, 0);
   out.innerHTML = ui.results
     .map((r, ri) => {
       const urls = r.slides.map((s) => URL.createObjectURL(s.blob));
+      const reel = !!r.reel;
       const editable = IDEAS[r.idea].generic;
       return `<div data-result="${ri}" class="p-3 rounded-2xl border border-outline-variant/30 bg-surface-container-low/40">
   <p class="mb-2 font-bold text-sm">${r.day ? `<span class="text-primary">${esc(r.day)}</span> · ` : ''}${esc(r.title)}</p>
-  <div class="flex gap-3 overflow-x-auto pb-2 snap-x">
+  ${
+    reel
+      ? `<div class="flex flex-col items-start gap-1"><canvas data-reel="${ri}" width="360" height="640" class="h-80 sm:h-96 aspect-[9/16] rounded-xl shadow-sm border border-outline-variant/30 bg-black"></canvas>
+      <span class="text-xs text-on-surface-variant">Vista previa · ${Math.round(r.reel.duration)} segundos · sin música (agregala en Instagram)</span></div>`
+      : ''
+  }
+  <div class="flex gap-3 overflow-x-auto pb-2 snap-x${reel ? ' hidden' : ''}">
     ${urls
       .map(
         (u, i) => `<figure class="shrink-0 snap-start flex flex-col items-center gap-1.5">
@@ -851,7 +917,7 @@ function renderResults() {
   }
   <div class="mt-3 flex flex-wrap gap-2">
     <button type="button" data-idea-action="share" class="${btnCls} bg-primary text-on-primary"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">ios_share</span><span>Compartir en Instagram</span></button>
-    <button type="button" data-idea-action="download" class="${btnCls} bg-surface-container-high"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">download</span><span>Descargar ${urls.length === 1 ? 'imagen' : `${urls.length} imágenes`}</span></button>
+    <button type="button" data-idea-action="download" class="${btnCls} bg-surface-container-high"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">download</span><span>Descargar ${reel ? 'video' : urls.length === 1 ? 'imagen' : `${urls.length} imágenes`}</span></button>
     <button type="button" data-idea-action="copy" class="${btnCls} bg-surface-container-high"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">content_copy</span><span>Copiar texto</span></button>
   </div>
   <details class="mt-2"><summary class="cursor-pointer text-xs font-bold text-on-surface-variant">Ver texto de la publicación</summary>
@@ -860,6 +926,56 @@ function renderResults() {
 </div>`;
     })
     .join('');
+}
+
+let playing = 0;
+function playReels() {
+  cancelAnimationFrame(playing);
+  const t0 = performance.now();
+  const loop = () => {
+    const canvases = [...document.querySelectorAll('[data-reel]')];
+    if (!canvases.length) return;
+    const t = (performance.now() - t0) / 1000;
+    for (const c of canvases) {
+      const r = ui.results[Number(c.dataset.reel)];
+      if (!r?.reel) continue;
+      const ctx = c.getContext('2d');
+      ctx.setTransform(c.width / 1080, 0, 0, c.width / 1080, 0, 0);
+      r.reel.draw(ctx, t % (r.reel.duration + 1));
+    }
+    playing = requestAnimationFrame(loop);
+  };
+  loop();
+}
+
+/** Graba el video (tarda lo mismo que dura) y lo comparte o lo descarga. */
+async function deliverReel(r, button, action) {
+  const label = button.lastElementChild;
+  const original = label.textContent;
+  button.disabled = true;
+  try {
+    if (!r.video) {
+      r.video = await recordReel(r.reel, (p) => (label.textContent = `Grabando… ${Math.round(p * 100)}%`));
+    }
+    if (r.video.type !== 'video/mp4') d.showToast('Tu navegador grabó en formato WebM: si Instagram no lo toma, hacelo desde el celular o con Chrome actualizado.', 'error');
+    const copied = await copyText(r.caption);
+    if (action === 'share' && navigator.canShare?.({ files: [r.video] })) {
+      try {
+        await navigator.share({ files: [r.video] });
+        if (copied) d.showToast('Texto copiado: en Instagram mantené apretado y tocá Pegar.');
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+      }
+    }
+    download(r.video, r.video.name);
+    d.showToast(copied ? 'Video descargado y texto copiado.' : 'Video descargado.');
+  } catch (err) {
+    d.showToast(err.message || 'No se pudo grabar el video.', 'error');
+  } finally {
+    label.textContent = original;
+    button.disabled = false;
+  }
 }
 
 async function build(button) {
@@ -940,6 +1056,7 @@ export function initIdeas(deps) {
       ui.seed++;
       build($('[data-idea-action="build"]'));
     }
+    if (r?.reel && (action === 'share' || action === 'download')) return deliverReel(r, b, action);
     if (action === 'share' && r) share(r);
     if (action === 'download' && r) saveAll(r);
     if (action === 'copy' && r) copyText(r.caption).then((ok) => d.showToast(ok ? 'Texto copiado.' : 'No se pudo copiar.', ok ? 'ok' : 'error'));
@@ -956,6 +1073,7 @@ export function initIdeas(deps) {
       const a = d.state.articles.find((x) => x.id === swap.value);
       if (r && a) {
         r.items[Number(swap.dataset.swap)] = a;
+        r.video = null;
         await buildResult(r);
         renderResults();
       }
